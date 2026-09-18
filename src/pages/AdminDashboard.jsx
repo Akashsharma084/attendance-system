@@ -10,7 +10,9 @@ import {
   lastNMonthKeys,
   getWeekday,
   buildEmployeeSchedule,
-  getMonthWorkingDays
+  getMonthWorkingDays,
+  getHoliday,
+  isHoliday
 } from '../utils/dateHelpers'
 import { mockGetAttendanceList, getStoredUsers } from '../mockService'
 import { subscribeLeaves } from '../services/leaveService'
@@ -289,14 +291,16 @@ export default function AdminDashboard() {
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
       const isToday = dateKey === todayKey
       const isFuture = dateKey > todayKey
+      const holiday = getHoliday(dateKey)
 
       if (employeeFilter !== 'all') {
         // Single employee mode
         const empRecords = records.filter((r) => r.uid === employeeFilter)
         const record = empRecords.find((r) => r.date === dateKey)
         let status = 'FUTURE'
-        if (isFuture) status = 'FUTURE'
-        else if (record) status = 'P'
+        if (record) status = 'P'
+        else if (holiday) status = 'HOLIDAY'
+        else if (isFuture) status = 'FUTURE'
         else if (isWeekend) status = 'WEEKEND'
         else status = 'A'
 
@@ -312,6 +316,7 @@ export default function AdminDashboard() {
           isWeekend,
           isToday,
           isFuture,
+          holiday,
           record,
           status,
           duration,
@@ -333,7 +338,7 @@ export default function AdminDashboard() {
             name: emp.name,
             initials,
             bgGradient,
-            status: rec ? 'P' : isWeekend ? 'WEEKEND' : isFuture ? 'FUTURE' : 'A',
+            status: rec ? 'P' : holiday ? 'HOLIDAY' : isWeekend ? 'WEEKEND' : isFuture ? 'FUTURE' : 'A',
             record: rec || null
           }
         })
@@ -359,6 +364,7 @@ export default function AdminDashboard() {
           isWeekend,
           isToday,
           isFuture,
+          holiday,
           presentCount,
           totalEmployees: totalEmp,
           percent,
@@ -757,6 +763,9 @@ export default function AdminDashboard() {
                   <span className="sw-legend-dot present" /> High Turnout
                 </span>
                 <span className="sw-legend-item">
+                  <span className="sw-legend-dot holiday" /> Holiday
+                </span>
+                <span className="sw-legend-item">
                   <span className="sw-legend-dot absent" /> Low / Zero
                 </span>
                 <span className="sw-legend-item">
@@ -790,10 +799,11 @@ export default function AdminDashboard() {
                     )
                   }
 
-                  const isSingleEmp = employeeFilter !== 'all'
+                  const isWeekend = cell.isWeekend
                   const isToday = cell.isToday
                   const isFuture = cell.isFuture
-                  const isWeekend = cell.isWeekend
+                  const isHoliday = Boolean(cell.holiday)
+                  const isSingleEmp = employeeFilter !== 'all'
 
                   if (isSingleEmp) {
                     // Single Employee Calendar Cell
@@ -806,6 +816,8 @@ export default function AdminDashboard() {
                         className={`sw-cal-cell ${
                           isPresent
                             ? 'cell-present'
+                            : isHoliday
+                            ? 'cell-holiday'
                             : isAbsent
                             ? 'cell-absent'
                             : isWeekend
@@ -815,9 +827,9 @@ export default function AdminDashboard() {
                             : ''
                         } ${isToday ? 'cell-today' : ''}`}
                         onClick={() => {
-                          if (!isFuture) setSelectedDayRoster({ ...cell, isSingle: true })
+                          if (!isFuture || isHoliday) setSelectedDayRoster({ ...cell, isSingle: true })
                         }}
-                        title={isFuture ? 'Upcoming day' : 'Click to inspect/manage attendance punch'}
+                        title={isHoliday ? `🏖️ Holiday: ${cell.holiday?.name}` : isFuture ? 'Upcoming day' : 'Click to inspect/manage attendance punch'}
                       >
                         <div className="sw-cal-cell-header">
                           <span className={`sw-cal-day-num ${isToday ? 'today-active' : ''}`}>
@@ -844,20 +856,30 @@ export default function AdminDashboard() {
                             </div>
                           )}
 
-                          {isAbsent && (
+                          {isHoliday && !cell.record && (
+                            <div className="sw-cal-holiday-info">
+                              <span className="sw-cal-holiday-pill" title={cell.holiday?.name}>
+                                <span>{cell.holiday?.icon || '🏖️'}</span>
+                                <span className="sw-cal-holiday-name">{cell.holiday?.name}</span>
+                              </span>
+                              <span className="sw-cal-holiday-sub">Official Off</span>
+                            </div>
+                          )}
+
+                          {isAbsent && !isHoliday && (
                             <div className="sw-cal-absent-info">
                               <span className="sw-cal-status-pill absent">✕ Absent</span>
                               <span className="sw-cal-missed-label">Unrecorded</span>
                             </div>
                           )}
 
-                          {isWeekend && !cell.record && (
+                          {isWeekend && !cell.record && !isHoliday && (
                             <div className="sw-cal-weekend-info">
                               <span className="sw-cal-weekend-pill">Weekend</span>
                             </div>
                           )}
 
-                          {isFuture && (
+                          {isFuture && !isHoliday && (
                             <div className="sw-cal-future-info">
                               <span className="sw-cal-future-dash">—</span>
                             </div>
@@ -899,7 +921,7 @@ export default function AdminDashboard() {
                   // All Employees Workforce Mode Day Cell
                   const hasPunches = (cell.presentCount || 0) > 0
                   const percent = cell.percent || 0
-                  const turnoutClass = percent >= 80 ? 'optimal' : percent >= 40 ? 'partial' : percent > 0 ? 'low' : 'none'
+                  const turnoutClass = percent >= 80 ? 'optimal' : percent >= 40 ? 'partial' : percent > 0 ? 'low' : isHoliday ? 'holiday' : 'none'
 
                   return (
                     <div
@@ -907,6 +929,8 @@ export default function AdminDashboard() {
                       className={`sw-cal-cell ${
                         hasPunches
                           ? 'cell-present'
+                          : isHoliday
+                          ? 'cell-holiday'
                           : isWeekend
                           ? 'cell-weekend'
                           : isFuture
@@ -914,7 +938,7 @@ export default function AdminDashboard() {
                           : 'cell-absent'
                       } ${isToday ? 'cell-today' : ''}`}
                       onClick={() => {
-                        if (!isFuture) {
+                        if (!isFuture || isHoliday || hasPunches) {
                           setRosterFilter('all')
                           setRosterSearch('')
                           setSelectedDayRoster({ ...cell, isSingle: false })
@@ -1272,13 +1296,32 @@ export default function AdminDashboard() {
                 /* Single Employee Day Inspection */
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                    <span className={`sw-inspect-status-badge ${selectedDayRoster.status === 'P' ? 'present' : selectedDayRoster.status === 'A' ? 'absent' : 'weekend'}`}>
-                      {selectedDayRoster.status === 'P' ? '✓ Verified Present' : selectedDayRoster.status === 'A' ? '✕ Absent (Unrecorded)' : '🏖️ Weekend'}
+                    <span className={`sw-inspect-status-badge ${selectedDayRoster.status === 'P' ? 'present' : selectedDayRoster.holiday ? 'holiday' : selectedDayRoster.status === 'A' ? 'absent' : 'weekend'}`}>
+                      {selectedDayRoster.status === 'P'
+                        ? '✓ Verified Present'
+                        : selectedDayRoster.holiday
+                        ? `🏖️ Official Holiday (${selectedDayRoster.holiday.name})`
+                        : selectedDayRoster.status === 'A'
+                        ? '✕ Absent (Unrecorded)'
+                        : '🏖️ Weekend'}
                     </span>
                     {selectedDayRoster.duration && (
                       <span className="sw-shift-hours-badge">⏱️ {selectedDayRoster.duration}</span>
                     )}
                   </div>
+
+                  {/* Holiday Banner */}
+                  {selectedDayRoster.holiday && (
+                    <div className="sw-holiday-inspect-banner" style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(217, 119, 6, 0.08))', border: '1.5px solid rgba(245, 158, 11, 0.35)', borderRadius: '14px', padding: '0.85rem 1rem', marginBottom: '1rem' }}>
+                      <span style={{ fontSize: '1.8rem' }}>{selectedDayRoster.holiday.icon || '🎉'}</span>
+                      <div>
+                        <h4 style={{ margin: '0 0 0.2rem', color: '#b45309', fontSize: '1rem', fontWeight: 800 }}>{selectedDayRoster.holiday.name}</h4>
+                        <p style={{ margin: 0, fontSize: '0.82rem', color: '#78350f' }}>
+                          Official Company Paid Holiday • Office remains closed on this day.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {selectedDayRoster.record ? (
                     <div className="sw-inspect-grid">
@@ -1355,6 +1398,19 @@ export default function AdminDashboard() {
               ) : (
                 /* All Employees Daily Workforce Roster with Search and Filters */
                 <div>
+                  {/* Holiday Banner */}
+                  {selectedDayRoster.holiday && (
+                    <div className="sw-holiday-inspect-banner" style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(217, 119, 6, 0.08))', border: '1.5px solid rgba(245, 158, 11, 0.35)', borderRadius: '14px', padding: '0.85rem 1rem', marginBottom: '1rem' }}>
+                      <span style={{ fontSize: '1.8rem' }}>{selectedDayRoster.holiday.icon || '🎉'}</span>
+                      <div>
+                        <h4 style={{ margin: '0 0 0.2rem', color: '#b45309', fontSize: '1rem', fontWeight: 800 }}>{selectedDayRoster.holiday.name}</h4>
+                        <p style={{ margin: 0, fontSize: '0.82rem', color: '#78350f' }}>
+                          Official Company Paid Holiday • Office was scheduled closed.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Hero Stats Card */}
                   <div className="sw-admin-roster-hero">
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>

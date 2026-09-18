@@ -9,7 +9,9 @@ import {
   formatMonthLabel,
   formatTime,
   lastNMonthKeys,
-  buildEmployeeSchedule
+  buildEmployeeSchedule,
+  getHoliday,
+  isHoliday
 } from '../utils/dateHelpers'
 import { mockGetAttendanceList } from '../mockService'
 import NavBar from '../components/NavBar'
@@ -158,14 +160,16 @@ export default function EmployeeDashboard() {
       const dayOfWeek = dateObj.getDay() // 0=Sun, 6=Sat
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
       const isToday = dateKey === todayKey
-      const isFuture = dateKey > todayKey
+      const holiday = getHoliday(dateKey)
 
       const record = recordMap.get(dateKey)
       let status = 'FUTURE'
-      if (isFuture) {
-        status = 'FUTURE'
-      } else if (record) {
+      if (record) {
         status = 'P'
+      } else if (holiday) {
+        status = 'HOLIDAY'
+      } else if (isFuture) {
+        status = 'FUTURE'
       } else if (isWeekend) {
         status = 'WEEKEND'
       } else {
@@ -184,6 +188,7 @@ export default function EmployeeDashboard() {
         isWeekend,
         isToday,
         isFuture,
+        holiday,
         record,
         status,
         duration
@@ -486,6 +491,9 @@ export default function EmployeeDashboard() {
                       <span className="sw-legend-dot present" /> Present
                     </span>
                     <span className="sw-legend-item">
+                      <span className="sw-legend-dot holiday" /> Holiday
+                    </span>
+                    <span className="sw-legend-item">
                       <span className="sw-legend-dot absent" /> Absent
                     </span>
                     <span className="sw-legend-item">
@@ -521,6 +529,7 @@ export default function EmployeeDashboard() {
 
                       const hasRecord = Boolean(cell.record)
                       const isPresent = cell.status === 'P'
+                      const isHoliday = cell.status === 'HOLIDAY' || Boolean(cell.holiday)
                       const isAbsent = cell.status === 'A'
                       const isWeekend = cell.isWeekend
                       const isToday = cell.isToday
@@ -532,6 +541,8 @@ export default function EmployeeDashboard() {
                           className={`sw-cal-cell ${
                             isPresent
                               ? 'cell-present'
+                              : isHoliday
+                              ? 'cell-holiday'
                               : isAbsent
                               ? 'cell-absent'
                               : isWeekend
@@ -541,9 +552,9 @@ export default function EmployeeDashboard() {
                               : ''
                           } ${isToday ? 'cell-today' : ''}`}
                           onClick={() => {
-                            if (!isFuture) setSelectedDayDetail(cell)
+                            if (!isFuture || isHoliday) setSelectedDayDetail(cell)
                           }}
-                          title={isFuture ? 'Upcoming day' : 'Click to inspect attendance details'}
+                          title={isHoliday ? `🏖️ Holiday: ${cell.holiday?.name}` : isFuture ? 'Upcoming day' : 'Click to inspect attendance details'}
                         >
                           {/* Cell Header: Day Number & Today indicator */}
                           <div className="sw-cal-cell-header">
@@ -578,7 +589,17 @@ export default function EmployeeDashboard() {
                               </div>
                             )}
 
-                            {isAbsent && (
+                            {isHoliday && !hasRecord && (
+                              <div className="sw-cal-holiday-info">
+                                <span className="sw-cal-holiday-pill" title={cell.holiday?.name}>
+                                  <span>{cell.holiday?.icon || '🏖️'}</span>
+                                  <span className="sw-cal-holiday-name">{cell.holiday?.name}</span>
+                                </span>
+                                <span className="sw-cal-holiday-sub">Official Off</span>
+                              </div>
+                            )}
+
+                            {isAbsent && !isHoliday && (
                               <div className="sw-cal-absent-info">
                                 <span className="sw-cal-status-pill absent">
                                   ✕ Absent
@@ -587,13 +608,13 @@ export default function EmployeeDashboard() {
                               </div>
                             )}
 
-                            {isWeekend && !hasRecord && (
+                            {isWeekend && !hasRecord && !isHoliday && (
                               <div className="sw-cal-weekend-info">
                                 <span className="sw-cal-weekend-pill">Weekend</span>
                               </div>
                             )}
 
-                            {isFuture && (
+                            {isFuture && !isHoliday && (
                               <div className="sw-cal-future-info">
                                 <span className="sw-cal-future-dash">—</span>
                               </div>
@@ -831,8 +852,14 @@ export default function EmployeeDashboard() {
             <div className="modal-body" style={{ padding: '1.25rem' }}>
               {/* Status Header Badge */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-                <span className={`sw-inspect-status-badge ${selectedDayDetail.status === 'P' ? 'present' : selectedDayDetail.status === 'A' ? 'absent' : 'weekend'}`}>
-                  {selectedDayDetail.status === 'P' ? '✓ Verified Present' : selectedDayDetail.status === 'A' ? '✕ Absent (Unrecorded)' : '🏖️ Weekend / Rest Day'}
+                <span className={`sw-inspect-status-badge ${selectedDayDetail.status === 'P' ? 'present' : selectedDayDetail.holiday ? 'holiday' : selectedDayDetail.status === 'A' ? 'absent' : 'weekend'}`}>
+                  {selectedDayDetail.status === 'P'
+                    ? '✓ Verified Present'
+                    : selectedDayDetail.holiday
+                    ? `🏖️ Official Holiday (${selectedDayDetail.holiday.name})`
+                    : selectedDayDetail.status === 'A'
+                    ? '✕ Absent (Unrecorded)'
+                    : '🏖️ Weekend / Rest Day'}
                 </span>
 
                 {selectedDayDetail.duration && (
@@ -841,6 +868,19 @@ export default function EmployeeDashboard() {
                   </span>
                 )}
               </div>
+
+              {/* Holiday Info Banner */}
+              {selectedDayDetail.holiday && (
+                <div className="sw-holiday-inspect-banner" style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(217, 119, 6, 0.08))', border: '1.5px solid rgba(245, 158, 11, 0.35)', borderRadius: '14px', padding: '1rem', marginBottom: '1.25rem' }}>
+                  <span style={{ fontSize: '2rem' }}>{selectedDayDetail.holiday.icon || '🎉'}</span>
+                  <div>
+                    <h4 style={{ margin: '0 0 0.25rem', color: '#b45309', fontSize: '1.05rem', fontWeight: 800 }}>{selectedDayDetail.holiday.name}</h4>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#78350f' }}>
+                      Official Paid Company Holiday • Office remains closed on this day.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Present Day Details */}
               {selectedDayDetail.status === 'P' && selectedDayDetail.record && (
@@ -898,7 +938,7 @@ export default function EmployeeDashboard() {
               )}
 
               {/* Absent Day Explanation */}
-              {selectedDayDetail.status === 'A' && (
+              {selectedDayDetail.status === 'A' && !selectedDayDetail.holiday && (
                 <div className="sw-inspect-absent-card">
                   <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⚠️</div>
                   <h4 style={{ margin: '0 0 0.4rem', color: '#991b1b' }}>No Attendance Logged</h4>

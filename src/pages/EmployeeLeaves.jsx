@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { subscribeLeaves, submitLeaveRequest, cancelLeaveRequest } from '../services/leaveService'
 import { todayDateKey } from '../utils/dateHelpers'
+import { getUpcomingHoliday } from '../utils/holidays.js'
 import NavBar from '../components/NavBar'
 
 const LEAVE_TYPES = [
@@ -30,6 +31,7 @@ export default function EmployeeLeaves() {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const [formSuccess, setFormSuccess] = useState('')
+  const upcomingHoliday = useMemo(() => getUpcomingHoliday(), [])
 
   // Calculate days between start and end (inclusive)
   const calculatedDays = useMemo(() => {
@@ -246,6 +248,24 @@ export default function EmployeeLeaves() {
           </div>
         </div>
 
+        {/* Upcoming Official Holiday Notice Banner */}
+        {upcomingHoliday && (
+          <div className="sw-upcoming-holiday-card">
+            <div className="sw-upcoming-holiday-left">
+              <span className="sw-upcoming-holiday-icon">{upcomingHoliday.icon || '🎉'}</span>
+              <div>
+                <div className="sw-upcoming-holiday-title">
+                  Next Official Company Holiday: <strong>{upcomingHoliday.name}</strong>
+                </div>
+                <div className="sw-upcoming-holiday-sub">
+                  Date: <strong>{upcomingHoliday.date}</strong> ({upcomingHoliday.type === 'national' ? 'National Holiday' : 'Official Paid Holiday'}) • Office will remain closed.
+                </div>
+              </div>
+            </div>
+            <span className="sw-upcoming-holiday-badge">🏖️ Paid Day Off</span>
+          </div>
+        )}
+
         {/* Filter Tabs & Section Header */}
         <div className="sw-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.85rem', marginTop: '2rem' }}>
           <div>
@@ -405,10 +425,11 @@ export default function EmployeeLeaves() {
             })}
           </div>
         )}
+      </div>
 
-        {/* Modal: Request Leave */}
-        {showModal && (
-          <div className="modal-overlay" onClick={() => setShowModal(false)}>
+      {/* Modal: Request Leave (Rendered at Root Level for Proper Stacking & No Clipping) */}
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
             <div className="sw-leave-modal" onClick={(e) => e.stopPropagation()}>
               <div className="sw-modal-top-bar">
                 <span className="sw-modal-top-title">🌴 Request Time Off / Leave</span>
@@ -525,7 +546,6 @@ export default function EmployeeLeaves() {
             </div>
           </div>
         )}
-      </div>
     </div>
   )
 }

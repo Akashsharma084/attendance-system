@@ -1,4 +1,7 @@
-// All helpers work off local time so a "day" matches what the employee sees on their clock.
+import { getHoliday, isHoliday } from './holidays.js'
+
+// Re-export for convenience across pages
+export { getHoliday, isHoliday }
 
 export function todayDateKey(d = new Date()) {
   return d.toLocaleDateString('en-CA') // YYYY-MM-DD, respects local timezone
@@ -53,10 +56,8 @@ export function getMonthWorkingDays(targetMonthKey) {
   if (targetMonthKey === currentMonthKey) {
     lastDay = today.getDate()
   } else if (targetMonthKey < currentMonthKey) {
-    // Last day of that specific month
     lastDay = new Date(yearNum, monthNum, 0).getDate()
   } else {
-    // Future month
     lastDay = 0
   }
 
@@ -67,22 +68,23 @@ export function getMonthWorkingDays(targetMonthKey) {
     // Monday = 1, Friday = 5. Skip weekends (0 = Sunday, 6 = Saturday)
     if (dayOfWeek >= 1 && dayOfWeek <= 5) {
       const dateStr = `${yearNum}-${pad(monthNum)}-${pad(d)}`
+      const holiday = getHoliday(dateStr)
       days.push({
         date: dateStr,
         weekday: dateObj.toLocaleDateString('en-US', { weekday: 'short' }),
         weekdayFull: dateObj.toLocaleDateString('en-US', { weekday: 'long' }),
-        dayNumber: d
+        dayNumber: d,
+        holiday
       })
     }
   }
 
-  // Sort descending by date so most recent days show at top
   return days.reverse()
 }
 
 /**
  * Merges punch records with working calendar days for an employee.
- * Marks present days as 'P' and absent working days as 'A'.
+ * Marks present days as 'P', holidays as 'H', and unrecorded working days as 'A'.
  */
 export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo = {}) {
   const workingDays = getMonthWorkingDays(targetMonthKey)
@@ -94,10 +96,12 @@ export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo
 
   let presentCount = 0
   let absentCount = 0
+  let holidayCount = 0
   let fullDaysCount = 0
 
   const schedule = workingDays.map((day) => {
     const existing = recordMap.get(day.date)
+    const holiday = day.holiday || getHoliday(day.date)
 
     if (existing) {
       presentCount++
@@ -108,6 +112,7 @@ export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo
         weekday: day.weekday,
         weekdayFull: day.weekdayFull,
         status: 'P',
+        holiday,
         name: existing.name || employeeInfo.name || 'Employee',
         uid: existing.uid || employeeInfo.uid,
         checkInTime: existing.checkInTime,
@@ -118,6 +123,25 @@ export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo
         checkOutLocation: existing.checkOutLocation || null,
         isComplete: Boolean(existing.checkOutTime)
       }
+    } else if (holiday) {
+      holidayCount++
+      return {
+        id: `holiday-${day.date}`,
+        date: day.date,
+        weekday: day.weekday,
+        weekdayFull: day.weekdayFull,
+        status: 'H',
+        holiday,
+        name: employeeInfo.name || 'Employee',
+        uid: employeeInfo.uid,
+        checkInTime: null,
+        checkOutTime: null,
+        checkInSelfieUrl: null,
+        checkInLocation: null,
+        checkOutSelfieUrl: null,
+        checkOutLocation: null,
+        isComplete: false
+      }
     } else {
       absentCount++
       return {
@@ -126,6 +150,7 @@ export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo
         weekday: day.weekday,
         weekdayFull: day.weekdayFull,
         status: 'A',
+        holiday: null,
         name: employeeInfo.name || 'Employee',
         uid: employeeInfo.uid,
         checkInTime: null,
@@ -139,11 +164,16 @@ export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo
     }
   })
 
+  // Effective working days exclude official paid holidays
+  const effectiveWorkingDays = Math.max(1, workingDays.length - holidayCount)
+
   return {
     schedule,
     presentCount,
     absentCount,
+    holidayCount,
     totalWorkingDays: workingDays.length,
+    effectiveWorkingDays,
     fullDaysCount
   }
 }
