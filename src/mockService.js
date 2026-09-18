@@ -2,7 +2,45 @@ import { todayDateKey, monthKey } from './utils/dateHelpers'
 
 const STORAGE_KEY_USERS = 'punch_demo_users'
 const STORAGE_KEY_ATTENDANCE = 'punch_demo_attendance'
+const STORAGE_KEY_LEAVES = 'punch_demo_leaves'
 const STORAGE_KEY_SESSION = 'punch_demo_session'
+
+const DEFAULT_LEAVES = [
+  {
+    id: 'leave-demo-1',
+    uid: 'demo-emp-1',
+    userName: 'Alex Chen',
+    userEmail: 'alex@company.com',
+    leaveType: 'vacation',
+    startDate: '2026-09-22',
+    endDate: '2026-09-24',
+    daysCount: 3,
+    reason: 'Attending family reunion out of state',
+    status: 'pending',
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    reviewedBy: null,
+    reviewedByName: null,
+    reviewedAt: null,
+    adminNote: ''
+  },
+  {
+    id: 'leave-demo-2',
+    uid: 'demo-emp-2',
+    userName: 'Maria Santos',
+    userEmail: 'maria@company.com',
+    leaveType: 'sick',
+    startDate: '2026-09-10',
+    endDate: '2026-09-11',
+    daysCount: 2,
+    reason: 'Severe seasonal flu and doctor consultation',
+    status: 'approved',
+    createdAt: new Date(Date.now() - 864000000).toISOString(),
+    reviewedBy: 'demo-admin-uid',
+    reviewedByName: 'Sarah Connor (Admin)',
+    reviewedAt: new Date(Date.now() - 800000000).toISOString(),
+    adminNote: 'Approved. Hope you feel better soon!'
+  }
+]
 
 const DEFAULT_USERS = [
   {
@@ -241,9 +279,11 @@ export function mockToggleUserStatus(uid) {
 export function resetDemoData() {
   localStorage.removeItem(STORAGE_KEY_ATTENDANCE)
   localStorage.removeItem(STORAGE_KEY_USERS)
+  localStorage.removeItem(STORAGE_KEY_LEAVES)
   const users = getStoredUsers()
   const attendance = getStoredAttendance()
-  return { users, attendance }
+  const leaves = getStoredLeaves()
+  return { users, attendance, leaves }
 }
 
 export async function mockGoogleSignIn() {
@@ -263,5 +303,90 @@ export async function mockGoogleSignIn() {
   const activeUser = existing || googleUser
   setMockSession(activeUser)
   return activeUser
+}
+
+export function getStoredLeaves() {
+  const data = localStorage.getItem(STORAGE_KEY_LEAVES)
+  if (!data) {
+    localStorage.setItem(STORAGE_KEY_LEAVES, JSON.stringify(DEFAULT_LEAVES))
+    return DEFAULT_LEAVES
+  }
+  try {
+    return JSON.parse(data)
+  } catch {
+    return DEFAULT_LEAVES
+  }
+}
+
+export function mockGetLeavesList({ uid, status } = {}) {
+  const all = getStoredLeaves()
+  return all.filter((l) => {
+    if (uid && l.uid !== uid) return false
+    if (status && status !== 'all' && l.status !== status) return false
+    return true
+  }).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+}
+
+export function mockCreateLeaveRequest({ uid, userName, userEmail, leaveType, startDate, endDate, daysCount, reason }) {
+  const all = getStoredLeaves()
+  const newLeave = {
+    id: `leave-${Date.now()}`,
+    uid,
+    userName: userName || userEmail?.split('@')[0] || 'Employee',
+    userEmail: userEmail || '',
+    leaveType: leaveType || 'casual',
+    startDate,
+    endDate,
+    daysCount: Number(daysCount) || 1,
+    reason: (reason || '').trim(),
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+    reviewedBy: null,
+    reviewedByName: null,
+    reviewedAt: null,
+    adminNote: ''
+  }
+  const updated = [newLeave, ...all]
+  localStorage.setItem(STORAGE_KEY_LEAVES, JSON.stringify(updated))
+  return newLeave
+}
+
+export function mockUpdateLeaveStatus({ leaveId, status, reviewedBy, reviewedByName, adminNote }) {
+  const all = getStoredLeaves()
+  const idx = all.findIndex((l) => l.id === leaveId)
+  if (idx === -1) {
+    throw new Error('Leave request not found.')
+  }
+  all[idx] = {
+    ...all[idx],
+    status,
+    reviewedBy: reviewedBy || 'admin',
+    reviewedByName: reviewedByName || 'Administrator',
+    reviewedAt: new Date().toISOString(),
+    adminNote: adminNote !== undefined ? adminNote : all[idx].adminNote
+  }
+  localStorage.setItem(STORAGE_KEY_LEAVES, JSON.stringify([...all]))
+  return all[idx]
+}
+
+export function mockCancelLeaveRequest({ leaveId, uid }) {
+  const all = getStoredLeaves()
+  const idx = all.findIndex((l) => l.id === leaveId)
+  if (idx === -1) {
+    throw new Error('Leave request not found.')
+  }
+  if (uid && all[idx].uid !== uid) {
+    throw new Error('You can only cancel your own leave requests.')
+  }
+  if (all[idx].status !== 'pending') {
+    throw new Error('Only pending leave requests can be cancelled.')
+  }
+  all[idx] = {
+    ...all[idx],
+    status: 'cancelled',
+    cancelledAt: new Date().toISOString()
+  }
+  localStorage.setItem(STORAGE_KEY_LEAVES, JSON.stringify([...all]))
+  return all[idx]
 }
 

@@ -6,7 +6,8 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithPopup,
-  updateProfile
+  updateProfile,
+  updatePassword
 } from 'firebase/auth'
 import { doc, onSnapshot, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db, isFirebaseConfigured } from '../firebase'
@@ -259,6 +260,39 @@ export function AuthProvider({ children }) {
     }
   }
 
+  async function changePassword(newPassword) {
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('Password must be at least 6 characters.')
+    }
+    if (isFirebaseConfigured && auth?.currentUser) {
+      try {
+        await updatePassword(auth.currentUser, newPassword)
+        return { success: true }
+      } catch (err) {
+        if (err.code === 'auth/requires-recent-login') {
+          await sendPasswordResetEmail(auth, auth.currentUser.email)
+          return {
+            success: false,
+            requiresReauth: true,
+            message: 'For security, changing password requires a recent login. A secure password reset link has been dispatched to your email.'
+          }
+        }
+        throw err
+      }
+    } else {
+      // Demo Mode
+      const users = getStoredUsers()
+      const currentUid = currentUser?.uid || 'demo-admin-uid'
+      const idx = users.findIndex((u) => u.uid === currentUid)
+      if (idx !== -1) {
+        users[idx].password = newPassword
+        localStorage.setItem('punch_demo_users', JSON.stringify(users))
+        setMockSession(users[idx])
+      }
+      return { success: true }
+    }
+  }
+
   function resetData() {
     if (!isFirebaseConfigured) {
       resetDemoData()
@@ -285,6 +319,7 @@ export function AuthProvider({ children }) {
     logout,
     updateUserProfile,
     resetPassword,
+    changePassword,
     resetData,
     isDemoMode: !isFirebaseConfigured
   }

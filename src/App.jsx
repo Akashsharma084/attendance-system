@@ -6,8 +6,10 @@ import ScrollToTop from './components/ScrollToTop'
 import Login from './pages/Login'
 import CheckIn from './pages/CheckIn'
 import EmployeeDashboard from './pages/EmployeeDashboard'
+import EmployeeLeaves from './pages/EmployeeLeaves'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminUsers from './pages/AdminUsers'
+import AdminLeaves from './pages/AdminLeaves'
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -71,6 +73,14 @@ export default function App() {
               }
             />
             <Route
+              path="/leaves"
+              element={
+                <ProtectedRoute>
+                  <EmployeeLeaves />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin"
               element={
                 <ProtectedRoute requireAdmin>
@@ -83,6 +93,14 @@ export default function App() {
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminUsers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/leaves"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminLeaves />
                 </ProtectedRoute>
               }
             />
