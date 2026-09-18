@@ -160,6 +160,7 @@ export default function EmployeeDashboard() {
       const dayOfWeek = dateObj.getDay() // 0=Sun, 6=Sat
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
       const isToday = dateKey === todayKey
+      const isFuture = dateKey > todayKey
       const holiday = getHoliday(dateKey)
 
       const record = recordMap.get(dateKey)
