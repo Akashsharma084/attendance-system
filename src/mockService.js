@@ -1,0 +1,267 @@
+import { todayDateKey, monthKey } from './utils/dateHelpers'
+
+const STORAGE_KEY_USERS = 'punch_demo_users'
+const STORAGE_KEY_ATTENDANCE = 'punch_demo_attendance'
+const STORAGE_KEY_SESSION = 'punch_demo_session'
+
+const DEFAULT_USERS = [
+  {
+    uid: 'demo-admin-uid',
+    email: 'admin@company.com',
+    name: 'Sarah Connor (Admin)',
+    role: 'admin',
+    status: 'active'
+  },
+  {
+    uid: 'demo-emp-1',
+    email: 'alex@company.com',
+    name: 'Alex Chen',
+    role: 'employee',
+    status: 'active'
+  },
+  {
+    uid: 'demo-emp-2',
+    email: 'maria@company.com',
+    name: 'Maria Santos',
+    role: 'employee',
+    status: 'active'
+  },
+  {
+    uid: 'demo-emp-3',
+    email: 'liam@company.com',
+    name: 'Liam Patel',
+    role: 'employee',
+    status: 'disabled'
+  }
+]
+
+// Generate realistic seed attendance records for the current month
+function generateSeedAttendance() {
+  const currentMonth = monthKey()
+  const today = new Date()
+  const currentYear = today.getFullYear()
+  const currentMonthNum = today.getMonth() // 0-indexed
+  const records = []
+
+  const seedEmployees = [
+    { uid: 'demo-emp-1', name: 'Alex Chen' },
+    { uid: 'demo-emp-2', name: 'Maria Santos' }
+  ]
+
+  // For the last 5 business days
+  for (let d = Math.max(1, today.getDate() - 5); d < today.getDate(); d++) {
+    const dayDate = new Date(currentYear, currentMonthNum, d)
+    if (dayDate.getDay() === 0 || dayDate.getDay() === 6) continue // skip weekends
+
+    const pad = (n) => String(n).padStart(2, '0')
+    const dateStr = `${currentYear}-${pad(currentMonthNum + 1)}-${pad(d)}`
+
+    seedEmployees.forEach((emp, i) => {
+      const checkInHour = 9 + (i === 0 ? 0 : 1)
+      const checkInMin = 15 + i * 10
+      const checkOutHour = 17 + i
+      const checkOutMin = 30 + i * 5
+
+      const checkInDate = new Date(currentYear, currentMonthNum, d, checkInHour, checkInMin)
+      const checkOutDate = new Date(currentYear, currentMonthNum, d, checkOutHour, checkOutMin)
+
+      records.push({
+        id: `rec-${emp.uid}-${dateStr}`,
+        uid: emp.uid,
+        name: emp.name,
+        date: dateStr,
+        month: currentMonth,
+        checkInTime: checkInDate.toISOString(),
+        checkInLocation: { lat: 37.7749, lng: -122.4194, accuracy: 12 },
+        checkInSelfieUrl: `https://images.unsplash.com/photo-${i === 0 ? '1534528741775-53994a69daeb' : '1507003211169-0a1dd7228f2d'}?auto=format&fit=crop&w=200&h=200&q=80`,
+        checkOutTime: checkOutDate.toISOString(),
+        checkOutLocation: { lat: 37.7749, lng: -122.4194, accuracy: 15 },
+        checkOutSelfieUrl: `https://images.unsplash.com/photo-${i === 0 ? '1534528741775-53994a69daeb' : '1507003211169-0a1dd7228f2d'}?auto=format&fit=crop&w=200&h=200&q=80`
+      })
+    })
+  }
+
+  return records
+}
+
+export function getStoredUsers() {
+  const data = localStorage.getItem(STORAGE_KEY_USERS)
+  if (!data) {
+    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(DEFAULT_USERS))
+    return DEFAULT_USERS
+  }
+  try {
+    return JSON.parse(data)
+  } catch {
+    return DEFAULT_USERS
+  }
+}
+
+export function getStoredAttendance() {
+  const data = localStorage.getItem(STORAGE_KEY_ATTENDANCE)
+  if (!data) {
+    const seed = generateSeedAttendance()
+    localStorage.setItem(STORAGE_KEY_ATTENDANCE, JSON.stringify(seed))
+    return seed
+  }
+  try {
+    return JSON.parse(data)
+  } catch {
+    return []
+  }
+}
+
+export function getMockSession() {
+  const raw = localStorage.getItem(STORAGE_KEY_SESSION)
+  if (!raw) return null
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+export function setMockSession(user) {
+  if (user) {
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(user))
+  } else {
+    localStorage.removeItem(STORAGE_KEY_SESSION)
+  }
+}
+
+export async function mockSignIn(email) {
+  const users = getStoredUsers()
+  const found = users.find((u) => u.email.toLowerCase() === email.toLowerCase().trim())
+  if (!found) {
+    // If not found in demo mode, auto-create as employee so any email can test!
+    const newUser = {
+      uid: `demo-user-${Date.now()}`,
+      email: email.trim(),
+      name: email.split('@')[0],
+      role: 'employee',
+      status: 'active'
+    }
+    const updated = [...users, newUser]
+    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(updated))
+    setMockSession(newUser)
+    return newUser
+  }
+  if (found.status === 'disabled') {
+    throw new Error('Your account has been disabled.')
+  }
+  setMockSession(found)
+  return found
+}
+
+export function mockSignOut() {
+  setMockSession(null)
+}
+
+export function mockGetTodayRecord(uid) {
+  const all = getStoredAttendance()
+  const today = todayDateKey()
+  return all.find((r) => r.uid === uid && r.date === today) || null
+}
+
+export function mockSaveAttendance({ uid, name, location, selfieUrl, isCheckIn }) {
+  const all = getStoredAttendance()
+  const today = todayDateKey()
+  const currentMonth = monthKey()
+  const existingIndex = all.findIndex((r) => r.uid === uid && r.date === today)
+
+  if (isCheckIn) {
+    const newRecord = {
+      id: `att-${Date.now()}`,
+      uid,
+      name,
+      date: today,
+      month: currentMonth,
+      checkInTime: new Date().toISOString(),
+      checkInLocation: location,
+      checkInSelfieUrl: selfieUrl,
+      checkOutTime: null,
+      checkOutLocation: null,
+      checkOutSelfieUrl: null
+    }
+    const updated = [newRecord, ...all]
+    localStorage.setItem(STORAGE_KEY_ATTENDANCE, JSON.stringify(updated))
+    return newRecord
+  } else {
+    if (existingIndex >= 0) {
+      all[existingIndex] = {
+        ...all[existingIndex],
+        checkOutTime: new Date().toISOString(),
+        checkOutLocation: location,
+        checkOutSelfieUrl: selfieUrl
+      }
+      localStorage.setItem(STORAGE_KEY_ATTENDANCE, JSON.stringify([...all]))
+      return all[existingIndex]
+    }
+  }
+}
+
+export function mockGetAttendanceList({ uid, month }) {
+  const all = getStoredAttendance()
+  return all.filter((r) => {
+    if (uid && r.uid !== uid) return false
+    if (month && r.month !== month) return false
+    return true
+  })
+}
+
+export function mockCreateUser({ name, email, role }) {
+  const users = getStoredUsers()
+  if (users.some((u) => u.email.toLowerCase() === email.toLowerCase().trim())) {
+    throw new Error('A user with that email already exists.')
+  }
+  const newUser = {
+    uid: `demo-user-${Date.now()}`,
+    name,
+    email: email.trim(),
+    role: role || 'employee',
+    status: 'active'
+  }
+  const updated = [...users, newUser]
+  localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(updated))
+  return newUser
+}
+
+export function mockToggleUserStatus(uid) {
+  const users = getStoredUsers()
+  const updated = users.map((u) => {
+    if (u.uid === uid) {
+      return { ...u, status: u.status === 'disabled' ? 'active' : 'disabled' }
+    }
+    return u
+  })
+  localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(updated))
+  return updated
+}
+
+export function resetDemoData() {
+  localStorage.removeItem(STORAGE_KEY_ATTENDANCE)
+  localStorage.removeItem(STORAGE_KEY_USERS)
+  const users = getStoredUsers()
+  const attendance = getStoredAttendance()
+  return { users, attendance }
+}
+
+export async function mockGoogleSignIn() {
+  const googleUser = {
+    uid: 'demo-google-emp',
+    email: 'alex.chen@softwindlabs.com',
+    name: 'Alex Chen (Google SSO)',
+    role: 'employee',
+    status: 'active'
+  }
+  const users = getStoredUsers()
+  const existing = users.find((u) => u.email.toLowerCase() === googleUser.email.toLowerCase())
+  if (!existing) {
+    users.push(googleUser)
+    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users))
+  }
+  const activeUser = existing || googleUser
+  setMockSession(activeUser)
+  return activeUser
+}
+

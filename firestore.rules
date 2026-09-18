@@ -1,0 +1,53 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email.matches('(?i)^admin@.*')
+      );
+    }
+
+    function isDocAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role.lower() == 'admin';
+    }
+
+    function isAdmin() {
+      return isEmailAdmin() || isDocAdmin();
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      // Admins have full access. Users can update their own profile (name, photoURL, phone), but cannot change their role.
+      allow create: if isSignedIn() && (
+        isAdmin() || (request.auth.uid == uid && (!('role' in request.resource.data) || request.resource.data.role != 'admin'))
+      );
+      allow update: if isSignedIn() && (
+        isAdmin() || (request.auth.uid == uid && request.resource.data.role == resource.data.role)
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /attendance/{docId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+                    && (request.resource.data.uid == request.auth.uid || isAdmin())
+                    && request.resource.data.date is string
+                    && request.resource.data.month is string;
+
+      // Allow owner or admin to update attendance
+      allow update: if isSignedIn()
+                    && (resource.data.uid == request.auth.uid || isAdmin());
+
+      allow delete: if isAdmin();
+    }
+  }
+}
