@@ -24,6 +24,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [selectedSelfie, setSelectedSelfie] = useState(null)
   const [selectedDayRoster, setSelectedDayRoster] = useState(null)
+  const [rosterFilter, setRosterFilter] = useState('all') // 'all' | 'present' | 'absent'
+  const [rosterSearch, setRosterSearch] = useState('')
   const [viewMode, setViewMode] = useState('calendar') // 'calendar' | 'table'
   const [pendingLeavesCount, setPendingLeavesCount] = useState(0)
   const monthOptions = useMemo(() => lastNMonthKeys(6), [])
@@ -75,8 +77,6 @@ export default function AdminDashboard() {
       return
     }
 
-    // Live Real-Time Attendance Listener:
-    // Without 'orderBy' on a separate field, ZERO composite index is required!
     const q = query(
       collection(db, 'attendance'),
       where('month', '==', selectedMonth)
@@ -87,7 +87,6 @@ export default function AdminDashboard() {
       (snap) => {
         if (cancelled) return
         const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-        // In-memory sort by date descending
         docs.sort((a, b) => (b.date || '').localeCompare(a.date || ''))
         setRecords(docs)
         setLoading(false)
@@ -98,7 +97,6 @@ export default function AdminDashboard() {
       }
     )
 
-    // Real-time users listener so newly created employees show immediately
     const usersQ = query(collection(db, 'users'))
     const unsubUsers = onSnapshot(
       usersQ,
@@ -120,12 +118,10 @@ export default function AdminDashboard() {
     }
   }, [selectedMonth])
 
-  // Extract all distinct employees present in records or user list
+  // Extract all distinct employees
   const employees = useMemo(() => {
     const map = new Map()
-    // seed with user list
     usersList.forEach((u) => map.set(u.uid, u.name || u.email?.split('@')[0] || 'Employee'))
-    // seed with any attendance record
     records.forEach((r) => {
       if (r.uid && (r.name || r.email)) map.set(r.uid, r.name || r.email)
     })
@@ -179,7 +175,7 @@ export default function AdminDashboard() {
     }
   }
 
-  // Per-employee monthly summary statistics (Present & Absent counts for each employee)
+  // Per-employee monthly summary statistics
   const employeeSummaries = useMemo(() => {
     const workingDaysCount = getMonthWorkingDays(selectedMonth).length
 
@@ -191,6 +187,7 @@ export default function AdminDashboard() {
         emp
       )
       const rate = workingDaysCount > 0 ? Math.round((presentCount / workingDaysCount) * 100) : 0
+      const punchedToday = records.some((r) => r.uid === emp.uid && r.date === todayKey)
       return {
         uid: emp.uid,
         name: emp.name,
@@ -198,10 +195,11 @@ export default function AdminDashboard() {
         absentCount,
         fullDaysCount,
         totalWorkingDays: workingDaysCount,
-        rate
+        rate,
+        punchedToday
       }
     })
-  }, [employees, records, selectedMonth])
+  }, [employees, records, selectedMonth, todayKey])
 
   // Today's live punches across workforce
   const todayPunches = useMemo(() => {
@@ -265,7 +263,6 @@ export default function AdminDashboard() {
     const pad = (n) => String(n).padStart(2, '0')
     const days = []
 
-    // Previous month padding cells
     const prevMonthTotalDays = new Date(year, month - 1, 0).getDate()
     for (let i = startPadding - 1; i >= 0; i--) {
       days.push({
@@ -275,7 +272,16 @@ export default function AdminDashboard() {
       })
     }
 
-    // Days of current selected month
+    // Color gradient presets for avatars
+    const avatarGradients = [
+      'linear-gradient(135deg, #0284c7 0%, #6366f1 100%)',
+      'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+      'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+      'linear-gradient(135deg, #ec4899 0%, #be185d 100%)',
+      'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+      'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)'
+    ]
+
     for (let d = 1; d <= totalDays; d++) {
       const dateKey = `${year}-${pad(month)}-${pad(d)}`
       const dateObj = new Date(year, month - 1, d)
@@ -314,13 +320,32 @@ export default function AdminDashboard() {
       } else {
         // All employees workforce mode
         const dateRecords = records.filter((r) => r.date === dateKey)
-        const roster = employees.map((emp) => {
+        const presentCount = dateRecords.length
+        const totalEmp = employees.length
+        const percent = totalEmp > 0 ? Math.round((presentCount / totalEmp) * 100) : 0
+
+        const roster = employees.map((emp, index) => {
           const rec = dateRecords.find((r) => r.uid === emp.uid)
+          const initials = emp.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase() || 'E'
+          const bgGradient = avatarGradients[index % avatarGradients.length]
           return {
             uid: emp.uid,
             name: emp.name,
+            initials,
+            bgGradient,
             status: rec ? 'P' : isWeekend ? 'WEEKEND' : isFuture ? 'FUTURE' : 'A',
             record: rec || null
+          }
+        })
+
+        // Present employees with initials for stack
+        const presentStack = dateRecords.map((r, i) => {
+          const initials = r.name?.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase() || 'E'
+          return {
+            id: r.id || r.uid,
+            name: r.name,
+            initials,
+            bgGradient: avatarGradients[i % avatarGradients.length]
           }
         })
 
@@ -334,15 +359,16 @@ export default function AdminDashboard() {
           isWeekend,
           isToday,
           isFuture,
-          presentCount: dateRecords.length,
-          totalEmployees: employees.length,
+          presentCount,
+          totalEmployees: totalEmp,
+          percent,
+          presentStack,
           dateRecords,
           roster
         })
       }
     }
 
-    // End padding to complete row of 7
     const remaining = (7 - (days.length % 7)) % 7
     for (let i = 1; i <= remaining; i++) {
       days.push({
@@ -354,6 +380,22 @@ export default function AdminDashboard() {
 
     return { days, year, month, totalDays }
   }, [selectedMonth, records, todayKey, employeeFilter, employees])
+
+  // Filtered Roster inside Day Inspection Modal
+  const modalRosterList = useMemo(() => {
+    if (!selectedDayRoster || !selectedDayRoster.roster) return []
+    let list = selectedDayRoster.roster
+    if (rosterFilter === 'present') {
+      list = list.filter((item) => item.status === 'P')
+    } else if (rosterFilter === 'absent') {
+      list = list.filter((item) => item.status === 'A')
+    }
+    if (rosterSearch.trim()) {
+      const q = rosterSearch.toLowerCase()
+      list = list.filter((item) => item.name.toLowerCase().includes(q))
+    }
+    return list
+  }, [selectedDayRoster, rosterFilter, rosterSearch])
 
   // SVG Gauge calculations
   const circumference = 264
@@ -385,16 +427,6 @@ export default function AdminDashboard() {
             >
               {monthOptions.map((m) => (
                 <option key={m} value={m}>{formatMonthLabel(m)}</option>
-              ))}
-            </select>
-            <select
-              value={employeeFilter}
-              onChange={(e) => setEmployeeFilter(e.target.value)}
-              className="employee-picker-select"
-            >
-              <option value="all">All Employees ({employees.length})</option>
-              {employees.map((e) => (
-                <option key={e.uid} value={e.uid}>{e.name}</option>
               ))}
             </select>
             <Link
@@ -585,55 +617,59 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* If 'all' is selected: Show Monthly Employee Report Cards Breakdown */}
-        {employeeFilter === 'all' && employeeSummaries.length > 0 && (
-          <div className="sw-section-block">
-            <div className="sw-section-header">
-              <h3>Monthly Employee Attendance Breakdown ({formatMonthLabel(selectedMonth)})</h3>
-              <span className="subtle">Summary of each employee's Present &amp; Absent counts</span>
-            </div>
-            <div className="table-wrap" style={{ marginBottom: '2rem' }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Employee Name</th>
-                    <th style={{ textAlign: 'center' }}>Present (Days)</th>
-                    <th style={{ textAlign: 'center' }}>Absent (Days)</th>
-                    <th style={{ textAlign: 'center' }}>Attendance Rate (%)</th>
-                    <th style={{ textAlign: 'center' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {employeeSummaries.map((emp) => (
-                    <tr key={emp.uid}>
-                      <td data-label="Employee"><strong>{emp.name}</strong></td>
-                      <td data-label="Present Days" style={{ textAlign: 'center' }}>
-                        <span className="status-pill-p-count">{emp.presentCount} P</span>
-                      </td>
-                      <td data-label="Absent Days" style={{ textAlign: 'center' }}>
-                        <span className="status-pill-a-count">{emp.absentCount} A</span>
-                      </td>
-                      <td data-label="Attendance Rate" style={{ textAlign: 'center' }}>
-                        <div className="progress-bar-wrap" style={{ margin: '0 auto', maxWidth: '140px', justifyContent: 'center' }}>
-                          <div className="progress-bar-fill" style={{ width: `${emp.rate}%` }} />
-                          <span className="progress-bar-label">{emp.rate}%</span>
-                        </div>
-                      </td>
-                      <td data-label="Action" style={{ textAlign: 'center' }}>
-                        <button
-                          className="btn-ghost btn-sm"
-                          onClick={() => setEmployeeFilter(emp.uid)}
-                        >
-                          View Calendar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        {/* Modern Interactive Team Filter Avatar Dock */}
+        <div style={{ marginTop: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              ⚡ Quick Filter by Team Member:
+            </span>
+            {employeeFilter !== 'all' && (
+              <button
+                type="button"
+                className="btn-ghost btn-sm"
+                style={{ fontSize: '0.72rem', padding: '2px 8px' }}
+                onClick={() => setEmployeeFilter('all')}
+              >
+                Reset to All Employees
+              </button>
+            )}
           </div>
-        )}
+
+          <div className="sw-team-avatar-dock">
+            {/* All Employees Pill */}
+            <button
+              type="button"
+              className={`sw-team-chip-btn ${employeeFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setEmployeeFilter('all')}
+            >
+              <span className="sw-team-chip-avatar all">👥</span>
+              <span>All Workforce</span>
+              <span className="sw-team-chip-rate">{employees.length}</span>
+            </button>
+
+            {/* Individual Employee Pills */}
+            {employeeSummaries.map((emp) => {
+              const isActive = employeeFilter === emp.uid
+              const initial = emp.name.charAt(0).toUpperCase()
+              return (
+                <button
+                  key={emp.uid}
+                  type="button"
+                  className={`sw-team-chip-btn ${isActive ? 'active' : ''}`}
+                  onClick={() => setEmployeeFilter(isActive ? 'all' : emp.uid)}
+                  title={`View ${emp.name}'s attendance calendar`}
+                >
+                  <span className="sw-team-chip-avatar">
+                    {initial}
+                    <span className={`sw-team-chip-dot ${emp.punchedToday ? 'green' : 'slate'}`} />
+                  </span>
+                  <span>{emp.name.split(' ')[0]}</span>
+                  <span className="sw-team-chip-rate">{emp.rate}%</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
         {/* Attendance Records Section Header with Calendar View / Table View Toggle */}
         <div className="sw-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.85rem' }}>
@@ -665,7 +701,7 @@ export default function AdminDashboard() {
               onClick={() => setViewMode('calendar')}
               id="admin-toggle-calendar"
             >
-              📅 Calendar View
+              📅 Visual Calendar
             </button>
             <button
               type="button"
@@ -673,7 +709,7 @@ export default function AdminDashboard() {
               onClick={() => setViewMode('table')}
               id="admin-toggle-table"
             >
-              📋 Table View
+              📋 Detailed Table
             </button>
           </div>
         </div>
@@ -681,10 +717,10 @@ export default function AdminDashboard() {
         {loading ? (
           <p className="subtle">Loading attendance records…</p>
         ) : viewMode === 'calendar' ? (
-          /* ================= ADMIN MONTHLY CALENDAR VIEW (DEFAULT) ================= */
-          <div className="sw-calendar-wrapper">
+          /* ================= CREATIVE ADMIN MONTHLY CALENDAR VIEW ================= */
+          <div className="sw-calendar-wrapper" style={{ border: '1px solid #cbd5e1', boxShadow: '0 8px 30px -4px rgba(0, 0, 0, 0.08)' }}>
             {/* Calendar Navigation & Month Title Bar */}
-            <div className="sw-calendar-nav-bar">
+            <div className="sw-calendar-nav-bar" style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
               <div className="sw-calendar-nav-controls">
                 <button
                   type="button"
@@ -718,10 +754,10 @@ export default function AdminDashboard() {
               {/* Calendar Quick Legend */}
               <div className="sw-calendar-legend">
                 <span className="sw-legend-item">
-                  <span className="sw-legend-dot present" /> Present
+                  <span className="sw-legend-dot present" /> High Turnout
                 </span>
                 <span className="sw-legend-item">
-                  <span className="sw-legend-dot absent" /> Absent
+                  <span className="sw-legend-dot absent" /> Low / Zero
                 </span>
                 <span className="sw-legend-item">
                   <span className="sw-legend-dot weekend" /> Weekend
@@ -860,9 +896,10 @@ export default function AdminDashboard() {
                     )
                   }
 
-                  // All Employees Workforce Calendar Cell
+                  // All Employees Workforce Mode Day Cell
                   const hasPunches = (cell.presentCount || 0) > 0
-                  const allPresent = cell.presentCount === cell.totalEmployees && cell.totalEmployees > 0
+                  const percent = cell.percent || 0
+                  const turnoutClass = percent >= 80 ? 'optimal' : percent >= 40 ? 'partial' : percent > 0 ? 'low' : 'none'
 
                   return (
                     <div
@@ -877,10 +914,15 @@ export default function AdminDashboard() {
                           : 'cell-absent'
                       } ${isToday ? 'cell-today' : ''}`}
                       onClick={() => {
-                        if (!isFuture) setSelectedDayRoster({ ...cell, isSingle: false })
+                        if (!isFuture) {
+                          setRosterFilter('all')
+                          setRosterSearch('')
+                          setSelectedDayRoster({ ...cell, isSingle: false })
+                        }
                       }}
                       title={isFuture ? 'Upcoming day' : 'Click to inspect workforce roster for this date'}
                     >
+                      {/* Cell Header: Day Number + TODAY badge */}
                       <div className="sw-cal-cell-header">
                         <span className={`sw-cal-day-num ${isToday ? 'today-active' : ''}`}>
                           {cell.dayNum}
@@ -888,25 +930,40 @@ export default function AdminDashboard() {
                         {isToday && <span className="sw-cal-today-chip">TODAY</span>}
                       </div>
 
+                      {/* Cell Content: Turnout Bar, Pill & Stacked Avatars */}
                       <div className="sw-cal-cell-content">
                         {!isFuture && !isWeekend && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                            <span className={`sw-cal-status-pill ${hasPunches ? 'present' : 'absent'}`}>
-                              {hasPunches ? `🟢 ${cell.presentCount}/${cell.totalEmployees} Present` : '✕ 0 Present'}
+                            {/* Turnout Pill */}
+                            <span className={`sw-cal-turnout-pill ${turnoutClass}`}>
+                              {hasPunches ? `⚡ ${cell.presentCount}/${cell.totalEmployees} Present` : '✕ 0 Present'}
                             </span>
 
-                            {/* Mini names snippet */}
-                            {cell.dateRecords && cell.dateRecords.length > 0 && (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '3px' }}>
-                                {cell.dateRecords.slice(0, 2).map((r) => (
-                                  <span key={r.id || r.uid} style={{ fontSize: '0.62rem', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    • {r.name?.split(' ')[0]} ({r.checkInTime ? formatTime(r.checkInTime) : 'In'})
-                                  </span>
+                            {/* Mini Turnout Progress Fill Bar */}
+                            <div className="sw-cal-bar-track">
+                              <div
+                                className={`sw-cal-bar-fill ${percent < 40 ? 'danger' : percent < 80 ? 'warning' : ''}`}
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
+
+                            {/* Overlapping Avatars Stack */}
+                            {cell.presentStack && cell.presentStack.length > 0 && (
+                              <div className="sw-avatar-stack" title={`${cell.presentCount} employees punched in`}>
+                                {cell.presentStack.slice(0, 3).map((emp) => (
+                                  <div
+                                    key={emp.id}
+                                    className="sw-avatar-bubble"
+                                    style={{ background: emp.bgGradient }}
+                                    title={emp.name}
+                                  >
+                                    {emp.initials}
+                                  </div>
                                 ))}
-                                {cell.dateRecords.length > 2 && (
-                                  <span style={{ fontSize: '0.6rem', color: '#0284c7', fontWeight: 700 }}>
-                                    +{cell.dateRecords.length - 2} more…
-                                  </span>
+                                {cell.presentStack.length > 3 && (
+                                  <div className="sw-avatar-bubble more" title={`${cell.presentStack.length - 3} more employees`}>
+                                    +{cell.presentStack.length - 3}
+                                  </div>
                                 )}
                               </div>
                             )}
@@ -916,13 +973,25 @@ export default function AdminDashboard() {
                         {isWeekend && (
                           hasPunches ? (
                             <div>
-                              <span className="sw-cal-status-pill present">
+                              <span className="sw-cal-turnout-pill optimal">
                                 🟢 {cell.presentCount} Overtime
                               </span>
+                              <div className="sw-avatar-stack" style={{ marginTop: '4px' }}>
+                                {cell.presentStack.slice(0, 3).map((emp) => (
+                                  <div
+                                    key={emp.id}
+                                    className="sw-avatar-bubble"
+                                    style={{ background: emp.bgGradient }}
+                                    title={emp.name}
+                                  >
+                                    {emp.initials}
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           ) : (
                             <div className="sw-cal-weekend-info">
-                              <span className="sw-cal-weekend-pill">Weekend</span>
+                              <span className="sw-cal-weekend-pill">Weekend Off</span>
                             </div>
                           )
                         )}
@@ -1179,10 +1248,10 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {/* Admin Day Roster & Inspection Modal */}
+      {/* Modern Interactive Day Roster & Inspection Modal */}
       {selectedDayRoster && (
         <div className="modal-overlay" onClick={() => setSelectedDayRoster(null)}>
-          <div className="modal-card" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-card" style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div>
                 <span className="sw-inspect-weekday">{selectedDayRoster.weekdayFull}</span>
@@ -1284,93 +1353,159 @@ export default function AdminDashboard() {
                   )}
                 </div>
               ) : (
-                /* All Employees Daily Workforce Roster */
+                /* All Employees Daily Workforce Roster with Search and Filters */
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
-                    <span className="badge badge-admin" style={{ fontSize: '0.82rem' }}>
-                      👥 Workforce Attendance Roster
-                    </span>
-                    <strong style={{ fontSize: '0.85rem', color: '#047857' }}>
-                      {selectedDayRoster.dateRecords?.length || 0} Present / {selectedDayRoster.totalEmployees || 0} Total
-                    </strong>
+                  {/* Hero Stats Card */}
+                  <div className="sw-admin-roster-hero">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div>
+                        <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#38bdf8', fontWeight: 800 }}>
+                          Workforce Attendance Turnout
+                        </span>
+                        <h3 style={{ margin: '0.2rem 0 0', color: '#ffffff', fontSize: '1.35rem' }}>
+                          {selectedDayRoster.presentCount} / {selectedDayRoster.totalEmployees} Employees On-Duty
+                        </h3>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ fontSize: '1.6rem', fontWeight: 900, color: selectedDayRoster.percent >= 80 ? '#34d399' : '#fbbf24' }}>
+                          {selectedDayRoster.percent}%
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="sw-cal-bar-track" style={{ height: '6px', background: 'rgba(255,255,255,0.15)', marginTop: '8px' }}>
+                      <div className="sw-cal-bar-fill" style={{ width: `${selectedDayRoster.percent}%` }} />
+                    </div>
                   </div>
 
-                  <div className="table-wrap" style={{ maxHeight: '360px', overflowY: 'auto' }}>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Status</th>
-                          <th>Employee</th>
-                          <th>In Time</th>
-                          <th>Out Time</th>
-                          <th>Selfies</th>
-                          <th style={{ textAlign: 'right' }}>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedDayRoster.roster?.map((item) => (
-                          <tr key={item.uid}>
-                            <td data-label="Status">
-                              {item.status === 'P' ? (
-                                <span className="status-pill-p">P</span>
-                              ) : (
-                                <span className="status-pill-a">A</span>
-                              )}
-                            </td>
-                            <td data-label="Employee">
-                              <strong>{item.name}</strong>
-                            </td>
-                            <td data-label="In Time">
-                              {item.record?.checkInTime ? formatTime(item.record.checkInTime) : '—'}
-                            </td>
-                            <td data-label="Out Time">
-                              {item.record?.checkOutTime ? formatTime(item.record.checkOutTime) : '—'}
-                            </td>
-                            <td data-label="Selfies">
-                              <div style={{ display: 'flex', gap: '6px' }}>
-                                {item.record?.checkInSelfieUrl && (
+                  {/* Sub-filter tabs & Search input */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.65rem', marginBottom: '0.85rem' }}>
+                    <div className="sw-roster-filter-pills">
+                      <button
+                        type="button"
+                        className={`sw-roster-sub-filter-btn ${rosterFilter === 'all' ? 'active' : ''}`}
+                        onClick={() => setRosterFilter('all')}
+                      >
+                        All Team ({selectedDayRoster.totalEmployees})
+                      </button>
+                      <button
+                        type="button"
+                        className={`sw-roster-sub-filter-btn ${rosterFilter === 'present' ? 'active' : ''}`}
+                        onClick={() => setRosterFilter('present')}
+                      >
+                        ✓ Present ({selectedDayRoster.presentCount})
+                      </button>
+                      <button
+                        type="button"
+                        className={`sw-roster-sub-filter-btn ${rosterFilter === 'absent' ? 'active' : ''}`}
+                        onClick={() => setRosterFilter('absent')}
+                      >
+                        ✕ Absent ({selectedDayRoster.totalEmployees - selectedDayRoster.presentCount})
+                      </button>
+                    </div>
+
+                    <div style={{ width: '180px' }}>
+                      <input
+                        type="text"
+                        placeholder="Search employee…"
+                        value={rosterSearch}
+                        onChange={(e) => setRosterSearch(e.target.value)}
+                        className="sw-input"
+                        style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Roster Cards List */}
+                  <div style={{ maxHeight: '360px', overflowY: 'auto', paddingRight: '4px' }}>
+                    {modalRosterList.length === 0 ? (
+                      <p className="subtle" style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+                        No employees found matching filter.
+                      </p>
+                    ) : (
+                      modalRosterList.map((item) => (
+                        <div
+                          key={item.uid}
+                          className={`sw-roster-employee-card ${item.status === 'P' ? 'present' : 'absent'}`}
+                        >
+                          <div className="sw-roster-emp-left">
+                            <div className="sw-roster-emp-avatar" style={{ background: item.bgGradient }}>
+                              {item.initials}
+                            </div>
+                            <div className="sw-roster-emp-meta">
+                              <span className="sw-roster-emp-name">{item.name}</span>
+                              <span className={`sw-roster-emp-status ${item.status === 'P' ? 'present' : 'absent'}`}>
+                                {item.status === 'P' ? '✓ Verified Present' : '✕ Absent (Unrecorded)'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {item.status === 'P' && item.record ? (
+                            <div className="sw-roster-punch-strip">
+                              <div className="sw-roster-punch-chip">
+                                <span>IN TIME</span>
+                                <strong>{formatTime(item.record.checkInTime)}</strong>
+                              </div>
+                              <div className="sw-roster-punch-chip">
+                                <span>OUT TIME</span>
+                                <strong>{item.record.checkOutTime ? formatTime(item.record.checkOutTime) : 'In Shift'}</strong>
+                              </div>
+
+                              {/* Selfies Mini Circle */}
+                              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                {item.record.checkInSelfieUrl && (
                                   <img
                                     src={item.record.checkInSelfieUrl}
-                                    alt="In"
+                                    alt="In Selfie"
                                     className="selfie-thumb-circle"
-                                    style={{ borderColor: '#10b981', cursor: 'pointer', width: '28px', height: '28px' }}
+                                    style={{ borderColor: '#10b981', cursor: 'pointer', width: '30px', height: '30px' }}
                                     onClick={() => setSelectedSelfie({ url: item.record.checkInSelfieUrl, title: `${item.name} — In (${selectedDayRoster.dateKey})` })}
-                                    title="Click to zoom in"
+                                    title="Click to zoom In Selfie"
                                   />
                                 )}
-                                {item.record?.checkOutSelfieUrl && (
+                                {item.record.checkOutSelfieUrl && (
                                   <img
                                     src={item.record.checkOutSelfieUrl}
-                                    alt="Out"
+                                    alt="Out Selfie"
                                     className="selfie-thumb-circle"
-                                    style={{ borderColor: '#f43f5e', cursor: 'pointer', width: '28px', height: '28px' }}
+                                    style={{ borderColor: '#f43f5e', cursor: 'pointer', width: '30px', height: '30px' }}
                                     onClick={() => setSelectedSelfie({ url: item.record.checkOutSelfieUrl, title: `${item.name} — Out (${selectedDayRoster.dateKey})` })}
-                                    title="Click to zoom out"
+                                    title="Click to zoom Out Selfie"
                                   />
                                 )}
-                                {!item.record?.checkInSelfieUrl && !item.record?.checkOutSelfieUrl && (
-                                  <span className="empty-dash">—</span>
-                                )}
                               </div>
-                            </td>
-                            <td data-label="Action" style={{ textAlign: 'right' }}>
-                              {item.record?.id ? (
-                                <button
-                                  type="button"
-                                  className="sw-btn-action-delete-sm"
-                                  onClick={() => handleDeleteAttendanceRecord(item.record)}
-                                  title="Delete punch"
+
+                              {/* Location map link */}
+                              {item.record.checkInLocation && (
+                                <a
+                                  href={`https://maps.google.com/?q=${item.record.checkInLocation.lat},${item.record.checkInLocation.lng}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="table-link map-link"
+                                  title="View GPS Pin"
                                 >
-                                  Delete
-                                </button>
-                              ) : (
-                                <span className="empty-dash">—</span>
+                                  📍 Map
+                                </a>
                               )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+
+                              {/* Delete Action Button */}
+                              <button
+                                type="button"
+                                className="sw-btn-action-delete-sm"
+                                onClick={() => handleDeleteAttendanceRecord(item.record)}
+                                title="Delete attendance punch"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                              No Punch Logged
+                            </span>
+                          )}
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               )}
