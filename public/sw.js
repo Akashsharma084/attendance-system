@@ -1,8 +1,9 @@
-const CACHE_NAME = 'swl-attendance-v2'
+const CACHE_NAME = 'swl-attendance-v3'
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/company-logo.png',
   '/softwind-logo.png',
   '/icon-192.png',
   '/icon-512.png',

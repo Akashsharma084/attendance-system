@@ -375,8 +375,8 @@ export default function NavBar() {
               </svg>
             </button>
 
-            <div className="sw-app-brand" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <img src="/icon-192.png" alt="Softwind Logo" style={{ width: '28px', height: '28px', borderRadius: '7px', objectFit: 'contain' }} />
+            <div className="sw-app-brand" style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+              <img src="/icon-192.png" alt="Softwind Labs Logo" style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'contain', background: '#ffffff', padding: '2px', boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)' }} />
               <span className="sw-brand-text">
                 SOFTWIND<span className="sw-brand-highlight">.LABS</span>
               </span>

@@ -152,7 +152,7 @@ export default function Login() {
 
           <div className="sw-showcase-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '0.85rem' }}>
-              <img src="/icon-192.png" alt="Softwind Labs Logo" style={{ width: '48px', height: '48px', borderRadius: '12px', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)', border: '1px solid rgba(255, 255, 255, 0.15)' }} />
+              <img src="/icon-192.png" alt="Softwind Labs Logo" style={{ width: '52px', height: '52px', borderRadius: '14px', objectFit: 'contain', background: '#ffffff', padding: '3px', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)', border: '1px solid rgba(255, 255, 255, 0.2)' }} />
               <div className="sw-brand-text sw-brand-showcase-title" style={{ margin: 0 }}>
                 SOFTWIND<span className="sw-brand-highlight">.LABS</span>
               </div>
@@ -255,7 +255,7 @@ export default function Login() {
 
             <div className="sw-card-header">
               <div className="sw-mobile-logo" style={{ marginBottom: '0.85rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                <img src="/icon-192.png" alt="Softwind Labs Logo" style={{ width: '64px', height: '64px', borderRadius: '16px', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', border: '1px solid rgba(226, 232, 240, 0.8)' }} />
+                <img src="/icon-192.png" alt="Softwind Labs Logo" style={{ width: '72px', height: '72px', borderRadius: '18px', objectFit: 'contain', background: '#ffffff', padding: '4px', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', border: '1px solid rgba(226, 232, 240, 0.8)' }} />
                 <span className="sw-brand-text" style={{ fontSize: '1.45rem', justifyContent: 'center' }}>
                   SOFTWIND<span className="sw-brand-highlight">.LABS</span>
                 </span>
