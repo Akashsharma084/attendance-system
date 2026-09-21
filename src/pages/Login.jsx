@@ -151,8 +151,11 @@ export default function Login() {
           </div>
 
           <div className="sw-showcase-header">
-            <div className="sw-brand-text sw-brand-showcase-title">
-              SOFTWIND<span className="sw-brand-highlight">.LABS</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '0.85rem' }}>
+              <img src="/icon-192.png" alt="Softwind Labs Logo" style={{ width: '48px', height: '48px', borderRadius: '12px', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)', border: '1px solid rgba(255, 255, 255, 0.15)' }} />
+              <div className="sw-brand-text sw-brand-showcase-title" style={{ margin: 0 }}>
+                SOFTWIND<span className="sw-brand-highlight">.LABS</span>
+              </div>
             </div>
             <h1 className="sw-showcase-title">
               Attendance Intelligence <span className="sw-gradient-text">&amp; Workforce Portal</span>
@@ -251,7 +254,8 @@ export default function Login() {
             </div>
 
             <div className="sw-card-header">
-              <div className="sw-mobile-logo" style={{ marginBottom: '0.6rem' }}>
+              <div className="sw-mobile-logo" style={{ marginBottom: '0.85rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <img src="/icon-192.png" alt="Softwind Labs Logo" style={{ width: '64px', height: '64px', borderRadius: '16px', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', border: '1px solid rgba(226, 232, 240, 0.8)' }} />
                 <span className="sw-brand-text" style={{ fontSize: '1.45rem', justifyContent: 'center' }}>
                   SOFTWIND<span className="sw-brand-highlight">.LABS</span>
                 </span>

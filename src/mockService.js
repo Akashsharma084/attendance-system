@@ -153,10 +153,17 @@ export function getStoredAttendance() {
   }
 }
 
+// Clean up any legacy cross-session mock login stored in localStorage
+try {
+  localStorage.removeItem(STORAGE_KEY_SESSION)
+} catch {
+  // ignore
+}
+
 export function getMockSession() {
-  const raw = localStorage.getItem(STORAGE_KEY_SESSION)
-  if (!raw) return null
   try {
+    const raw = sessionStorage.getItem(STORAGE_KEY_SESSION)
+    if (!raw) return null
     return JSON.parse(raw)
   } catch {
     return null
@@ -164,10 +171,16 @@ export function getMockSession() {
 }
 
 export function setMockSession(user) {
-  if (user) {
-    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(user))
-  } else {
+  try {
+    if (user) {
+      sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(user))
+    } else {
+      sessionStorage.removeItem(STORAGE_KEY_SESSION)
+    }
+    // Always clear legacy persistent localStorage session
     localStorage.removeItem(STORAGE_KEY_SESSION)
+  } catch {
+    // ignore
   }
 }
 
@@ -197,6 +210,12 @@ export async function mockSignIn(email) {
 
 export function mockSignOut() {
   setMockSession(null)
+  try {
+    sessionStorage.removeItem(STORAGE_KEY_SESSION)
+    localStorage.removeItem(STORAGE_KEY_SESSION)
+  } catch {
+    // ignore
+  }
 }
 
 export function mockGetTodayRecord(uid) {

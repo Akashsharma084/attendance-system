@@ -63,8 +63,12 @@ export default function InstallPwaButton({ className = '', style = {} }) {
         <div className="modal-overlay" onClick={() => setShowIosTip(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '380px', textAlign: 'center' }}>
             <div className="modal-body" style={{ padding: '1.75rem' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📱</div>
-              <h3 style={{ margin: '0 0 0.5rem', color: '#0f172a' }}>Install on iPhone / iPad</h3>
+              <img
+                src="/icon-192.png"
+                alt="Softwind Labs Logo"
+                style={{ width: '64px', height: '64px', borderRadius: '16px', boxShadow: '0 6px 16px rgba(0, 0, 0, 0.1)', marginBottom: '0.75rem', border: '1px solid rgba(226, 232, 240, 0.8)' }}
+              />
+              <h3 style={{ margin: '0 0 0.5rem', color: '#0f172a' }}>Install Softwind Attendance</h3>
               <p style={{ fontSize: '0.88rem', color: '#475569', lineHeight: 1.5, marginBottom: '1.25rem' }}>
                 Tap the <strong>Share</strong> button <span style={{ fontSize: '1.2rem' }}>⎋</span> in your Safari toolbar, then scroll down and tap <strong>"Add to Home Screen"</strong>.
               </p>

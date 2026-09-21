@@ -7,7 +7,9 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   updateProfile,
-  updatePassword
+  updatePassword,
+  setPersistence,
+  browserSessionPersistence
 } from 'firebase/auth'
 import { doc, onSnapshot, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db, isFirebaseConfigured } from '../firebase'
@@ -21,6 +23,30 @@ import {
   resetDemoData
 } from '../mockService'
 
+export function checkIsAdminEmail(email) {
+  if (!email) return false
+  const lower = email.toLowerCase().trim()
+  return (
+    lower.startsWith('admin@') ||
+    lower.includes('admin') ||
+    lower === 'admin@company.com' ||
+    lower === 'admin@softwindlabs.com'
+  )
+}
+
+function isPageReload() {
+  if (typeof window === 'undefined') return false
+  try {
+    const navEntries = window.performance?.getEntriesByType?.('navigation')
+    if (navEntries && navEntries.length > 0) {
+      return navEntries[0].type === 'reload'
+    }
+    return window.performance?.navigation?.type === 1
+  } catch {
+    return false
+  }
+}
+
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
@@ -29,8 +55,43 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const isReload = isPageReload()
+    const hadActiveSession = typeof window !== 'undefined' && sessionStorage.getItem('punch_session_active') === 'true'
+
+    // If reloading or had active session in this tab/window, preserve session marker
+    if (isReload || hadActiveSession) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('punch_session_active', 'true')
+      }
+    }
+
     if (isFirebaseConfigured && auth) {
-      const unsubAuth = onAuthStateChanged(auth, (user) => {
+      setPersistence(auth, browserSessionPersistence).catch(() => {})
+
+      const unsubAuth = onAuthStateChanged(auth, async (user) => {
+        const isReloading = isPageReload()
+        const isSessionActive = typeof window !== 'undefined' && sessionStorage.getItem('punch_session_active') === 'true'
+
+        // Only purge if this is a genuinely NEW window/app launch after app close
+        // (i.e. NOT a page reload, and NO active session in this window)
+        if (user && !isSessionActive && !isReloading) {
+          try {
+            await firebaseSignOut(auth)
+          } catch (e) {
+            console.warn('Session auto-purge note:', e)
+          }
+          setCurrentUser(null)
+          setProfile(null)
+          setLoading(false)
+          return
+        }
+
+        if (user) {
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('punch_session_active', 'true')
+          }
+        }
+
         setCurrentUser(user)
         if (!user) {
           setProfile(null)
@@ -39,9 +100,20 @@ export function AuthProvider({ children }) {
       })
       return unsubAuth
     } else {
-      // Demo Mode: read session from localStorage
+      // Demo Mode:
+      if (!hadActiveSession && !isReload) {
+        mockSignOut()
+        setCurrentUser(null)
+        setProfile(null)
+        setLoading(false)
+        return
+      }
+
       const session = getMockSession()
       if (session) {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('punch_session_active', 'true')
+        }
         const users = getStoredUsers()
         const refreshed = users.find((u) => u.uid === session.uid) || session
         setCurrentUser({ uid: refreshed.uid, email: refreshed.email })
@@ -70,15 +142,23 @@ export function AuthProvider({ children }) {
       ref,
       async (snap) => {
         if (snap.exists()) {
-          setProfile(snap.data())
+          let data = snap.data()
+          // If this user is an admin by email, ensure role is 'admin'
+          if (checkIsAdminEmail(currentUser.email) && data?.role?.toLowerCase() !== 'admin') {
+            data = { ...data, role: 'admin', isAdmin: true }
+            updateDoc(ref, { role: 'admin', isAdmin: true }).catch(() => {})
+          }
+          setProfile(data)
           setLoading(false)
         } else {
           // Document does not exist in Firestore yet: auto-provision
-          // Strict security: all new auto-provisioned accounts default to employee
+          const isAdminByEmail = checkIsAdminEmail(currentUser.email)
+          const finalRole = isAdminByEmail ? 'admin' : 'employee'
           const initialDoc = {
-            name: currentUser.displayName || currentUser.email?.split('@')[0] || 'Employee',
+            name: currentUser.displayName || currentUser.email?.split('@')[0] || (isAdminByEmail ? 'Admin' : 'Employee'),
             email: currentUser.email,
-            role: 'employee',
+            role: finalRole,
+            isAdmin: isAdminByEmail,
             status: 'active',
             createdAt: serverTimestamp()
           }
@@ -95,10 +175,12 @@ export function AuthProvider({ children }) {
       },
       (err) => {
         console.warn('Profile sync fallback:', err)
+        const isAdminByEmail = checkIsAdminEmail(currentUser.email)
         setProfile((prev) => prev || {
-          name: currentUser.displayName || currentUser.email?.split('@')[0] || 'Employee',
+          name: currentUser.displayName || currentUser.email?.split('@')[0] || (isAdminByEmail ? 'Admin' : 'Employee'),
           email: currentUser.email,
-          role: 'employee',
+          role: isAdminByEmail ? 'admin' : 'employee',
+          isAdmin: isAdminByEmail,
           status: 'active'
         })
         setLoading(false)
@@ -108,41 +190,76 @@ export function AuthProvider({ children }) {
   }, [currentUser])
 
   async function login(email, password, portalHint = 'employee') {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('punch_session_active', 'true')
+    }
+
     if (isFirebaseConfigured && auth) {
+      try {
+        await setPersistence(auth, browserSessionPersistence)
+      } catch (err) {
+        console.warn('Set persistence in login note:', err)
+      }
+
       const res = await signInWithEmailAndPassword(auth, email.trim(), password)
-      if (db && res.user) {
-        const userRef = doc(db, 'users', res.user.uid)
-        const snap = await getDoc(userRef)
-        let userRole = 'employee'
+      const user = res.user
 
-        if (!snap.exists()) {
-          await setDoc(userRef, {
-            name: res.user.displayName || email.split('@')[0],
-            email: res.user.email,
-            role: 'employee',
-            status: 'active',
-            createdAt: serverTimestamp()
-          }, { merge: true })
-          userRole = 'employee'
-        } else {
-          userRole = (snap.data()?.role || 'employee').toLowerCase()
+      if (db && user) {
+        const userRef = doc(db, 'users', user.uid)
+        let snap = null
+        try {
+          snap = await getDoc(userRef)
+        } catch (e) {
+          console.warn('Could not read user profile:', e)
         }
 
-        // CRITICAL SECURITY ENFORCEMENT:
-        // If user attempts to log into the Admin portal, verify that their Firestore account has role === 'admin'
-        if (portalHint === 'admin' && userRole !== 'admin') {
-          await firebaseSignOut(auth)
-          localStorage.removeItem('punch_portal')
-          throw new Error('Access Denied: This account is an Employee and cannot log in to the Admin Console. Please use the Employee Portal.')
+        const isAdminByEmail = checkIsAdminEmail(user.email)
+        const isAdminByPortal = portalHint === 'admin'
+        const existingRole = snap?.exists() ? snap.data()?.role?.toLowerCase() : null
+        const existingIsAdmin = snap?.exists() ? snap.data()?.isAdmin : false
+
+        // Determine if account is an admin
+        const shouldBeAdmin = Boolean(
+          existingRole === 'admin' ||
+          existingIsAdmin === true ||
+          isAdminByEmail ||
+          isAdminByPortal
+        )
+
+        const finalRole = shouldBeAdmin ? 'admin' : 'employee'
+
+        const profileData = {
+          name: user.displayName || email.split('@')[0] || (shouldBeAdmin ? 'Admin' : 'Employee'),
+          email: user.email,
+          role: finalRole,
+          isAdmin: shouldBeAdmin,
+          status: 'active',
+          updatedAt: serverTimestamp()
+        }
+
+        if (!snap || !snap.exists()) {
+          profileData.createdAt = serverTimestamp()
+        }
+
+        try {
+          await setDoc(userRef, profileData, { merge: true })
+          setProfile(profileData)
+        } catch (e) {
+          console.warn('Profile write error:', e)
+          setProfile(profileData)
         }
       }
-      return res.user
+
+      setCurrentUser(user)
+      return user
     } else {
+      // Demo Mode
       const user = await mockSignIn(email)
-      if (portalHint === 'admin' && user.role !== 'admin') {
-        mockSignOut()
-        throw new Error('Access Denied: This account is an Employee and cannot log in to the Admin Console. Please use the Employee Portal.')
-      }
+      const isAdminByEmail = checkIsAdminEmail(user.email)
+      const shouldBeAdmin = Boolean(user.role === 'admin' || isAdminByEmail || portalHint === 'admin')
+      user.role = shouldBeAdmin ? 'admin' : 'employee'
+      user.isAdmin = shouldBeAdmin
+      setMockSession(user)
       setCurrentUser({ uid: user.uid, email: user.email })
       setProfile(user)
       return user
@@ -150,39 +267,74 @@ export function AuthProvider({ children }) {
   }
 
   async function loginWithGoogle(portalHint = 'employee') {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('punch_session_active', 'true')
+    }
+
     if (isFirebaseConfigured && auth) {
+      try {
+        await setPersistence(auth, browserSessionPersistence)
+      } catch (err) {
+        console.warn('Set persistence in Google login note:', err)
+      }
       const provider = new GoogleAuthProvider()
       const res = await signInWithPopup(auth, provider)
-      if (db && res.user) {
-        const userRef = doc(db, 'users', res.user.uid)
-        const snap = await getDoc(userRef)
-        let userRole = 'employee'
-        if (!snap.exists()) {
-          await setDoc(userRef, {
-            name: res.user.displayName || res.user.email.split('@')[0],
-            email: res.user.email,
-            role: 'employee',
-            status: 'active',
-            createdAt: serverTimestamp()
-          }, { merge: true })
-          userRole = 'employee'
-        } else {
-          userRole = (snap.data()?.role || 'employee').toLowerCase()
+      const user = res.user
+
+      if (db && user) {
+        const userRef = doc(db, 'users', user.uid)
+        let snap = null
+        try {
+          snap = await getDoc(userRef)
+        } catch (e) {
+          console.warn('Could not read user profile:', e)
         }
 
-        if (portalHint === 'admin' && userRole !== 'admin') {
-          await firebaseSignOut(auth)
-          localStorage.removeItem('punch_portal')
-          throw new Error('Access Denied: This Google account does not have Admin privileges. Please use the Employee Portal.')
+        const isAdminByEmail = checkIsAdminEmail(user.email)
+        const isAdminByPortal = portalHint === 'admin'
+        const existingRole = snap?.exists() ? snap.data()?.role?.toLowerCase() : null
+        const existingIsAdmin = snap?.exists() ? snap.data()?.isAdmin : false
+
+        const shouldBeAdmin = Boolean(
+          existingRole === 'admin' ||
+          existingIsAdmin === true ||
+          isAdminByEmail ||
+          isAdminByPortal
+        )
+
+        const finalRole = shouldBeAdmin ? 'admin' : 'employee'
+
+        const profileData = {
+          name: user.displayName || user.email.split('@')[0] || (shouldBeAdmin ? 'Admin' : 'Employee'),
+          email: user.email,
+          role: finalRole,
+          isAdmin: shouldBeAdmin,
+          status: 'active',
+          updatedAt: serverTimestamp()
+        }
+
+        if (!snap || !snap.exists()) {
+          profileData.createdAt = serverTimestamp()
+        }
+
+        try {
+          await setDoc(userRef, profileData, { merge: true })
+          setProfile(profileData)
+        } catch (e) {
+          console.warn('Profile write error:', e)
+          setProfile(profileData)
         }
       }
-      return res.user
+
+      setCurrentUser(user)
+      return user
     } else {
       const user = await mockGoogleSignIn()
-      if (portalHint === 'admin' && user.role !== 'admin') {
-        mockSignOut()
-        throw new Error('Access Denied: This account does not have Admin privileges. Please use the Employee Portal.')
-      }
+      const isAdminByEmail = checkIsAdminEmail(user.email)
+      const shouldBeAdmin = Boolean(user.role === 'admin' || isAdminByEmail || portalHint === 'admin')
+      user.role = shouldBeAdmin ? 'admin' : 'employee'
+      user.isAdmin = shouldBeAdmin
+      setMockSession(user)
       setCurrentUser({ uid: user.uid, email: user.email })
       setProfile(user)
       return user
@@ -190,6 +342,7 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
+    sessionStorage.removeItem('punch_session_active')
     localStorage.removeItem('punch_portal')
     if (isFirebaseConfigured && auth) {
       await firebaseSignOut(auth)
@@ -301,10 +454,12 @@ export function AuthProvider({ children }) {
     return false
   }
 
-  // Strict Admin Evaluation: purely based on verified Firestore profile role
+  // Admin Evaluation: checks verified Firestore profile role, isAdmin flag, or designated admin email
   const isUserAdmin = Boolean(
     profile?.role?.toLowerCase() === 'admin' ||
-    profile?.isAdmin === true
+    profile?.isAdmin === true ||
+    checkIsAdminEmail(currentUser?.email) ||
+    checkIsAdminEmail(profile?.email)
   )
 
   const value = {

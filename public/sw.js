@@ -1,11 +1,16 @@
-const CACHE_NAME = 'swl-attendance-v1'
+const CACHE_NAME = 'swl-attendance-v2'
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/softwind-logo.png',
   '/icon-192.png',
-  '/icon-512.png'
+  '/icon-512.png',
+  '/icon-maskable-192.png',
+  '/icon-maskable-512.png',
+  '/apple-touch-icon.png',
+  '/favicon-32.png',
+  '/favicon-64.png'
 ]
 
 self.addEventListener('install', (event) => {
