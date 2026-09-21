@@ -49,6 +49,45 @@ export default function NavBar() {
   const [contactMsg, setContactMsg] = useState('')
   const [contactSaving, setContactSaving] = useState(false)
   const [contactSuccess, setContactSuccess] = useState(false)
+  const [contactScreenshot, setContactScreenshot] = useState(null)
+  const [contactScreenshotName, setContactScreenshotName] = useState('')
+  const [selectedSupportPhoto, setSelectedSupportPhoto] = useState(null)
+
+  function handleContactScreenshotUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file (PNG, JPG, JPEG) for the screenshot.')
+      return
+    }
+    setContactScreenshotName(file.name)
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const maxDim = 1200
+        let w = img.width
+        let h = img.height
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w)
+            w = maxDim
+          } else {
+            w = Math.round((w * maxDim) / h)
+            h = maxDim
+          }
+        }
+        canvas.width = w
+        canvas.height = h
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, w, h)
+        setContactScreenshot(canvas.toDataURL('image/jpeg', 0.85))
+      }
+      img.src = event.target.result
+    }
+    reader.readAsDataURL(file)
+  }
 
   async function handleSignOut() {
     setShowProfileSheet(false)
@@ -207,6 +246,8 @@ export default function NavBar() {
         senderEmail: user?.email,
         category: contactCategory,
         message: contactMsg.trim(),
+        screenshotUrl: contactScreenshot || null,
+        status: 'open',
         createdAt: new Date().toISOString()
       })
       localStorage.setItem('punch_admin_messages', JSON.stringify(existing.slice(0, 50)))
@@ -218,6 +259,8 @@ export default function NavBar() {
       setContactSaving(false)
       setContactSuccess(true)
       setContactMsg('')
+      setContactScreenshot(null)
+      setContactScreenshotName('')
     }, 600)
   }
 
@@ -922,6 +965,60 @@ export default function NavBar() {
                         />
                       </div>
 
+                      {/* Screenshot Upload Option */}
+                      <div className="sw-input-group" style={{ marginTop: '0.75rem' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.86rem' }}>
+                          <span>Attach Screenshot / Photo of Problem</span>
+                          <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>(Optional)</span>
+                        </label>
+                        {!contactScreenshot ? (
+                          <div style={{ marginTop: '4px' }}>
+                            <label className="btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.45rem 0.85rem', fontSize: '0.82rem' }}>
+                              <span>📸 Upload Screenshot</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleContactScreenshotUpload}
+                                style={{ display: 'none' }}
+                              />
+                            </label>
+                          </div>
+                        ) : (
+                          <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(15, 23, 42, 0.7)', padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+                            <img
+                              src={contactScreenshot}
+                              alt="Problem screenshot"
+                              style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid #38bdf8' }}
+                              onClick={() => setSelectedSupportPhoto(contactScreenshot)}
+                              title="Click to zoom screenshot"
+                            />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '0.8rem', color: '#f8fafc', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                ✓ {contactScreenshotName || 'Screenshot attached'}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedSupportPhoto(contactScreenshot)}
+                                style={{ background: 'none', border: 'none', padding: 0, color: '#38bdf8', fontSize: '0.74rem', cursor: 'pointer', textDecoration: 'underline' }}
+                              >
+                                View full image
+                              </button>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn-ghost"
+                              style={{ color: '#ef4444', fontSize: '0.78rem', padding: '2px 6px' }}
+                              onClick={() => {
+                                setContactScreenshot(null)
+                                setContactScreenshotName('')
+                              }}
+                            >
+                              ✕ Remove
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="sw-sheet-actions" style={{ marginTop: '1rem' }}>
                         <button
                           type="submit"
@@ -955,6 +1052,30 @@ export default function NavBar() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Support Photo Zoom Modal */}
+      {selectedSupportPhoto && (
+        <div className="modal-overlay" onClick={() => setSelectedSupportPhoto(null)} style={{ zIndex: 99999 }}>
+          <div className="modal-content" style={{ maxWidth: '560px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Problem Screenshot</h2>
+              <button className="btn-close" onClick={() => setSelectedSupportPhoto(null)}>✕</button>
+            </div>
+            <div className="modal-body" style={{ padding: '1rem' }}>
+              <img
+                src={selectedSupportPhoto}
+                alt="Enlarged screenshot"
+                style={{ width: '100%', maxHeight: '460px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+              />
+            </div>
+            <div className="modal-footer" style={{ justifyContent: 'center' }}>
+              <button className="btn-primary" onClick={() => setSelectedSupportPhoto(null)}>
+                Close Preview
+              </button>
+            </div>
           </div>
         </div>
       )}

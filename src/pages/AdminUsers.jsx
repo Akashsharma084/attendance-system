@@ -76,8 +76,10 @@ export default function AdminUsers() {
   function getUserMonthlyStats(uid) {
     const userRecords = attendanceRecords.filter((r) => r.uid === uid)
     const curMonth = monthKey()
-    const { presentCount, absentCount, totalWorkingDays } = buildEmployeeSchedule(userRecords, curMonth, { uid })
-    const rate = totalWorkingDays > 0 ? Math.round((presentCount / totalWorkingDays) * 100) : 0
+    const userObj = users.find((u) => u.id === uid || u.uid === uid)
+    const empStartDate = userObj?.joinDate || userObj?.startDate || null
+    const { presentCount, absentCount, effectiveWorkingDays } = buildEmployeeSchedule(userRecords, curMonth, { uid, startDate: empStartDate })
+    const rate = effectiveWorkingDays > 0 ? Math.round((presentCount / effectiveWorkingDays) * 100) : (presentCount > 0 ? 100 : 0)
     return { presentCount, absentCount, rate }
   }
 

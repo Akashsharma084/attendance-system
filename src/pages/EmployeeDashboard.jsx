@@ -8,10 +8,12 @@ import {
   todayDateKey,
   formatMonthLabel,
   formatTime,
-  lastNMonthKeys,
+  getAvailableMonthKeys,
   buildEmployeeSchedule,
   getHoliday,
-  isHoliday
+  isHoliday,
+  COMPANY_START_DATE,
+  COMPANY_START_MONTH
 } from '../utils/dateHelpers'
 import { mockGetAttendanceList } from '../mockService'
 import NavBar from '../components/NavBar'
@@ -20,11 +22,12 @@ export default function EmployeeDashboard() {
   const { user, profile } = useAuth()
   const [selectedMonth, setSelectedMonth] = useState(monthKey())
   const [records, setRecords] = useState([])
+  const [allUserRecords, setAllUserRecords] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedSelfie, setSelectedSelfie] = useState(null)
   const [selectedDayDetail, setSelectedDayDetail] = useState(null)
   const [viewMode, setViewMode] = useState('calendar') // 'calendar' | 'table' | 'cards'
-  const monthOptions = useMemo(() => lastNMonthKeys(6), [])
+  const monthOptions = useMemo(() => getAvailableMonthKeys(), [])
   const todayKey = todayDateKey()
 
   function calcDayDuration(inTime, outTime) {
@@ -37,11 +40,16 @@ export default function EmployeeDashboard() {
     return `${hrs}h ${mins}m`
   }
 
+  const canGoPrev = selectedMonth > COMPANY_START_MONTH
+
   function handlePrevMonth() {
+    if (!canGoPrev) return
     const [y, m] = selectedMonth.split('-').map(Number)
     const prevD = new Date(y, m - 2, 1)
     const newKey = `${prevD.getFullYear()}-${String(prevD.getMonth() + 1).padStart(2, '0')}`
-    setSelectedMonth(newKey)
+    if (newKey >= COMPANY_START_MONTH) {
+      setSelectedMonth(newKey)
+    }
   }
 
   function handleNextMonth() {
@@ -57,7 +65,9 @@ export default function EmployeeDashboard() {
     setLoading(true)
 
     if (!isFirebaseConfigured || !db) {
-      const list = mockGetAttendanceList({ uid: user.uid, month: selectedMonth })
+      const allList = mockGetAttendanceList({ uid: user.uid })
+      setAllUserRecords(allList)
+      const list = allList.filter((r) => r.month === selectedMonth)
       setRecords(list)
       setLoading(false)
       return
@@ -75,6 +85,7 @@ export default function EmployeeDashboard() {
       (snap) => {
         if (cancelled) return
         const allUserDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        setAllUserRecords(allUserDocs)
         // Filter by selected month & sort in JavaScript memory
         const monthDocs = allUserDocs.filter((r) => r.month === selectedMonth)
         monthDocs.sort((a, b) => (b.date || '').localeCompare(a.date || ''))
@@ -93,15 +104,32 @@ export default function EmployeeDashboard() {
     }
   }, [user?.uid, selectedMonth])
 
+  // Determine the employee's start/joining date (earliest check-in or joinDate)
+  const firstCheckInDate = useMemo(() => {
+    let earliest = null
+    for (const r of allUserRecords) {
+      if (r.date && (r.checkInTime || r.status === 'P')) {
+        if (!earliest || r.date < earliest) earliest = r.date
+      }
+    }
+    return earliest
+  }, [allUserRecords])
+
+  const employeeStartDate = profile?.joinDate || profile?.startDate || firstCheckInDate || null
+
   // Build complete day-by-day attendance schedule for the month (matching P and A)
-  const { schedule, presentCount, absentCount, totalWorkingDays, fullDaysCount } = useMemo(() => {
+  const { schedule, presentCount, absentCount, totalWorkingDays, effectiveWorkingDays, notJoinedCount, fullDaysCount } = useMemo(() => {
     return buildEmployeeSchedule(records, selectedMonth, {
       uid: user?.uid,
-      name: profile?.name || user?.email
+      name: profile?.name || user?.email,
+      startDate: employeeStartDate
     })
-  }, [records, selectedMonth, user?.uid, profile?.name, user?.email])
+  }, [records, selectedMonth, user?.uid, profile?.name, user?.email, employeeStartDate])
 
-  const attendanceRate = totalWorkingDays > 0 ? Math.round((presentCount / totalWorkingDays) * 100) : 0
+  // Attendance rate is calculated only on working days since joining
+  const attendanceRate = effectiveWorkingDays > 0
+    ? Math.round((presentCount / effectiveWorkingDays) * 100)
+    : (presentCount > 0 ? 100 : 0)
 
   // Today's record detection
   const todayRecord = useMemo(() => {
@@ -157,11 +185,13 @@ export default function EmployeeDashboard() {
     for (let d = 1; d <= totalDays; d++) {
       const dateKey = `${year}-${pad(month)}-${pad(d)}`
       const dateObj = new Date(year, month - 1, d)
-      const dayOfWeek = dateObj.getDay() // 0=Sun, 6=Sat
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+      const dayOfWeek = dateObj.getDay() // 0=Sun
+      const isSunday = dayOfWeek === 0
       const isToday = dateKey === todayKey
       const isFuture = dateKey > todayKey
       const holiday = getHoliday(dateKey)
+      const isBeforeCompany = dateKey < COMPANY_START_DATE
+      const isBeforeJoin = employeeStartDate && dateKey < employeeStartDate
 
       const record = recordMap.get(dateKey)
       let status = 'FUTURE'
@@ -169,10 +199,14 @@ export default function EmployeeDashboard() {
         status = 'P'
       } else if (holiday) {
         status = 'HOLIDAY'
+      } else if (isBeforeCompany) {
+        status = 'PRE_COMPANY'
+      } else if (isBeforeJoin || !employeeStartDate) {
+        status = 'NOT_JOINED'
       } else if (isFuture) {
         status = 'FUTURE'
-      } else if (isWeekend) {
-        status = 'WEEKEND'
+      } else if (isSunday) {
+        status = 'SUNDAY'
       } else {
         status = 'A'
       }
@@ -186,7 +220,7 @@ export default function EmployeeDashboard() {
         dayNum: d,
         weekdayShort: dateObj.toLocaleDateString('en-US', { weekday: 'short' }),
         weekdayFull: dateObj.toLocaleDateString('en-US', { weekday: 'long' }),
-        isWeekend,
+        isSunday,
         isToday,
         isFuture,
         holiday,
@@ -207,7 +241,7 @@ export default function EmployeeDashboard() {
     }
 
     return { days, year, month, totalDays }
-  }, [selectedMonth, records, todayKey])
+  }, [selectedMonth, records, todayKey, employeeStartDate])
 
   return (
     <div className="page">
@@ -461,11 +495,15 @@ export default function EmployeeDashboard() {
                       type="button"
                       className="sw-cal-btn-prev"
                       onClick={handlePrevMonth}
-                      title="Previous Month"
+                      disabled={!canGoPrev}
+                      style={{ opacity: canGoPrev ? 1 : 0.4, cursor: canGoPrev ? 'pointer' : 'not-allowed' }}
+                      title={canGoPrev ? "Previous Month" : "Company started on August 7, 2026"}
                     >
                       ‹
                     </button>
-                    <h3 className="sw-cal-month-title">{formatMonthLabel(selectedMonth)}</h3>
+                    <span className="sw-cal-current-label">
+                      {formatMonthLabel(selectedMonth)}
+                    </span>
                     <button
                       type="button"
                       className="sw-cal-btn-next"
@@ -498,7 +536,7 @@ export default function EmployeeDashboard() {
                       <span className="sw-legend-dot absent" /> Absent
                     </span>
                     <span className="sw-legend-item">
-                      <span className="sw-legend-dot weekend" /> Weekend
+                      <span className="sw-legend-dot weekend" /> Sunday
                     </span>
                     <span className="sw-legend-item">
                       <span className="sw-legend-dot today" /> Today
@@ -510,8 +548,8 @@ export default function EmployeeDashboard() {
                 <div className="sw-calendar-container">
                   {/* Weekday Column Headers */}
                   <div className="sw-calendar-weekdays">
-                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, idx) => (
-                      <div key={day} className={`sw-cal-weekday-head ${idx >= 5 ? 'weekend' : ''}`}>
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
+                      <div key={day} className={`sw-cal-weekday-head ${day === 'Sun' ? 'weekend' : ''}`}>
                         {day}
                       </div>
                     ))}
@@ -532,7 +570,7 @@ export default function EmployeeDashboard() {
                       const isPresent = cell.status === 'P'
                       const isHoliday = cell.status === 'HOLIDAY' || Boolean(cell.holiday)
                       const isAbsent = cell.status === 'A'
-                      const isWeekend = cell.isWeekend
+                      const isSunday = cell.isSunday
                       const isToday = cell.isToday
                       const isFuture = cell.isFuture
 
@@ -544,9 +582,11 @@ export default function EmployeeDashboard() {
                               ? 'cell-present'
                               : isHoliday
                               ? 'cell-holiday'
+                              : cell.status === 'NOT_JOINED' || cell.status === 'PRE_COMPANY'
+                              ? 'cell-notjoined'
                               : isAbsent
                               ? 'cell-absent'
-                              : isWeekend
+                              : isSunday
                               ? 'cell-weekend'
                               : isFuture
                               ? 'cell-future'
@@ -609,9 +649,27 @@ export default function EmployeeDashboard() {
                               </div>
                             )}
 
-                            {isWeekend && !hasRecord && !isHoliday && (
+                            {cell.status === 'NOT_JOINED' && !hasRecord && !isHoliday && (
+                              <div className="sw-cal-notjoined-info">
+                                <span className="sw-cal-status-pill not-joined" style={{ background: 'rgba(148, 163, 184, 0.12)', color: '#94a3b8', borderColor: 'rgba(148, 163, 184, 0.25)' }}>
+                                  — Pre-Joining
+                                </span>
+                                <span className="sw-cal-missed-label" style={{ color: '#64748b' }}>Not Joined Yet</span>
+                              </div>
+                            )}
+
+                            {cell.status === 'PRE_COMPANY' && !hasRecord && !isHoliday && (
+                              <div className="sw-cal-notjoined-info">
+                                <span className="sw-cal-status-pill not-joined" style={{ background: 'rgba(148, 163, 184, 0.12)', color: '#94a3b8', borderColor: 'rgba(148, 163, 184, 0.25)' }}>
+                                  — Pre-Launch
+                                </span>
+                                <span className="sw-cal-missed-label" style={{ color: '#64748b' }}>Started Aug 7</span>
+                              </div>
+                            )}
+
+                            {isSunday && !hasRecord && !isHoliday && (
                               <div className="sw-cal-weekend-info">
-                                <span className="sw-cal-weekend-pill">Weekend</span>
+                                <span className="sw-cal-weekend-pill">Sunday</span>
                               </div>
                             )}
 
@@ -666,28 +724,60 @@ export default function EmployeeDashboard() {
               ) : (
                 <div className="sw-day-cards-grid">
                   {schedule.map((r) => {
+                    const isPresent = r.status === 'P'
+                    const isHoliday = r.status === 'H' || r.status === 'HOLIDAY' || Boolean(r.holiday)
+                    const isNotJoined = r.status === 'NOT_JOINED'
+                    const isPreCompany = r.status === 'PRE_COMPANY'
+                    const isAbsent = !isPresent && !isHoliday && !isNotJoined && !isPreCompany
                     const duration = calcDayDuration(r.checkInTime, r.checkOutTime)
+
+                    const cardClass = isPresent
+                      ? 'present'
+                      : isHoliday
+                      ? 'holiday'
+                      : isNotJoined || isPreCompany
+                      ? 'not-joined'
+                      : 'absent'
+
                     return (
-                      <div key={r.id} className={`sw-day-card ${r.status === 'P' ? 'present' : 'absent'}`}>
+                      <div key={r.id} className={`sw-day-card ${cardClass}`}>
                         <div className="sw-day-card-header">
                           <div>
                             <div className="sw-day-card-date">{r.date}</div>
                             <div className="sw-day-card-weekday">{r.weekdayFull}</div>
                           </div>
-                          <span className={r.status === 'P' ? 'status-pill-p' : 'status-pill-a'}>
-                            {r.status === 'P' ? '✓ Present' : '✕ Absent'}
-                          </span>
+                          {isPresent && <span className="status-pill-p">✓ Present</span>}
+                          {isHoliday && <span className="status-pill-h" title={r.holiday?.name}>🏖️ {r.holiday?.name || 'Holiday'}</span>}
+                          {isNotJoined && <span className="status-pill-not-joined" title="Pre-employment day before first check-in">— Pre-Joining</span>}
+                          {isPreCompany && <span className="status-pill-not-joined" title="Prior to company launch (August 7, 2026)">— Pre-Launch</span>}
+                          {isAbsent && <span className="status-pill-a">✕ Absent</span>}
                         </div>
 
                         <div className="sw-day-card-body">
-                          <div className="sw-day-punch-row">
-                            <span>Check In (In):</span>
-                            <strong>{r.checkInTime ? formatTime(r.checkInTime) : '—'}</strong>
-                          </div>
-                          <div className="sw-day-punch-row">
-                            <span>Check Out (Out):</span>
-                            <strong>{r.checkOutTime ? formatTime(r.checkOutTime) : '—'}</strong>
-                          </div>
+                          {isNotJoined ? (
+                            <div style={{ textAlign: 'center', padding: '0.4rem 0', color: '#64748b', fontSize: '0.8rem' }}>
+                              <span>👤 Before Joining / First Check-In</span>
+                            </div>
+                          ) : isPreCompany ? (
+                            <div style={{ textAlign: 'center', padding: '0.4rem 0', color: '#64748b', fontSize: '0.8rem' }}>
+                              <span>🏢 Operations Started Aug 7, 2026</span>
+                            </div>
+                          ) : isHoliday ? (
+                            <div style={{ textAlign: 'center', padding: '0.4rem 0', color: '#d97706', fontSize: '0.8rem' }}>
+                              <span>🏖️ Official Holiday: {r.holiday?.name || 'Off Day'}</span>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="sw-day-punch-row">
+                                <span>Check In (In):</span>
+                                <strong>{r.checkInTime ? formatTime(r.checkInTime) : '—'}</strong>
+                              </div>
+                              <div className="sw-day-punch-row">
+                                <span>Check Out (Out):</span>
+                                <strong>{r.checkOutTime ? formatTime(r.checkOutTime) : '—'}</strong>
+                              </div>
+                            </>
+                          )}
                         </div>
 
                         <div className="sw-day-card-footer">
@@ -695,7 +785,15 @@ export default function EmployeeDashboard() {
                             <span className="sw-shift-hours-badge">⏱️ {duration}</span>
                           ) : (
                             <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                              {r.status === 'P' ? 'In-progress' : 'No punch'}
+                              {isPresent
+                                ? 'In-progress'
+                                : isHoliday
+                                ? 'Paid Holiday'
+                                : isNotJoined
+                                ? 'Not Joined Yet'
+                                : isPreCompany
+                                ? 'Pre-Launch'
+                                : 'No punch'}
                             </span>
                           )}
 
@@ -756,15 +854,28 @@ export default function EmployeeDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {schedule.map((r) => (
-                        <tr key={r.id} className={r.status === 'A' ? 'row-absent' : 'row-present'}>
-                          <td data-label="Status" style={{ textAlign: 'center' }}>
-                            {r.status === 'P' ? (
-                              <span className="status-pill-p" title="Present">P</span>
-                            ) : (
-                              <span className="status-pill-a" title="Absent">A</span>
-                            )}
-                          </td>
+                      {schedule.map((r) => {
+                        const isPresent = r.status === 'P'
+                        const isHoliday = r.status === 'H' || r.status === 'HOLIDAY' || Boolean(r.holiday)
+                        const isNotJoined = r.status === 'NOT_JOINED'
+                        const isPreCompany = r.status === 'PRE_COMPANY'
+                        const isAbsent = !isPresent && !isHoliday && !isNotJoined && !isPreCompany
+
+                        return (
+                          <tr key={r.id} className={isAbsent ? 'row-absent' : isPresent ? 'row-present' : 'row-neutral'}>
+                            <td data-label="Status" style={{ textAlign: 'center' }}>
+                              {isPresent ? (
+                                <span className="status-pill-p" title="Present">P</span>
+                              ) : isHoliday ? (
+                                <span className="status-pill-h" title={r.holiday?.name || 'Holiday'}>H</span>
+                              ) : isNotJoined ? (
+                                <span className="status-pill-not-joined" title="Pre-employment day before first check-in">—</span>
+                              ) : isPreCompany ? (
+                                <span className="status-pill-not-joined" title="Prior to company launch (Aug 7, 2026)">—</span>
+                              ) : (
+                                <span className="status-pill-a" title="Absent">A</span>
+                              )}
+                            </td>
                           <td data-label="Date">
                             <strong>{r.date}</strong>
                           </td>
@@ -820,8 +931,9 @@ export default function EmployeeDashboard() {
                               )}
                             </div>
                           </td>
-                        </tr>
-                      ))}
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -860,7 +972,7 @@ export default function EmployeeDashboard() {
                     ? `🏖️ Official Holiday (${selectedDayDetail.holiday.name})`
                     : selectedDayDetail.status === 'A'
                     ? '✕ Absent (Unrecorded)'
-                    : '🏖️ Weekend / Rest Day'}
+                    : '🏖️ Sunday / Rest Day'}
                 </span>
 
                 {selectedDayDetail.duration && (
@@ -949,13 +1061,13 @@ export default function EmployeeDashboard() {
                 </div>
               )}
 
-              {/* Weekend Details */}
-              {selectedDayDetail.status === 'WEEKEND' && (
+              {/* Sunday Details */}
+              {selectedDayDetail.status === 'SUNDAY' && (
                 <div className="sw-inspect-weekend-card">
                   <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🏖️</div>
-                  <h4 style={{ margin: '0 0 0.4rem', color: '#334155' }}>Scheduled Weekend Off</h4>
+                  <h4 style={{ margin: '0 0 0.4rem', color: '#334155' }}>Scheduled Sunday Off</h4>
                   <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5 }}>
-                    This was an official non-working rest day.
+                    This was an official Sunday rest day.
                   </p>
                 </div>
               )}

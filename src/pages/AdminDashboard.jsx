@@ -7,16 +7,31 @@ import {
   todayDateKey,
   formatMonthLabel,
   formatTime,
-  lastNMonthKeys,
+  getAvailableMonthKeys,
   getWeekday,
   buildEmployeeSchedule,
   getMonthWorkingDays,
   getHoliday,
-  isHoliday
+  isHoliday,
+  COMPANY_START_DATE,
+  COMPANY_START_MONTH
 } from '../utils/dateHelpers'
 import { mockGetAttendanceList, getStoredUsers } from '../mockService'
 import { subscribeLeaves } from '../services/leaveService'
 import NavBar from '../components/NavBar'
+
+const DEFAULT_SUPPORT_TICKETS = [
+  {
+    id: 'msg-demo-1',
+    senderName: 'Alex Chen',
+    senderEmail: 'alex@company.com',
+    category: 'Biometric error',
+    message: 'Camera showed lighting reflection error during morning biometric check-in at entrance B. Had to retry 2 times.',
+    screenshotUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="100%" height="100%" fill="%230f172a"/><rect x="40" y="40" width="520" height="320" rx="12" fill="%231e293b" stroke="%23f43f5e" stroke-width="2"/><circle cx="300" cy="180" r="70" fill="none" stroke="%23f43f5e" stroke-width="3" stroke-dasharray="8"/><text x="300" y="185" fill="%23f43f5e" font-size="28" text-anchor="middle" font-family="sans-serif">⚠️</text><text x="300" y="290" fill="%23f8fafc" font-size="16" font-weight="bold" text-anchor="middle" font-family="sans-serif">Camera Glare Warning: Insufficient Contrast</text><text x="300" y="320" fill="%2394a3b8" font-size="12" text-anchor="middle" font-family="sans-serif">Screenshot from Mobile Camera HUD • 09:15 AM</text></svg>',
+    status: 'open',
+    createdAt: '2026-09-20T09:18:00.000Z'
+  }
+]
 
 export default function AdminDashboard() {
   const [selectedMonth, setSelectedMonth] = useState(monthKey())
@@ -30,8 +45,18 @@ export default function AdminDashboard() {
   const [rosterSearch, setRosterSearch] = useState('')
   const [viewMode, setViewMode] = useState('calendar') // 'calendar' | 'table'
   const [pendingLeavesCount, setPendingLeavesCount] = useState(0)
-  const monthOptions = useMemo(() => lastNMonthKeys(6), [])
+  const monthOptions = useMemo(() => getAvailableMonthKeys(), [])
   const todayKey = todayDateKey()
+
+  // Support / Problem inquiries desk state
+  const [showSupportModal, setShowSupportModal] = useState(false)
+  const [supportMessages, setSupportMessages] = useState([])
+  const [supportTab, setSupportTab] = useState('inbox') // 'inbox' | 'new'
+  const [supportCategory, setSupportCategory] = useState('Biometric error')
+  const [supportMsg, setSupportMsg] = useState('')
+  const [supportPhotoUrl, setSupportPhotoUrl] = useState(null)
+  const [supportPhotoName, setSupportPhotoName] = useState('')
+  const [selectedSupportScreenshot, setSelectedSupportScreenshot] = useState(null)
 
   function calcDayDuration(inTime, outTime) {
     if (!inTime || !outTime) return null
@@ -43,11 +68,16 @@ export default function AdminDashboard() {
     return `${hrs}h ${mins}m`
   }
 
+  const canGoPrev = selectedMonth > COMPANY_START_MONTH
+
   function handlePrevMonth() {
+    if (!canGoPrev) return
     const [y, m] = selectedMonth.split('-').map(Number)
     const prevD = new Date(y, m - 2, 1)
     const newKey = `${prevD.getFullYear()}-${String(prevD.getMonth() + 1).padStart(2, '0')}`
-    setSelectedMonth(newKey)
+    if (newKey >= COMPANY_START_MONTH) {
+      setSelectedMonth(newKey)
+    }
   }
 
   function handleNextMonth() {
@@ -130,16 +160,108 @@ export default function AdminDashboard() {
     return Array.from(map, ([uid, name]) => ({ uid, name }))
   }, [records, usersList])
 
+  // Load support inquiries
+  function loadSupportMessages() {
+    try {
+      const data = localStorage.getItem('punch_admin_messages')
+      if (data) {
+        setSupportMessages(JSON.parse(data))
+      } else {
+        localStorage.setItem('punch_admin_messages', JSON.stringify(DEFAULT_SUPPORT_TICKETS))
+        setSupportMessages(DEFAULT_SUPPORT_TICKETS)
+      }
+    } catch {
+      setSupportMessages(DEFAULT_SUPPORT_TICKETS)
+    }
+  }
+
+  useEffect(() => {
+    loadSupportMessages()
+  }, [])
+
+  function handleSupportScreenshotUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file (PNG, JPG, JPEG) for the screenshot.')
+      return
+    }
+    setSupportPhotoName(file.name)
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const maxDim = 1200
+        let w = img.width
+        let h = img.height
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w)
+            w = maxDim
+          } else {
+            w = Math.round((w * maxDim) / h)
+            h = maxDim
+          }
+        }
+        canvas.width = w
+        canvas.height = h
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, w, h)
+        setSupportPhotoUrl(canvas.toDataURL('image/jpeg', 0.85))
+      }
+      img.src = event.target.result
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function handleSubmitSupportProblem(e) {
+    e.preventDefault()
+    if (!supportMsg.trim()) return
+
+    const newTicket = {
+      id: 'msg-' + Date.now(),
+      senderName: 'Admin / HR Desk',
+      senderEmail: 'admin@company.com',
+      category: supportCategory,
+      message: supportMsg.trim(),
+      screenshotUrl: supportPhotoUrl,
+      status: 'open',
+      createdAt: new Date().toISOString()
+    }
+
+    const updated = [newTicket, ...supportMessages]
+    setSupportMessages(updated)
+    localStorage.setItem('punch_admin_messages', JSON.stringify(updated.slice(0, 50)))
+    setSupportMsg('')
+    setSupportPhotoUrl(null)
+    setSupportPhotoName('')
+    setSupportTab('inbox')
+  }
+
+  function handleToggleTicketStatus(id) {
+    const updated = supportMessages.map((m) => {
+      if (m.id === id) {
+        return { ...m, status: m.status === 'resolved' ? 'open' : 'resolved' }
+      }
+      return m
+    })
+    setSupportMessages(updated)
+    localStorage.setItem('punch_admin_messages', JSON.stringify(updated))
+  }
+
   // If a single employee is selected, build their day-by-day P/A calendar schedule
   const singleEmployeeData = useMemo(() => {
     if (employeeFilter === 'all') return null
     const empRecords = records.filter((r) => r.uid === employeeFilter)
     const empInfo = employees.find((e) => e.uid === employeeFilter) || { uid: employeeFilter, name: 'Employee' }
+    const userObj = usersList.find((u) => u.uid === employeeFilter)
+    const empStartDate = userObj?.joinDate || userObj?.startDate || null
     return {
       employee: empInfo,
-      ...buildEmployeeSchedule(empRecords, selectedMonth, empInfo)
+      ...buildEmployeeSchedule(empRecords, selectedMonth, { ...empInfo, startDate: empStartDate })
     }
-  }, [employeeFilter, records, selectedMonth, employees])
+  }, [employeeFilter, records, selectedMonth, employees, usersList])
 
   async function handleDeleteAttendanceRecord(r) {
     if (!window.confirm(`Delete attendance record for "${r.name || 'Employee'}" on ${r.date}? This cannot be undone.`)) {
@@ -179,16 +301,16 @@ export default function AdminDashboard() {
 
   // Per-employee monthly summary statistics
   const employeeSummaries = useMemo(() => {
-    const workingDaysCount = getMonthWorkingDays(selectedMonth).length
-
     return employees.map((emp) => {
       const empRecords = records.filter((r) => r.uid === emp.uid)
-      const { presentCount, absentCount, fullDaysCount } = buildEmployeeSchedule(
+      const userObj = usersList.find((u) => u.uid === emp.uid)
+      const empStartDate = userObj?.joinDate || userObj?.startDate || null
+      const { presentCount, absentCount, fullDaysCount, totalWorkingDays, effectiveWorkingDays, notJoinedCount } = buildEmployeeSchedule(
         empRecords,
         selectedMonth,
-        emp
+        { ...emp, startDate: empStartDate }
       )
-      const rate = workingDaysCount > 0 ? Math.round((presentCount / workingDaysCount) * 100) : 0
+      const rate = effectiveWorkingDays > 0 ? Math.round((presentCount / effectiveWorkingDays) * 100) : (presentCount > 0 ? 100 : 0)
       const punchedToday = records.some((r) => r.uid === emp.uid && r.date === todayKey)
       return {
         uid: emp.uid,
@@ -196,12 +318,14 @@ export default function AdminDashboard() {
         presentCount,
         absentCount,
         fullDaysCount,
-        totalWorkingDays: workingDaysCount,
+        totalWorkingDays,
+        effectiveWorkingDays,
+        notJoinedCount,
         rate,
         punchedToday
       }
     })
-  }, [employees, records, selectedMonth, todayKey])
+  }, [employees, records, selectedMonth, todayKey, usersList])
 
   // Today's live punches across workforce
   const todayPunches = useMemo(() => {
@@ -288,7 +412,7 @@ export default function AdminDashboard() {
       const dateKey = `${year}-${pad(month)}-${pad(d)}`
       const dateObj = new Date(year, month - 1, d)
       const dayOfWeek = dateObj.getDay()
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+      const isSunday = dayOfWeek === 0
       const isToday = dateKey === todayKey
       const isFuture = dateKey > todayKey
       const holiday = getHoliday(dateKey)
@@ -297,11 +421,18 @@ export default function AdminDashboard() {
         // Single employee mode
         const empRecords = records.filter((r) => r.uid === employeeFilter)
         const record = empRecords.find((r) => r.date === dateKey)
+        const isBeforeCompany = dateKey < COMPANY_START_DATE
+        const empUser = usersList.find((u) => u.uid === employeeFilter)
+        const empStartDate = empUser?.joinDate || empUser?.startDate || (empRecords.find((r) => r.checkInTime)?.date)
+        const isBeforeJoin = empStartDate && dateKey < empStartDate
+
         let status = 'FUTURE'
         if (record) status = 'P'
         else if (holiday) status = 'HOLIDAY'
+        else if (isBeforeCompany) status = 'PRE_COMPANY'
+        else if (isBeforeJoin || !empStartDate) status = 'NOT_JOINED'
         else if (isFuture) status = 'FUTURE'
-        else if (isWeekend) status = 'WEEKEND'
+        else if (isSunday) status = 'SUNDAY'
         else status = 'A'
 
         const duration = record ? calcDayDuration(record.checkInTime, record.checkOutTime) : null
@@ -313,7 +444,7 @@ export default function AdminDashboard() {
           dayNum: d,
           weekdayShort: dateObj.toLocaleDateString('en-US', { weekday: 'short' }),
           weekdayFull: dateObj.toLocaleDateString('en-US', { weekday: 'long' }),
-          isWeekend,
+          isSunday,
           isToday,
           isFuture,
           holiday,
@@ -331,6 +462,19 @@ export default function AdminDashboard() {
 
         const roster = employees.map((emp, index) => {
           const rec = dateRecords.find((r) => r.uid === emp.uid)
+          const empUser = usersList.find((u) => u.uid === emp.uid)
+          const empStartDate = empUser?.joinDate || empUser?.startDate || null
+          const isBeforeJoin = empStartDate && dateKey < empStartDate
+          const isBeforeCompany = dateKey < COMPANY_START_DATE
+
+          let status = 'A'
+          if (rec) status = 'P'
+          else if (holiday) status = 'HOLIDAY'
+          else if (isSunday) status = 'SUNDAY'
+          else if (isFuture) status = 'FUTURE'
+          else if (isBeforeCompany) status = 'PRE_COMPANY'
+          else if (isBeforeJoin) status = 'NOT_JOINED'
+
           const initials = emp.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase() || 'E'
           const bgGradient = avatarGradients[index % avatarGradients.length]
           return {
@@ -338,7 +482,7 @@ export default function AdminDashboard() {
             name: emp.name,
             initials,
             bgGradient,
-            status: rec ? 'P' : holiday ? 'HOLIDAY' : isWeekend ? 'WEEKEND' : isFuture ? 'FUTURE' : 'A',
+            status,
             record: rec || null
           }
         })
@@ -361,7 +505,7 @@ export default function AdminDashboard() {
           dayNum: d,
           weekdayShort: dateObj.toLocaleDateString('en-US', { weekday: 'short' }),
           weekdayFull: dateObj.toLocaleDateString('en-US', { weekday: 'long' }),
-          isWeekend,
+          isSunday,
           isToday,
           isFuture,
           holiday,
@@ -453,6 +597,27 @@ export default function AdminDashboard() {
               <span>🌴</span>
               <span>Leaves {pendingLeavesCount > 0 ? `(${pendingLeavesCount})` : ''}</span>
             </Link>
+            <button
+              type="button"
+              className="sw-toggle-btn"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '0.45rem 0.85rem',
+                color: '#a855f7',
+                borderColor: 'rgba(168, 85, 247, 0.35)',
+                background: 'rgba(168, 85, 247, 0.08)'
+              }}
+              onClick={() => {
+                loadSupportMessages()
+                setShowSupportModal(true)
+              }}
+              title="Admin Support Desk & Problem Inquiries"
+            >
+              <span>💬</span>
+              <span>Support Inquiries {supportMessages.filter((m) => m.status !== 'resolved').length > 0 ? `(${supportMessages.filter((m) => m.status !== 'resolved').length})` : ''}</span>
+            </button>
             <button
               type="button"
               className="sw-export-csv-btn"
@@ -732,7 +897,9 @@ export default function AdminDashboard() {
                   type="button"
                   className="sw-cal-btn-prev"
                   onClick={handlePrevMonth}
-                  title="Previous Month"
+                  disabled={!canGoPrev}
+                  style={{ opacity: canGoPrev ? 1 : 0.4, cursor: canGoPrev ? 'pointer' : 'not-allowed' }}
+                  title={canGoPrev ? "Previous Month" : "Company started on August 7, 2026"}
                 >
                   ‹
                 </button>
@@ -769,7 +936,7 @@ export default function AdminDashboard() {
                   <span className="sw-legend-dot absent" /> Low / Zero
                 </span>
                 <span className="sw-legend-item">
-                  <span className="sw-legend-dot weekend" /> Weekend
+                  <span className="sw-legend-dot weekend" /> Sunday
                 </span>
                 <span className="sw-legend-item">
                   <span className="sw-legend-dot today" /> Today
@@ -781,8 +948,8 @@ export default function AdminDashboard() {
             <div className="sw-calendar-container">
               {/* Weekday Column Headers */}
               <div className="sw-calendar-weekdays">
-                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, idx) => (
-                  <div key={day} className={`sw-cal-weekday-head ${idx >= 5 ? 'weekend' : ''}`}>
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
+                  <div key={day} className={`sw-cal-weekday-head ${day === 'Sun' ? 'weekend' : ''}`}>
                     {day}
                   </div>
                 ))}
@@ -799,7 +966,7 @@ export default function AdminDashboard() {
                     )
                   }
 
-                  const isWeekend = cell.isWeekend
+                  const isSunday = cell.isSunday
                   const isToday = cell.isToday
                   const isFuture = cell.isFuture
                   const isHoliday = Boolean(cell.holiday)
@@ -808,6 +975,8 @@ export default function AdminDashboard() {
                   if (isSingleEmp) {
                     // Single Employee Calendar Cell
                     const isPresent = cell.status === 'P'
+                    const isNotJoined = cell.status === 'NOT_JOINED'
+                    const isPreCompany = cell.status === 'PRE_COMPANY'
                     const isAbsent = cell.status === 'A'
 
                     return (
@@ -818,9 +987,11 @@ export default function AdminDashboard() {
                             ? 'cell-present'
                             : isHoliday
                             ? 'cell-holiday'
+                            : isNotJoined || isPreCompany
+                            ? 'cell-notjoined'
                             : isAbsent
                             ? 'cell-absent'
-                            : isWeekend
+                            : isSunday
                             ? 'cell-weekend'
                             : isFuture
                             ? 'cell-future'
@@ -866,6 +1037,24 @@ export default function AdminDashboard() {
                             </div>
                           )}
 
+                          {isNotJoined && !cell.record && !isHoliday && (
+                            <div className="sw-cal-notjoined-info">
+                              <span className="sw-cal-status-pill not-joined">
+                                — Pre-Joining
+                              </span>
+                              <span className="sw-cal-missed-label" style={{ color: '#64748b' }}>Not Joined Yet</span>
+                            </div>
+                          )}
+
+                          {isPreCompany && !cell.record && !isHoliday && (
+                            <div className="sw-cal-notjoined-info">
+                              <span className="sw-cal-status-pill not-joined">
+                                — Pre-Launch
+                              </span>
+                              <span className="sw-cal-missed-label" style={{ color: '#64748b' }}>Started Aug 7</span>
+                            </div>
+                          )}
+
                           {isAbsent && !isHoliday && (
                             <div className="sw-cal-absent-info">
                               <span className="sw-cal-status-pill absent">✕ Absent</span>
@@ -873,9 +1062,9 @@ export default function AdminDashboard() {
                             </div>
                           )}
 
-                          {isWeekend && !cell.record && !isHoliday && (
+                          {isSunday && !cell.record && !isHoliday && (
                             <div className="sw-cal-weekend-info">
-                              <span className="sw-cal-weekend-pill">Weekend</span>
+                              <span className="sw-cal-weekend-pill">Sunday</span>
                             </div>
                           )}
 
@@ -931,7 +1120,7 @@ export default function AdminDashboard() {
                           ? 'cell-present'
                           : isHoliday
                           ? 'cell-holiday'
-                          : isWeekend
+                          : isSunday
                           ? 'cell-weekend'
                           : isFuture
                           ? 'cell-future'
@@ -956,7 +1145,7 @@ export default function AdminDashboard() {
 
                       {/* Cell Content: Turnout Bar, Pill & Stacked Avatars */}
                       <div className="sw-cal-cell-content">
-                        {!isFuture && !isWeekend && (
+                        {!isFuture && !isSunday && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                             {/* Turnout Pill */}
                             <span className={`sw-cal-turnout-pill ${turnoutClass}`}>
@@ -994,7 +1183,7 @@ export default function AdminDashboard() {
                           </div>
                         )}
 
-                        {isWeekend && (
+                        {isSunday && (
                           hasPunches ? (
                             <div>
                               <span className="sw-cal-turnout-pill optimal">
@@ -1015,7 +1204,7 @@ export default function AdminDashboard() {
                             </div>
                           ) : (
                             <div className="sw-cal-weekend-info">
-                              <span className="sw-cal-weekend-pill">Weekend Off</span>
+                              <span className="sw-cal-weekend-pill">Sunday Off</span>
                             </div>
                           )
                         )}
@@ -1054,15 +1243,28 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {singleEmployeeData?.schedule.map((r) => (
-                      <tr key={r.id} className={r.status === 'A' ? 'row-absent' : 'row-present'}>
-                        <td data-label="Status" style={{ textAlign: 'center' }}>
-                          {r.status === 'P' ? (
-                            <span className="status-pill-p" title="Present">P</span>
-                          ) : (
-                            <span className="status-pill-a" title="Absent">A</span>
-                          )}
-                        </td>
+                    {singleEmployeeData?.schedule.map((r) => {
+                      const isPresent = r.status === 'P'
+                      const isHoliday = r.status === 'H' || r.status === 'HOLIDAY' || Boolean(r.holiday)
+                      const isNotJoined = r.status === 'NOT_JOINED'
+                      const isPreCompany = r.status === 'PRE_COMPANY'
+                      const isAbsent = !isPresent && !isHoliday && !isNotJoined && !isPreCompany
+
+                      return (
+                        <tr key={r.id} className={isAbsent ? 'row-absent' : isPresent ? 'row-present' : 'row-neutral'}>
+                          <td data-label="Status" style={{ textAlign: 'center' }}>
+                            {isPresent ? (
+                              <span className="status-pill-p" title="Present">P</span>
+                            ) : isHoliday ? (
+                              <span className="status-pill-h" title={r.holiday?.name || 'Holiday'}>H</span>
+                            ) : isNotJoined ? (
+                              <span className="status-pill-not-joined" title="Pre-employment day before joining">—</span>
+                            ) : isPreCompany ? (
+                              <span className="status-pill-not-joined" title="Prior to company launch (Aug 7, 2026)">—</span>
+                            ) : (
+                              <span className="status-pill-a" title="Absent">A</span>
+                            )}
+                          </td>
                         <td data-label="Date"><strong>{r.date}</strong></td>
                         <td data-label="Weekday"><span className="weekday-tag">{r.weekdayFull}</span></td>
                         <td data-label="Check-In">
@@ -1151,7 +1353,8 @@ export default function AdminDashboard() {
                           )}
                         </td>
                       </tr>
-                    ))}
+                    )
+                  })}
                   </tbody>
                 </table>
               </div>
@@ -1296,14 +1499,28 @@ export default function AdminDashboard() {
                 /* Single Employee Day Inspection */
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                    <span className={`sw-inspect-status-badge ${selectedDayRoster.status === 'P' ? 'present' : selectedDayRoster.holiday ? 'holiday' : selectedDayRoster.status === 'A' ? 'absent' : 'weekend'}`}>
+                    <span className={`sw-inspect-status-badge ${
+                      selectedDayRoster.status === 'P'
+                        ? 'present'
+                        : selectedDayRoster.holiday
+                        ? 'holiday'
+                        : selectedDayRoster.status === 'NOT_JOINED' || selectedDayRoster.status === 'PRE_COMPANY'
+                        ? 'not-joined'
+                        : selectedDayRoster.status === 'A'
+                        ? 'absent'
+                        : 'weekend'
+                    }`}>
                       {selectedDayRoster.status === 'P'
                         ? '✓ Verified Present'
                         : selectedDayRoster.holiday
                         ? `🏖️ Official Holiday (${selectedDayRoster.holiday.name})`
+                        : selectedDayRoster.status === 'NOT_JOINED'
+                        ? '— Pre-Joining (Not Joined Yet)'
+                        : selectedDayRoster.status === 'PRE_COMPANY'
+                        ? '— Pre-Launch (Started Aug 7, 2026)'
                         : selectedDayRoster.status === 'A'
                         ? '✕ Absent (Unrecorded)'
-                        : '🏖️ Weekend'}
+                        : '🏖️ Sunday'}
                     </span>
                     {selectedDayRoster.duration && (
                       <span className="sw-shift-hours-badge">⏱️ {selectedDayRoster.duration}</span>
@@ -1372,6 +1589,22 @@ export default function AdminDashboard() {
                           {selectedDayRoster.record.checkOutTime ? '📍 Biometric & GPS Verified' : '⏳ Awaiting checkout punch'}
                         </span>
                       </div>
+                    </div>
+                  ) : selectedDayRoster.status === 'NOT_JOINED' ? (
+                    <div className="sw-inspect-absent-card" style={{ borderColor: '#cbd5e1', background: 'rgba(241, 245, 249, 0.7)' }}>
+                      <div style={{ fontSize: '2rem', marginBottom: '0.4rem' }}>👤</div>
+                      <h4 style={{ margin: '0 0 0.35rem', color: '#475569' }}>Pre-Joining Date</h4>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
+                        This date is before {selectedDayRoster.employeeName}'s joining date. Not counted as absent.
+                      </p>
+                    </div>
+                  ) : selectedDayRoster.status === 'PRE_COMPANY' ? (
+                    <div className="sw-inspect-absent-card" style={{ borderColor: '#cbd5e1', background: 'rgba(241, 245, 249, 0.7)' }}>
+                      <div style={{ fontSize: '2rem', marginBottom: '0.4rem' }}>🏢</div>
+                      <h4 style={{ margin: '0 0 0.35rem', color: '#475569' }}>Pre-Company Launch</h4>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
+                        Softwind operations officially started on August 7, 2026.
+                      </p>
                     </div>
                   ) : (
                     <div className="sw-inspect-absent-card">
@@ -1482,7 +1715,7 @@ export default function AdminDashboard() {
                       modalRosterList.map((item) => (
                         <div
                           key={item.uid}
-                          className={`sw-roster-employee-card ${item.status === 'P' ? 'present' : 'absent'}`}
+                          className={`sw-roster-employee-card ${item.status === 'P' ? 'present' : item.status === 'NOT_JOINED' || item.status === 'PRE_COMPANY' ? 'not-joined' : 'absent'}`}
                         >
                           <div className="sw-roster-emp-left">
                             <div className="sw-roster-emp-avatar" style={{ background: item.bgGradient }}>
@@ -1490,8 +1723,14 @@ export default function AdminDashboard() {
                             </div>
                             <div className="sw-roster-emp-meta">
                               <span className="sw-roster-emp-name">{item.name}</span>
-                              <span className={`sw-roster-emp-status ${item.status === 'P' ? 'present' : 'absent'}`}>
-                                {item.status === 'P' ? '✓ Verified Present' : '✕ Absent (Unrecorded)'}
+                              <span className={`sw-roster-emp-status ${item.status === 'P' ? 'present' : item.status === 'NOT_JOINED' || item.status === 'PRE_COMPANY' ? 'not-joined' : 'absent'}`}>
+                                {item.status === 'P'
+                                  ? '✓ Verified Present'
+                                  : item.status === 'NOT_JOINED'
+                                  ? '— Pre-Joining (Not Joined Yet)'
+                                  : item.status === 'PRE_COMPANY'
+                                  ? '— Pre-Launch'
+                                  : '✕ Absent (Unrecorded)'}
                               </span>
                             </div>
                           </div>
@@ -1598,6 +1837,257 @@ export default function AdminDashboard() {
             <div className="modal-footer">
               <button className="btn-primary" onClick={() => setSelectedSelfie(null)}>
                 Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Support & Inquiries Modal with Screenshot Upload */}
+      {showSupportModal && (
+        <div className="modal-overlay" onClick={() => setShowSupportModal(false)} style={{ zIndex: 9990 }}>
+          <div className="modal-content" style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '1.25rem' }}>💬</span>
+                <h2>Workforce Support Inquiries &amp; Problem Desk</h2>
+              </div>
+              <button className="btn-close" onClick={() => setShowSupportModal(false)}>✕</button>
+            </div>
+
+            <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                className={`sw-toggle-btn ${supportTab === 'inbox' ? 'active' : ''}`}
+                onClick={() => setSupportTab('inbox')}
+                style={{ padding: '0.35rem 0.85rem', fontSize: '0.84rem' }}
+              >
+                Inquiries Inbox ({supportMessages.length})
+              </button>
+              <button
+                type="button"
+                className={`sw-toggle-btn ${supportTab === 'new' ? 'active' : ''}`}
+                onClick={() => setSupportTab('new')}
+                style={{ padding: '0.35rem 0.85rem', fontSize: '0.84rem' }}
+              >
+                + File Problem Ticket
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ maxHeight: '480px', overflowY: 'auto', padding: '1rem 1.25rem' }}>
+              {supportTab === 'inbox' ? (
+                supportMessages.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#64748b' }}>
+                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✓</div>
+                    <p>No support inquiries logged. All operational questions resolved!</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {supportMessages.map((m) => (
+                      <div
+                        key={m.id}
+                        style={{
+                          background: m.status === 'resolved' ? '#f8fafc' : '#ffffff',
+                          border: m.status === 'resolved' ? '1px solid #e2e8f0' : '1px solid #cbd5e1',
+                          borderRadius: '10px',
+                          padding: '12px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <div>
+                            <strong style={{ color: '#0f172a', fontSize: '0.9rem' }}>{m.senderName}</strong>{' '}
+                            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>({m.senderEmail})</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <span
+                              style={{
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                padding: '2px 8px',
+                                borderRadius: '9999px',
+                                background: m.status === 'resolved' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                                color: m.status === 'resolved' ? '#059669' : '#dc2626'
+                              }}
+                            >
+                              {m.status === 'resolved' ? '✓ Resolved' : '● Open Ticket'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'inline-block', fontSize: '0.74rem', fontWeight: 600, background: 'rgba(2, 132, 199, 0.08)', color: '#0284c7', padding: '2px 8px', borderRadius: '4px', marginBottom: '8px' }}>
+                          📁 {m.category}
+                        </div>
+
+                        <p style={{ margin: '0 0 10px', fontSize: '0.86rem', color: '#334155', lineHeight: 1.5 }}>
+                          "{m.message}"
+                        </p>
+
+                        {/* Problem Screenshot Preview */}
+                        {m.screenshotUrl && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(15, 23, 42, 0.04)', padding: '6px 10px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '10px' }}>
+                            <img
+                              src={m.screenshotUrl}
+                              alt="Problem Screenshot"
+                              style={{ width: '42px', height: '42px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid #cbd5e1' }}
+                              onClick={() => setSelectedSupportScreenshot({ url: m.screenshotUrl, title: `${m.senderName} — Problem Screenshot` })}
+                              title="Click to zoom screenshot"
+                            />
+                            <div style={{ flex: 1 }}>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a' }}>📸 Problem Screenshot Attached</span>
+                              <div style={{ fontSize: '0.74rem', color: '#64748b' }}>Click to view full problem image</div>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn-secondary btn-sm"
+                              onClick={() => setSelectedSupportScreenshot({ url: m.screenshotUrl, title: `${m.senderName} — Problem Screenshot` })}
+                            >
+                              Zoom Photo
+                            </button>
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '6px', borderTop: '1px dashed #e2e8f0' }}>
+                          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                            {new Date(m.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <button
+                            type="button"
+                            className="btn-ghost btn-sm"
+                            onClick={() => handleToggleTicketStatus(m.id)}
+                            style={{ fontSize: '0.76rem', color: m.status === 'resolved' ? '#64748b' : '#059669' }}
+                          >
+                            {m.status === 'resolved' ? '↺ Reopen Ticket' : '✓ Mark as Resolved'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : (
+                /* New Problem Ticket Form with Screenshot Upload */
+                <form onSubmit={handleSubmitSupportProblem} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div className="sw-input-group">
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Problem Category</label>
+                    <select
+                      value={supportCategory}
+                      onChange={(e) => setSupportCategory(e.target.value)}
+                      className="sw-input"
+                    >
+                      <option value="Biometric error">Biometric / Camera Issue</option>
+                      <option value="Punch correction">Punch / Timing Correction</option>
+                      <option value="Leave inquiry">Leave / Holiday Balance Query</option>
+                      <option value="Account details">Account / Profile Details Change</option>
+                      <option value="General support">General Support / Feedback</option>
+                    </select>
+                  </div>
+
+                  <div className="sw-input-group">
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Description of the Issue</label>
+                    <textarea
+                      required
+                      rows={3}
+                      value={supportMsg}
+                      onChange={(e) => setSupportMsg(e.target.value)}
+                      placeholder="Describe what error or difficulty occurred..."
+                      className="sw-input"
+                    />
+                  </div>
+
+                  <div className="sw-input-group" style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span>📸 Upload Screenshot / Photo of Problem</span>
+                      <span style={{ fontSize: '0.74rem', color: '#64748b' }}>(Optional)</span>
+                    </label>
+
+                    {!supportPhotoUrl ? (
+                      <div>
+                        <label className="btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', padding: '0.4rem 0.85rem' }}>
+                          <span>Attach Screenshot</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleSupportScreenshotUpload}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+                        <span style={{ marginLeft: '10px', fontSize: '0.75rem', color: '#94a3b8' }}>PNG, JPG or phone screenshot</span>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#ffffff', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                        <img
+                          src={supportPhotoUrl}
+                          alt="Screenshot preview"
+                          style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
+                          onClick={() => setSelectedSupportScreenshot({ url: supportPhotoUrl, title: 'Screenshot Preview' })}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            ✓ {supportPhotoName || 'Screenshot attached'}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-ghost"
+                          style={{ color: '#ef4444', fontSize: '0.76rem', padding: '2px 6px' }}
+                          onClick={() => {
+                            setSupportPhotoUrl(null)
+                            setSupportPhotoName('')
+                          }}
+                        >
+                          ✕ Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => setSupportTab('inbox')}
+                    >
+                      Back to Inbox
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn-primary"
+                      disabled={!supportMsg.trim()}
+                    >
+                      🚀 Submit Ticket
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setShowSupportModal(false)}>
+                Close Desk
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Screenshot Zoom Modal */}
+      {selectedSupportScreenshot && (
+        <div className="modal-overlay" onClick={() => setSelectedSupportScreenshot(null)} style={{ zIndex: 9999 }}>
+          <div className="modal-content" style={{ maxWidth: '580px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{selectedSupportScreenshot.title || 'Problem Screenshot'}</h2>
+              <button className="btn-close" onClick={() => setSelectedSupportScreenshot(null)}>✕</button>
+            </div>
+            <div className="modal-body" style={{ padding: '1rem' }}>
+              <img
+                src={selectedSupportScreenshot.url}
+                alt="Enlarged screenshot"
+                style={{ width: '100%', maxHeight: '480px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+              />
+            </div>
+            <div className="modal-footer" style={{ justifyContent: 'center' }}>
+              <button className="btn-primary" onClick={() => setSelectedSupportScreenshot(null)}>
+                Close Image
               </button>
             </div>
           </div>

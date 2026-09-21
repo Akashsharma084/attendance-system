@@ -209,6 +209,19 @@ a { color: var(--navy-900); }
   margin-bottom: 0.75rem;
 }
 
+.status-pill-not-joined {
+  background: rgba(148, 163, 184, 0.12);
+  color: #64748b;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .sw-btn-action-delete {
   display: inline-flex;
   align-items: center;
@@ -2002,6 +2015,17 @@ select option {
 .sw-day-card.absent {
   border-left: 4.5px solid #ef4444;
   opacity: 0.88;
+}
+
+.sw-day-card.not-joined {
+  border-left: 4.5px solid #94a3b8;
+  background: rgba(248, 250, 252, 0.85);
+  opacity: 0.85;
+}
+
+.sw-day-card.holiday {
+  border-left: 4.5px solid #f59e0b;
+  background: rgba(254, 243, 199, 0.3);
 }
 
 .sw-day-card-header {
@@ -7099,3 +7123,599 @@ tbody tr:hover {
   white-space: nowrap;
 }
 
+/* ==========================================================================
+   AUTO-CAPTURE HUD COUNTDOWN & GREETING MODAL ENHANCEMENTS
+   ========================================================================== */
+.sw-hud-countdown-box {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+  background: rgba(9, 13, 24, 0.35);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.sw-countdown-circle-pulse {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.22);
+  border: 3px solid #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.7), inset 0 0 15px rgba(16, 185, 129, 0.4);
+  animation: countdownPulse 0.65s infinite alternate ease-in-out;
+}
+
+.sw-countdown-big-num {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.9);
+  line-height: 1;
+}
+
+.sw-countdown-subtext {
+  margin-top: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #a7f3d0;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+@keyframes countdownPulse {
+  0% {
+    transform: scale(0.92);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+  }
+  100% {
+    transform: scale(1.08);
+    box-shadow: 0 0 35px rgba(16, 185, 129, 0.9), 0 0 10px #10b981;
+  }
+}
+
+/* Greeting Modal Special Polish */
+.sw-greeting-modal {
+  position: relative;
+  overflow: hidden;
+  animation: greetingPop 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes greetingPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.85) translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.sw-greeting-name {
+  background: linear-gradient(135deg, #0f172a 0%, #047857 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Pre-joining pill in calendar */
+.sw-cal-status-pill.not-joined {
+  background: rgba(148, 163, 184, 0.15);
+  color: #64748b;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+/* ================= IN-APP PERMISSION PRIMER MODAL ================= */
+.sw-perm-modal {
+  max-width: 480px !important;
+  width: 92% !important;
+  text-align: center;
+  padding: 2.2rem 1.8rem !important;
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%) !important;
+  border-radius: 24px !important;
+  border: 1px solid rgba(14, 165, 233, 0.25) !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.8) inset !important;
+  animation: modalPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalPopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.sw-perm-icon-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 1.2rem;
+}
+
+.sw-perm-badge-circle {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.65rem;
+  transition: transform 0.2s ease;
+}
+
+.sw-perm-badge-circle.cam {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%);
+  border: 2px solid rgba(14, 165, 233, 0.4);
+  box-shadow: 0 4px 15px rgba(14, 165, 233, 0.2);
+}
+
+.sw-perm-badge-circle.loc {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%);
+  border: 2px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+}
+
+.sw-perm-icon-plus {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #94a3b8;
+}
+
+.sw-perm-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.sw-perm-desc {
+  font-size: 0.88rem;
+  color: #64748b;
+  margin: 0 0 1.25rem;
+  line-height: 1.55;
+}
+
+.sw-perm-features {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(241, 245, 249, 0.7);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+  text-align: left;
+  margin-bottom: 1.4rem;
+}
+
+.sw-perm-feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 0.82rem;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.sw-perm-feat-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #10b981;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.65rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.sw-perm-options-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 1.2rem;
+}
+
+.sw-perm-options-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+}
+
+/* Big option button */
+.sw-perm-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 1rem 1.2rem;
+  border-radius: 16px;
+  text-align: left;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  background: #ffffff;
+}
+
+.sw-perm-btn:hover {
+  transform: translateY(-2px);
+}
+
+.sw-perm-btn:active {
+  transform: translateY(1px);
+}
+
+/* Always Allow Button (Primary Emerald) */
+.sw-perm-btn-always {
+  border-color: #10b981;
+  background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15);
+}
+
+.sw-perm-btn-always:hover {
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.28);
+  border-color: #059669;
+}
+
+/* Allow Once Button (Secondary Indigo/Sky) */
+.sw-perm-btn-once {
+  border-color: #cbd5e1;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.sw-perm-btn-once:hover {
+  border-color: #0284c7;
+  background: #f0f9ff;
+  box-shadow: 0 6px 18px rgba(2, 132, 199, 0.15);
+}
+
+.sw-perm-btn-icon-wrap {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.sw-perm-btn-content {
+  flex: 1;
+}
+
+.sw-perm-btn-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sw-perm-btn-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.sw-perm-btn-sub {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+.sw-perm-recommended-pill {
+  font-size: 0.68rem;
+  font-weight: 800;
+  background: #10b981;
+  color: #ffffff;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Helper note */
+.sw-perm-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: #475569;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 8px 12px;
+  line-height: 1.4;
+}
+
+.sw-perm-notice-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* Permission Blocked Guide Card */
+.sw-perm-blocked-card {
+  display: flex;
+  gap: 14px;
+  background: #fff1f2;
+  border: 1.5px solid #fecdd3;
+  border-radius: 16px;
+  padding: 1.15rem;
+  margin: 1.25rem 0;
+  text-align: left;
+  box-shadow: 0 4px 16px rgba(244, 63, 94, 0.1);
+}
+
+.sw-perm-blocked-icon {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.sw-perm-blocked-content h4 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #9f1239;
+}
+
+.sw-perm-blocked-content p {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  color: #881337;
+  line-height: 1.45;
+}
+
+.sw-perm-blocked-content ol {
+  margin: 0 0 10px;
+  padding-left: 18px;
+  font-size: 0.8rem;
+  color: #4c0519;
+  line-height: 1.5;
+}
+
+.sw-perm-blocked-content ol li {
+  margin-bottom: 2px;
+}
+
+/* Permission Status Indicator Chip */
+.sw-perm-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.78rem;
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  margin-bottom: 12px;
+}
+
+.sw-perm-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.sw-perm-change-link {
+  background: none;
+  border: none;
+  color: #0284c7;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  margin-left: 2px;
+}
+
+.sw-perm-change-link:hover {
+  color: #0369a1;
+}
+
+/* ================= SEPARATE PERMISSION SCREEN ================= */
+.punch-card.perm-card {
+  max-width: 520px !important;
+  padding: 2.2rem 1.8rem !important;
+  text-align: center;
+}
+
+.status-pill-h {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Neutral table row for pre-joining days */
+.row-neutral {
+  background-color: rgba(248, 250, 252, 0.6);
+  color: #64748b;
+}
+
+/* Calendar cell for pre-joining days */
+.sw-cal-cell.cell-notjoined {
+  background: rgba(248, 250, 252, 0.6);
+  border-color: rgba(226, 232, 240, 0.7);
+  opacity: 0.82;
+}
+
+/* ================= COMPACT NOTIFICATION-STYLE PERMISSION TOAST ================= */
+.sw-perm-notif-toast {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(240, 249, 255, 0.96));
+  border: 1.5px solid rgba(14, 165, 233, 0.35);
+  border-radius: 16px;
+  padding: 1rem 1.15rem;
+  margin: 0.5rem 0 1.15rem;
+  box-shadow: 
+    0 10px 25px -5px rgba(14, 165, 233, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+  text-align: left;
+  animation: slideDownToast 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+@keyframes slideDownToast {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.sw-perm-notif-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.sw-perm-notif-icon-col {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(14, 165, 233, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  border: 1px solid rgba(14, 165, 233, 0.2);
+}
+
+.sw-perm-notif-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.sw-perm-notif-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sw-perm-notif-title {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.sw-perm-notif-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #0284c7;
+  background: rgba(14, 165, 233, 0.12);
+  padding: 1px 7px;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+}
+
+.sw-perm-notif-sub {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: #475569;
+  line-height: 1.35;
+}
+
+.sw-perm-notif-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 3px 6px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.sw-perm-notif-close:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+}
+
+.sw-perm-notif-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+}
+
+@media (max-width: 480px) {
+  .sw-perm-notif-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sw-perm-notif-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1.5px solid transparent;
+}
+
+.sw-perm-notif-btn.always {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.sw-perm-notif-btn.always:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+}
+
+.sw-perm-notif-btn.once {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.sw-perm-notif-btn.once:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+}
+
+.sw-perm-notif-footer-hint {
+  margin-top: 0.65rem;
+  font-size: 0.73rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  line-height: 1.35;
+}

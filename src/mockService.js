@@ -1,9 +1,11 @@
-import { todayDateKey, monthKey } from './utils/dateHelpers'
+import { todayDateKey, monthKey } from './utils/dateHelpers.js'
 
 const STORAGE_KEY_USERS = 'punch_demo_users'
 const STORAGE_KEY_ATTENDANCE = 'punch_demo_attendance'
 const STORAGE_KEY_LEAVES = 'punch_demo_leaves'
 const STORAGE_KEY_SESSION = 'punch_demo_session'
+
+const SAMPLE_MEDICAL_PROOF = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="100%" height="100%" fill="%23f8fafc"/><rect x="20" y="20" width="560" height="360" rx="12" fill="%23ffffff" stroke="%23cbd5e1" stroke-width="2"/><text x="50" y="65" font-family="sans-serif" font-size="20" font-weight="bold" fill="%230f172a">🏥 CITY GENERAL HOSPITAL</text><text x="50" y="90" font-family="sans-serif" font-size="12" fill="%2364748b">Medical Consultation %26 Sickness Certificate</text><line x1="50" y1="105" x2="550" y2="105" stroke="%23e2e8f0" stroke-width="1.5"/><text x="50" y="140" font-family="sans-serif" font-size="14" font-weight="bold" fill="%23334155">Patient Name:</text><text x="160" y="140" font-family="sans-serif" font-size="14" fill="%230f172a">Maria Santos</text><text x="50" y="170" font-family="sans-serif" font-size="14" font-weight="bold" fill="%23334155">Diagnosis:</text><text x="160" y="170" font-family="sans-serif" font-size="14" fill="%230f172a">Acute Viral Pharyngitis %26 High Grade Fever</text><text x="50" y="200" font-family="sans-serif" font-size="14" font-weight="bold" fill="%23334155">Recommended:</text><text x="160" y="200" font-family="sans-serif" font-size="14" fill="%230f172a">Strict bed rest for 2 days (Sep 10 - Sep 11, 2026)</text><rect x="50" y="235" width="220" height="70" rx="8" fill="%23f0fdf4" stroke="%2386efac" stroke-width="1"/><text x="65" y="260" font-family="sans-serif" font-size="12" font-weight="bold" fill="%2315803d">✓ VERIFIED MEDICAL SLIP</text><text x="65" y="282" font-family="sans-serif" font-size="11" fill="%23166534">Dr. Robert Chen, MD • Reg #84920</text><circle cx="500" cy="270" r="35" fill="%23f1f5f9" stroke="%2394a3b8" stroke-dasharray="4"/><text x="500" y="275" font-family="sans-serif" font-size="11" text-anchor="middle" fill="%2364748b">OFFICIAL STAMP</text></svg>'
 
 const DEFAULT_LEAVES = [
   {
@@ -16,6 +18,7 @@ const DEFAULT_LEAVES = [
     endDate: '2026-09-24',
     daysCount: 3,
     reason: 'Attending family reunion out of state',
+    proofPhotoUrl: null,
     status: 'pending',
     createdAt: new Date(Date.now() - 86400000).toISOString(),
     reviewedBy: null,
@@ -33,6 +36,7 @@ const DEFAULT_LEAVES = [
     endDate: '2026-09-11',
     daysCount: 2,
     reason: 'Severe seasonal flu and doctor consultation',
+    proofPhotoUrl: SAMPLE_MEDICAL_PROOF,
     status: 'approved',
     createdAt: new Date(Date.now() - 864000000).toISOString(),
     reviewedBy: 'demo-admin-uid',
@@ -89,7 +93,7 @@ function generateSeedAttendance() {
   // For the last 5 business days
   for (let d = Math.max(1, today.getDate() - 5); d < today.getDate(); d++) {
     const dayDate = new Date(currentYear, currentMonthNum, d)
-    if (dayDate.getDay() === 0 || dayDate.getDay() === 6) continue // skip weekends
+    if (dayDate.getDay() === 0) continue // skip Sunday (off day)
 
     const pad = (n) => String(n).padStart(2, '0')
     const dateStr = `${currentYear}-${pad(currentMonthNum + 1)}-${pad(d)}`
@@ -327,7 +331,7 @@ export function mockGetLeavesList({ uid, status } = {}) {
   }).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
 }
 
-export function mockCreateLeaveRequest({ uid, userName, userEmail, leaveType, startDate, endDate, daysCount, reason }) {
+export function mockCreateLeaveRequest({ uid, userName, userEmail, leaveType, startDate, endDate, daysCount, reason, proofPhotoUrl = null }) {
   const all = getStoredLeaves()
   const newLeave = {
     id: `leave-${Date.now()}`,
@@ -339,6 +343,7 @@ export function mockCreateLeaveRequest({ uid, userName, userEmail, leaveType, st
     endDate,
     daysCount: Number(daysCount) || 1,
     reason: (reason || '').trim(),
+    proofPhotoUrl: proofPhotoUrl || null,
     status: 'pending',
     createdAt: new Date().toISOString(),
     reviewedBy: null,

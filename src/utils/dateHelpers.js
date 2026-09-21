@@ -3,6 +3,10 @@ import { getHoliday, isHoliday } from './holidays.js'
 // Re-export for convenience across pages
 export { getHoliday, isHoliday }
 
+// Company inception date: August 7, 2026 (7/8/26)
+export const COMPANY_START_DATE = '2026-08-07'
+export const COMPANY_START_MONTH = '2026-08'
+
 export function todayDateKey(d = new Date()) {
   return d.toLocaleDateString('en-CA') // YYYY-MM-DD, respects local timezone
 }
@@ -19,19 +23,45 @@ export function formatTime(timestamp) {
 }
 
 export function formatMonthLabel(key) {
+  if (!key) return ''
   const [year, month] = key.split('-')
   const d = new Date(Number(year), Number(month) - 1, 1)
   return d.toLocaleDateString([], { month: 'long', year: 'numeric' })
 }
 
-export function lastNMonthKeys(n = 6) {
-  const out = []
+/**
+ * Returns available month keys starting strictly from company inception: 2026-08 (August 2026)
+ * up to the current month. Does not allow picking pre-company months.
+ */
+export function getAvailableMonthKeys() {
+  const [startYear, startMonth] = COMPANY_START_MONTH.split('-').map(Number)
   const now = new Date()
-  for (let i = 0; i < n; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    out.push(monthKey(d))
+  const curYear = now.getFullYear()
+  const curMonth = now.getMonth() + 1 // 1-indexed
+
+  const keys = []
+  let y = curYear
+  let m = curMonth
+
+  while (y > startYear || (y === startYear && m >= startMonth)) {
+    keys.push(`${y}-${String(m).padStart(2, '0')}`)
+    m--
+    if (m < 1) {
+      m = 12
+      y--
+    }
   }
-  return out
+
+  // Fallback if system date is behind company launch
+  if (keys.length === 0) {
+    keys.push(COMPANY_START_MONTH)
+  }
+  return keys
+}
+
+// Backward compatibility alias for any existing imports
+export function lastNMonthKeys(n = 6) {
+  return getAvailableMonthKeys()
 }
 
 export function getWeekday(dateStr, format = 'short') {
@@ -45,6 +75,7 @@ export function getWeekday(dateStr, format = 'short') {
  * Returns all working days (Mon-Fri) for a given monthKey (YYYY-MM).
  * For current month, goes up to today.
  * For past months, goes up to end of the month.
+ * Days prior to company inception (2026-08-07) are excluded.
  */
 export function getMonthWorkingDays(targetMonthKey) {
   const [yearNum, monthNum] = targetMonthKey.split('-').map(Number)
@@ -65,17 +96,20 @@ export function getMonthWorkingDays(targetMonthKey) {
   for (let d = 1; d <= lastDay; d++) {
     const dateObj = new Date(yearNum, monthNum - 1, d)
     const dayOfWeek = dateObj.getDay()
-    // Monday = 1, Friday = 5. Skip weekends (0 = Sunday, 6 = Saturday)
-    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+    // Monday to Saturday = 1 to 6. Skip Sunday = 0 (Sunday is the only off day)
+    if (dayOfWeek >= 1 && dayOfWeek <= 6) {
       const dateStr = `${yearNum}-${pad(monthNum)}-${pad(d)}`
-      const holiday = getHoliday(dateStr)
-      days.push({
-        date: dateStr,
-        weekday: dateObj.toLocaleDateString('en-US', { weekday: 'short' }),
-        weekdayFull: dateObj.toLocaleDateString('en-US', { weekday: 'long' }),
-        dayNumber: d,
-        holiday
-      })
+      // Exclude days before company inception (2026-08-07)
+      if (dateStr >= COMPANY_START_DATE) {
+        const holiday = getHoliday(dateStr)
+        days.push({
+          date: dateStr,
+          weekday: dateObj.toLocaleDateString('en-US', { weekday: 'short' }),
+          weekdayFull: dateObj.toLocaleDateString('en-US', { weekday: 'long' }),
+          dayNumber: d,
+          holiday
+        })
+      }
     }
   }
 
@@ -83,20 +117,52 @@ export function getMonthWorkingDays(targetMonthKey) {
 }
 
 /**
+ * Determines employee's first day of work/check-in or explicit join date.
+ * If employee has never checked in and has no join date, returns null.
+ */
+export function getEmployeeStartDate(records = [], employeeInfo = {}) {
+  if (employeeInfo?.joinDate) return employeeInfo.joinDate
+  if (employeeInfo?.startDate) return employeeInfo.startDate
+  if (employeeInfo?.createdAt) {
+    const cDate = typeof employeeInfo.createdAt === 'string'
+      ? employeeInfo.createdAt.slice(0, 10)
+      : employeeInfo.createdAt.toDate
+      ? todayDateKey(employeeInfo.createdAt.toDate())
+      : null
+    if (cDate && cDate >= COMPANY_START_DATE) return cDate
+  }
+
+  let earliest = null
+  for (const r of records) {
+    if (r.date && (r.checkInTime || r.status === 'P')) {
+      if (!earliest || r.date < earliest) {
+        earliest = r.date
+      }
+    }
+  }
+  return earliest
+}
+
+/**
  * Merges punch records with working calendar days for an employee.
- * Marks present days as 'P', holidays as 'H', and unrecorded working days as 'A'.
+ * Marks present days as 'P', holidays as 'H', days before joining as 'NOT_JOINED' (not absent!),
+ * and unrecorded working days after joining as 'A'.
  */
 export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo = {}) {
   const workingDays = getMonthWorkingDays(targetMonthKey)
   const recordMap = new Map()
 
   records.forEach((r) => {
-    recordMap.set(r.date, r)
+    if (r.date) recordMap.set(r.date, r)
   })
+
+  // Determine starting date of employee (first check-in date or joinDate)
+  const empStartDate = getEmployeeStartDate(records, employeeInfo)
 
   let presentCount = 0
   let absentCount = 0
   let holidayCount = 0
+  let notJoinedCount = 0
   let fullDaysCount = 0
 
   const schedule = workingDays.map((day) => {
@@ -142,6 +208,27 @@ export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo
         checkOutLocation: null,
         isComplete: false
       }
+    } else if (!empStartDate || day.date < empStartDate) {
+      // Days prior to employee joining/first check-in are NOT absent!
+      notJoinedCount++
+      return {
+        id: `not-joined-${day.date}`,
+        date: day.date,
+        weekday: day.weekday,
+        weekdayFull: day.weekdayFull,
+        status: 'NOT_JOINED',
+        statusLabel: 'Not Joined Yet',
+        holiday: null,
+        name: employeeInfo.name || 'Employee',
+        uid: employeeInfo.uid,
+        checkInTime: null,
+        checkOutTime: null,
+        checkInSelfieUrl: null,
+        checkInLocation: null,
+        checkOutSelfieUrl: null,
+        checkOutLocation: null,
+        isComplete: false
+      }
     } else {
       absentCount++
       return {
@@ -150,6 +237,7 @@ export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo
         weekday: day.weekday,
         weekdayFull: day.weekdayFull,
         status: 'A',
+        statusLabel: 'Absent',
         holiday: null,
         name: employeeInfo.name || 'Employee',
         uid: employeeInfo.uid,
@@ -164,14 +252,17 @@ export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo
     }
   })
 
-  // Effective working days exclude official paid holidays
-  const effectiveWorkingDays = Math.max(1, workingDays.length - holidayCount)
+  // Effective working days for this employee exclude holidays and days before their joining
+  const activeWorkingDays = Math.max(0, workingDays.length - notJoinedCount)
+  const effectiveWorkingDays = Math.max(0, activeWorkingDays - holidayCount)
 
   return {
     schedule,
     presentCount,
     absentCount,
     holidayCount,
+    notJoinedCount,
+    empStartDate,
     totalWorkingDays: workingDays.length,
     effectiveWorkingDays,
     fullDaysCount

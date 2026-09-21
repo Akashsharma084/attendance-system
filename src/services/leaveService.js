@@ -79,7 +79,8 @@ export async function submitLeaveRequest({
   startDate,
   endDate,
   daysCount,
-  reason
+  reason,
+  proofPhotoUrl = null
 }) {
   if (!isFirebaseConfigured || !db) {
     return mockCreateLeaveRequest({
@@ -90,7 +91,8 @@ export async function submitLeaveRequest({
       startDate,
       endDate,
       daysCount,
-      reason
+      reason,
+      proofPhotoUrl
     })
   }
 
@@ -103,6 +105,7 @@ export async function submitLeaveRequest({
     endDate,
     daysCount: Number(daysCount) || 1,
     reason: (reason || '').trim(),
+    proofPhotoUrl: proofPhotoUrl || null,
     status: 'pending',
     createdAt: serverTimestamp(),
     reviewedBy: null,

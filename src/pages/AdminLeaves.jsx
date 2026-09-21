@@ -29,6 +29,7 @@ export default function AdminLeaves() {
   const [adminNote, setAdminNote] = useState('')
   const [reviewSubmitting, setReviewSubmitting] = useState(false)
   const [reviewError, setReviewError] = useState('')
+  const [selectedProof, setSelectedProof] = useState(null)
 
   const today = todayDateKey()
 
@@ -383,6 +384,21 @@ export default function AdminLeaves() {
                     <p className="sw-leave-reason-text">"{l.reason}"</p>
                   </div>
 
+                  {/* Medical Proof Photo if attached */}
+                  {l.proofPhotoUrl && (
+                    <div style={{ margin: '0.65rem 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.35rem 0.75rem', fontSize: '0.8rem', borderColor: '#f59e0b', color: '#f59e0b', background: 'rgba(245, 158, 11, 0.08)' }}
+                        onClick={() => setSelectedProof({ url: l.proofPhotoUrl, title: `${l.userName || 'Employee'} — Medical Proof Certificate` })}
+                      >
+                        <span>🩺</span>
+                        <span>Inspect Medical Proof Photo</span>
+                      </button>
+                    </div>
+                  )}
+
                   {/* Review note if present */}
                   {(l.adminNote || l.reviewedByName) && (
                     <div className={`sw-leave-review-box ${l.status}`}>
@@ -475,6 +491,29 @@ export default function AdminLeaves() {
                   <div style={{ marginTop: '8px', fontSize: '0.88rem', fontStyle: 'italic', color: '#f1f5f9', background: 'rgba(15, 23, 42, 0.6)', padding: '0.5rem 0.75rem', borderRadius: '8px', borderLeft: '3px solid #38bdf8' }}>
                     "{activeReviewLeave.reason}"
                   </div>
+                  {activeReviewLeave.proofPhotoUrl && (
+                    <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(245, 158, 11, 0.08)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                      <img
+                        src={activeReviewLeave.proofPhotoUrl}
+                        alt="Medical proof slip"
+                        style={{ width: '42px', height: '42px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid #f59e0b' }}
+                        onClick={() => setSelectedProof({ url: activeReviewLeave.proofPhotoUrl, title: `${activeReviewLeave.userName || 'Employee'} — Medical Proof Certificate` })}
+                        title="Click to zoom proof photo"
+                      />
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#fbbf24' }}>🩺 Doctor / Medical Proof Attached</span>
+                        <div style={{ fontSize: '0.76rem', color: '#94a3b8' }}>Click thumbnail to inspect full document</div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        style={{ padding: '4px 10px', fontSize: '0.78rem', borderColor: '#f59e0b', color: '#fbbf24' }}
+                        onClick={() => setSelectedProof({ url: activeReviewLeave.proofPhotoUrl, title: `${activeReviewLeave.userName || 'Employee'} — Medical Proof Certificate` })}
+                      >
+                        Enlarge
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Decision Toggle */}
@@ -541,6 +580,30 @@ export default function AdminLeaves() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Medical Proof Zoom Modal */}
+        {selectedProof && (
+          <div className="modal-overlay" onClick={() => setSelectedProof(null)} style={{ zIndex: 9999 }}>
+            <div className="modal-card" style={{ maxWidth: '540px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>{selectedProof.title || 'Medical Proof Document'}</h2>
+                <button className="btn-close" onClick={() => setSelectedProof(null)}>✕</button>
+              </div>
+              <div style={{ padding: '1rem' }}>
+                <img
+                  src={selectedProof.url}
+                  alt="Medical proof document"
+                  style={{ width: '100%', maxHeight: '480px', objectFit: 'contain', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}
+                />
+              </div>
+              <div className="modal-footer" style={{ justifyContent: 'center' }}>
+                <button className="btn-primary" onClick={() => setSelectedProof(null)}>
+                  Close Proof
+                </button>
+              </div>
             </div>
           </div>
         )}
