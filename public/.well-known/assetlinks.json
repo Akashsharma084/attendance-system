@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.web.swl_attendence_portal.twa",
+      "sha256_cert_fingerprints": [
+        "37:F1:41:D8:79:F2:F0:5B:3C:38:68:21:48:92:81:D5:83:43:C4:78:BD:37:88:D7:2B:8F:D6:5E:91:9C:DE:17"
+      ]
+    }
+  }
+]

@@ -363,20 +363,34 @@ export function AuthProvider({ children }) {
       // Update Firebase Auth profile
       const authUpdates = {}
       if (cleanUpdates.name) authUpdates.displayName = cleanUpdates.name
-      if (cleanUpdates.photoURL !== undefined) authUpdates.photoURL = cleanUpdates.photoURL
+      if (cleanUpdates.photoURL !== undefined) {
+        // Firebase Auth only accepts HTTP/HTTPS URLs (max 2048 chars)
+        // If it's a data:image base64 url, store it in Firestore only
+        if (cleanUpdates.photoURL && !cleanUpdates.photoURL.startsWith('data:')) {
+          authUpdates.photoURL = cleanUpdates.photoURL
+        } else if (!cleanUpdates.photoURL) {
+          authUpdates.photoURL = ''
+        }
+      }
       try {
-        await updateProfile(auth.currentUser, authUpdates)
+        if (Object.keys(authUpdates).length > 0) {
+          await updateProfile(auth.currentUser, authUpdates)
+        }
       } catch (err) {
         console.warn('Auth profile update note:', err)
       }
 
-      // Update Firestore user document
+      // Update Firestore user document (setDoc with merge creates or updates safely)
       if (db) {
         const userRef = doc(db, 'users', auth.currentUser.uid)
-        await updateDoc(userRef, {
-          ...cleanUpdates,
-          updatedAt: serverTimestamp()
-        })
+        await setDoc(
+          userRef,
+          {
+            ...cleanUpdates,
+            updatedAt: serverTimestamp()
+          },
+          { merge: true }
+        )
       }
 
       // Update local profile state immediately

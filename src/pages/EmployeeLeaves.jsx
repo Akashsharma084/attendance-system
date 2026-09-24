@@ -5,6 +5,7 @@ import { subscribeLeaves, submitLeaveRequest, cancelLeaveRequest } from '../serv
 import { todayDateKey } from '../utils/dateHelpers'
 import { getUpcomingHoliday } from '../utils/holidays.js'
 import NavBar from '../components/NavBar'
+import DocumentUploadBox from '../components/DocumentUploadBox'
 
 const LEAVE_TYPES = [
   { id: 'vacation', label: 'Vacation / PTO', icon: '🌴', color: '#0ea5e9' },
@@ -580,67 +581,33 @@ export default function EmployeeLeaves() {
                   />
                 </div>
 
-                {/* Sick Leave Medical Proof Photo Upload */}
+                {/* Sick Leave Medical Proof Document Upload Box */}
                 {leaveType === 'sick' && (
-                  <div className="sw-input-group" style={{ marginTop: '1rem', background: 'rgba(245, 158, 11, 0.08)', padding: '0.9rem', borderRadius: '12px', border: '1px dashed rgba(245, 158, 11, 0.45)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
-                      <label style={{ color: '#fbbf24', fontWeight: 700, fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-                        <span>🩺 Medical Proof / Doctor Slip</span>
-                        <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 500 }}>(Optional Proof)</span>
-                      </label>
-                    </div>
-                    <p style={{ margin: '0 0 0.65rem', fontSize: '0.78rem', color: '#cbd5e1', lineHeight: 1.4 }}>
-                      Attach a photo of your doctor's certificate, clinic note, or medical slip as verification.
-                    </p>
-
-                    {!proofPhotoUrl ? (
-                      <div>
-                        <label className="btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '0.45rem 0.9rem', fontSize: '0.84rem', borderColor: '#f59e0b', color: '#fbbf24' }}>
-                          <span>📷 Choose Proof Photo</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleProofUpload}
-                            style={{ display: 'none' }}
-                          />
-                        </label>
-                        <span style={{ marginLeft: '10px', fontSize: '0.78rem', color: '#94a3b8' }}>JPG, PNG photo</span>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(15, 23, 42, 0.65)', padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-                        <img
-                          src={proofPhotoUrl}
-                          alt="Medical proof preview"
-                          style={{ width: '44px', height: '44px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid #f59e0b' }}
-                          onClick={() => setSelectedProof({ url: proofPhotoUrl, title: 'Medical Proof Preview' })}
-                          title="Click to zoom proof photo"
-                        />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            ✓ {proofPhotoName || 'Proof Photo Attached'}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedProof({ url: proofPhotoUrl, title: 'Medical Proof Preview' })}
-                            style={{ background: 'none', border: 'none', padding: 0, color: '#38bdf8', fontSize: '0.76rem', cursor: 'pointer', textDecoration: 'underline' }}
-                          >
-                            Zoom photo
-                          </button>
-                        </div>
-                        <button
-                          type="button"
-                          className="btn-ghost"
-                          style={{ color: '#ef4444', fontSize: '0.78rem', padding: '3px 8px' }}
-                          onClick={() => {
-                            setProofPhotoUrl(null)
-                            setProofPhotoName('')
-                          }}
-                        >
-                          ✕ Remove
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <DocumentUploadBox
+                    label="🩺 Medical Proof / Doctor Slip"
+                    optional={true}
+                    title="Upload Medical Document or Slip"
+                    subtitle="Drag & drop your doctor note, hospital slip, or medical certificate here, or browse files"
+                    value={proofPhotoUrl}
+                    fileName={proofPhotoName}
+                    accept="image/*,application/pdf"
+                    accentColor="#f59e0b"
+                    theme="dark"
+                    onChange={({ dataUrl, name }) => {
+                      setProofPhotoUrl(dataUrl)
+                      setProofPhotoName(name)
+                    }}
+                    onClear={() => {
+                      setProofPhotoUrl(null)
+                      setProofPhotoName('')
+                    }}
+                    onPreview={({ url, name }) => {
+                      setSelectedProof({
+                        url,
+                        title: name ? `${name} — Medical Proof Document` : 'Medical Proof Document Preview'
+                      })
+                    }}
+                  />
                 )}
 
                 {/* Modal Actions */}
@@ -676,11 +643,30 @@ export default function EmployeeLeaves() {
               <button className="btn-close" onClick={() => setSelectedProof(null)}>✕</button>
             </div>
             <div style={{ padding: '1rem' }}>
-              <img
-                src={selectedProof.url}
-                alt="Medical proof"
-                style={{ width: '100%', maxHeight: '480px', objectFit: 'contain', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}
-              />
+              {selectedProof.url?.startsWith('data:application/pdf') || selectedProof.url?.toLowerCase().endsWith('.pdf') ? (
+                <div style={{ padding: '2rem 1rem', background: '#0f172a', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>📄</div>
+                  <h4 style={{ color: '#f8fafc', margin: '0 0 0.5rem' }}>{selectedProof.title}</h4>
+                  <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
+                    PDF Medical Document Attached
+                  </p>
+                  <a
+                    href={selectedProof.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-primary"
+                    style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '0.55rem 1.25rem' }}
+                  >
+                    <span>↗ Open / View Full PDF</span>
+                  </a>
+                </div>
+              ) : (
+                <img
+                  src={selectedProof.url}
+                  alt="Medical proof"
+                  style={{ width: '100%', maxHeight: '480px', objectFit: 'contain', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}
+                />
+              )}
             </div>
             <div className="modal-footer" style={{ justifyContent: 'center' }}>
               <button className="btn-primary" onClick={() => setSelectedProof(null)}>

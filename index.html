@@ -23,9 +23,21 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch((err) => {
+          navigator.serviceWorker.register('/sw.js').then((reg) => {
+            // Force service worker to check for new version on every launch
+            reg.update()
+          }).catch((err) => {
             console.warn('ServiceWorker note:', err)
           })
+        })
+
+        // Auto-reload to immediately show updates as soon as new Service Worker activates
+        let isRefreshing = false
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!isRefreshing) {
+            isRefreshing = true
+            window.location.reload()
+          }
         })
       }
     </script>

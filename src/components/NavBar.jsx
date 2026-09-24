@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { subscribeLeaves } from '../services/leaveService'
 import DemoBanner from './DemoBanner'
 import InstallPwaButton from './InstallPwaButton'
+import DocumentUploadBox from './DocumentUploadBox'
 
 export default function NavBar() {
   const { profile, user, isAdmin, logout, updateUserProfile, changePassword, isDemoMode } = useAuth()
@@ -376,7 +377,7 @@ export default function NavBar() {
             </button>
 
             <div className="sw-app-brand" style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-              <img src="/icon-192.png" alt="Softwind Labs Logo" style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'contain', background: '#ffffff', padding: '2px', boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)' }} />
+              <img src="/icon-192.png" alt="Softwind Labs Logo" style={{ width: '32px', height: '32px', minWidth: '32px', minHeight: '32px', flexShrink: 0, borderRadius: '8px', objectFit: 'contain', background: '#ffffff', padding: '2px', boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)', display: 'block' }} />
               <span className="sw-brand-text">
                 SOFTWIND<span className="sw-brand-highlight">.LABS</span>
               </span>
@@ -966,59 +967,29 @@ export default function NavBar() {
                         />
                       </div>
 
-                      {/* Screenshot Upload Option */}
-                      <div className="sw-input-group" style={{ marginTop: '0.75rem' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.86rem' }}>
-                          <span>Attach Screenshot / Photo of Problem</span>
-                          <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>(Optional)</span>
-                        </label>
-                        {!contactScreenshot ? (
-                          <div style={{ marginTop: '4px' }}>
-                            <label className="btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.45rem 0.85rem', fontSize: '0.82rem' }}>
-                              <span>📸 Upload Screenshot</span>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleContactScreenshotUpload}
-                                style={{ display: 'none' }}
-                              />
-                            </label>
-                          </div>
-                        ) : (
-                          <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(15, 23, 42, 0.7)', padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
-                            <img
-                              src={contactScreenshot}
-                              alt="Problem screenshot"
-                              style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid #38bdf8' }}
-                              onClick={() => setSelectedSupportPhoto(contactScreenshot)}
-                              title="Click to zoom screenshot"
-                            />
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: '0.8rem', color: '#f8fafc', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                ✓ {contactScreenshotName || 'Screenshot attached'}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setSelectedSupportPhoto(contactScreenshot)}
-                                style={{ background: 'none', border: 'none', padding: 0, color: '#38bdf8', fontSize: '0.74rem', cursor: 'pointer', textDecoration: 'underline' }}
-                              >
-                                View full image
-                              </button>
-                            </div>
-                            <button
-                              type="button"
-                              className="btn-ghost"
-                              style={{ color: '#ef4444', fontSize: '0.78rem', padding: '2px 6px' }}
-                              onClick={() => {
-                                setContactScreenshot(null)
-                                setContactScreenshotName('')
-                              }}
-                            >
-                              ✕ Remove
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      {/* Document / Screenshot Upload Box */}
+                      <DocumentUploadBox
+                        label="📸 Screenshot or Supporting Document"
+                        optional={true}
+                        title="Upload Support Screenshot or Document"
+                        subtitle="Drag & drop problem screenshot or document here, or browse files"
+                        value={contactScreenshot}
+                        fileName={contactScreenshotName}
+                        accept="image/*,application/pdf"
+                        accentColor="#0284c7"
+                        theme="light"
+                        onChange={({ dataUrl, name }) => {
+                          setContactScreenshot(dataUrl)
+                          setContactScreenshotName(name)
+                        }}
+                        onClear={() => {
+                          setContactScreenshot(null)
+                          setContactScreenshotName('')
+                        }}
+                        onPreview={({ url }) => {
+                          setSelectedSupportPhoto(url)
+                        }}
+                      />
 
                       <div className="sw-sheet-actions" style={{ marginTop: '1rem' }}>
                         <button

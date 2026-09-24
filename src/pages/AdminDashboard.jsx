@@ -19,6 +19,7 @@ import {
 import { mockGetAttendanceList, getStoredUsers } from '../mockService'
 import { subscribeLeaves } from '../services/leaveService'
 import NavBar from '../components/NavBar'
+import DocumentUploadBox from '../components/DocumentUploadBox'
 
 const DEFAULT_SUPPORT_TICKETS = [
   {
@@ -1994,52 +1995,29 @@ export default function AdminDashboard() {
                     />
                   </div>
 
-                  <div className="sw-input-group" style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <span>📸 Upload Screenshot / Photo of Problem</span>
-                      <span style={{ fontSize: '0.74rem', color: '#64748b' }}>(Optional)</span>
-                    </label>
-
-                    {!supportPhotoUrl ? (
-                      <div>
-                        <label className="btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', padding: '0.4rem 0.85rem' }}>
-                          <span>Attach Screenshot</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleSupportScreenshotUpload}
-                            style={{ display: 'none' }}
-                          />
-                        </label>
-                        <span style={{ marginLeft: '10px', fontSize: '0.75rem', color: '#94a3b8' }}>PNG, JPG or phone screenshot</span>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#ffffff', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-                        <img
-                          src={supportPhotoUrl}
-                          alt="Screenshot preview"
-                          style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer' }}
-                          onClick={() => setSelectedSupportScreenshot({ url: supportPhotoUrl, title: 'Screenshot Preview' })}
-                        />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            ✓ {supportPhotoName || 'Screenshot attached'}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          className="btn-ghost"
-                          style={{ color: '#ef4444', fontSize: '0.76rem', padding: '2px 6px' }}
-                          onClick={() => {
-                            setSupportPhotoUrl(null)
-                            setSupportPhotoName('')
-                          }}
-                        >
-                          ✕ Remove
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  {/* Problem Screenshot / Document Upload Box */}
+                  <DocumentUploadBox
+                    label="📸 Problem Screenshot or Attachment"
+                    optional={true}
+                    title="Upload Problem Screenshot or Document"
+                    subtitle="Drag & drop problem screenshot or document here, or browse files"
+                    value={supportPhotoUrl}
+                    fileName={supportPhotoName}
+                    accept="image/*,application/pdf"
+                    accentColor="#0284c7"
+                    theme="light"
+                    onChange={({ dataUrl, name }) => {
+                      setSupportPhotoUrl(dataUrl)
+                      setSupportPhotoName(name)
+                    }}
+                    onClear={() => {
+                      setSupportPhotoUrl(null)
+                      setSupportPhotoName('')
+                    }}
+                    onPreview={({ url }) => {
+                      setSelectedSupportScreenshot({ url, title: 'Screenshot Preview' })
+                    }}
+                  />
 
                   <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                     <button

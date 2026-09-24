@@ -1,4 +1,4 @@
-const CACHE_NAME = 'swl-attendance-v3'
+const CACHE_NAME = 'swl-attendance-v6'
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -15,14 +15,17 @@ const STATIC_ASSETS = [
 ]
 
 self.addEventListener('install', (event) => {
+  // Activate immediately without waiting for old tabs to close
+  self.skipWaiting()
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS)
-    }).then(() => self.skipWaiting())
+    })
   )
 })
 
 self.addEventListener('activate', (event) => {
+  // Clear all old caches immediately
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
@@ -50,19 +53,38 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
+  // Network-First for HTML/Navigation requests (Always fetch newest deployed code first!)
+  if (event.request.mode === 'navigate' || event.request.destination === 'document' || url.pathname === '/' || url.pathname === '/index.html') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const copy = networkResponse.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy))
+          }
+          return networkResponse
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached || caches.match('/index.html')))
+    )
+    return
+  }
+
+  // Stale-While-Revalidate for other static assets
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const responseToCache = networkResponse.clone()
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache)
-          })
-        }
-        return networkResponse
-      }).catch(() => cachedResponse)
+      const fetchPromise = fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone()
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache)
+            })
+          }
+          return networkResponse
+        })
+        .catch(() => cachedResponse)
 
-      return cachedResponse || fetchPromise
+      return fetchPromise || cachedResponse
     })
   )
 })

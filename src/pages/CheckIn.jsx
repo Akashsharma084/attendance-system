@@ -51,6 +51,15 @@ export default function CheckIn() {
     return () => clearInterval(timer)
   }, [])
 
+  // Auto-close welcome greeting notification popup in 5 seconds
+  useEffect(() => {
+    if (!greetingModal) return
+    const timer = setTimeout(() => {
+      setGreetingModal(null)
+    }, 5000)
+    return () => clearTimeout(timer)
+  }, [greetingModal])
+
   // Auto scroll to top on important stage transitions so nothing is cut off
   useEffect(() => {
     if (['permission', 'camera', 'preview', 'done-in', 'done-out'].includes(stage)) {
@@ -1308,56 +1317,61 @@ export default function CheckIn() {
           </div>
         )}
 
-        {/* Check-In Welcome Greeting Pop-up Modal */}
+        {/* Check-In Welcome Greeting Pop-up Notification (Auto-closes in 5s) */}
         {greetingModal && (
-          <div className="modal-overlay" onClick={() => setGreetingModal(null)} style={{ zIndex: 99999 }}>
-            <div className="modal-card" style={{ maxWidth: '460px', textAlign: 'center', padding: '2rem 1.5rem', background: 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)', borderRadius: '18px', border: '1px solid rgba(16, 185, 129, 0.3)', boxShadow: '0 20px 45px -10px rgba(16, 185, 129, 0.25)' }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ fontSize: '3rem', marginBottom: '0.5rem', animation: 'bounce 1s infinite alternate' }}>
-                🎉 ✨
+          <div className="sw-welcome-toast-wrap" role="alert" aria-live="assertive">
+            <div className="sw-welcome-toast-box">
+              <div className="sw-welcome-toast-top">
+                <div className="sw-welcome-toast-pill">
+                  <span className="sw-welcome-toast-dot" />
+                  <span>Check-In Verified</span>
+                </div>
+                <div className="sw-welcome-toast-actions">
+                  <span className="sw-welcome-toast-timer-tag">5s auto-close</span>
+                  <button
+                    type="button"
+                    className="sw-welcome-toast-close"
+                    onClick={() => setGreetingModal(null)}
+                    title="Close notification"
+                    aria-label="Close notification"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', margin: '0 0 0.5rem' }}>
-                Welcome, {greetingModal.name}!
-              </h2>
-              <p style={{ fontSize: '1rem', fontWeight: 600, color: '#047857', margin: '0 0 1.25rem', lineHeight: 1.5 }}>
-                Hope your day goes great, full of energy and productivity! 😊
-              </p>
 
-              {/* Punch Badge Card */}
-              <div style={{ background: '#ffffff', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '14px', textAlign: 'left', margin: '0 auto 1.5rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-                {greetingModal.selfieUrl && (
-                  <img
-                    src={greetingModal.selfieUrl}
-                    alt="Verified Check-In Selfie"
-                    style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: '2.5px solid #10b981', boxShadow: '0 0 12px rgba(16, 185, 129, 0.35)' }}
-                  />
-                )}
-                <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#065f46' }}>
-                    ✓ Biometric Check-In Recorded
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
-                    Clocked in at <strong>{greetingModal.time}</strong> • GPS coordinates locked
+              <div className="sw-welcome-toast-content">
+                <div className="sw-welcome-toast-avatar-wrap">
+                  {greetingModal.selfieUrl ? (
+                    <img
+                      src={greetingModal.selfieUrl}
+                      alt="Verified selfie"
+                      className="sw-welcome-toast-avatar"
+                    />
+                  ) : (
+                    <div className="sw-welcome-toast-avatar-fallback">👋</div>
+                  )}
+                  <span className="sw-welcome-toast-avatar-check">✓</span>
+                </div>
+
+                <div className="sw-welcome-toast-details">
+                  <h4 className="sw-welcome-toast-title">
+                    Welcome, {greetingModal.name}! 👋
+                  </h4>
+                  <p className="sw-welcome-toast-desc">
+                    Hope your day goes great, full of energy and productivity! 😊
+                  </p>
+                  <div className="sw-welcome-toast-meta">
+                    <span>⏰ Clocked in at <strong>{greetingModal.time}</strong></span>
+                    <span className="sw-welcome-toast-dot-sep">•</span>
+                    <span>📍 GPS Verified</span>
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  style={{ padding: '0.65rem 1.4rem', fontSize: '0.92rem', background: '#059669', borderColor: '#059669' }}
-                  onClick={() => setGreetingModal(null)}
-                >
-                  Have a Great Day! 🚀
-                </button>
-                <Link
-                  to="/dashboard"
-                  className="btn-secondary"
-                  style={{ textDecoration: 'none', padding: '0.65rem 1.15rem', fontSize: '0.88rem', display: 'inline-flex', alignItems: 'center' }}
-                  onClick={() => setGreetingModal(null)}
-                >
-                  View Attendance 📊
-                </Link>
+              {/* 3-Second Countdown Animated Bar */}
+              <div className="sw-welcome-toast-progress-track">
+                <div className="sw-welcome-toast-progress-bar" />
               </div>
             </div>
           </div>

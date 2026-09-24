@@ -593,11 +593,30 @@ export default function AdminLeaves() {
                 <button className="btn-close" onClick={() => setSelectedProof(null)}>✕</button>
               </div>
               <div style={{ padding: '1rem' }}>
-                <img
-                  src={selectedProof.url}
-                  alt="Medical proof document"
-                  style={{ width: '100%', maxHeight: '480px', objectFit: 'contain', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}
-                />
+                {selectedProof.url?.startsWith('data:application/pdf') || selectedProof.url?.toLowerCase().endsWith('.pdf') ? (
+                  <div style={{ padding: '2rem 1rem', background: '#0f172a', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ fontSize: '3.2rem', marginBottom: '0.5rem' }}>📄</div>
+                    <h4 style={{ color: '#f8fafc', margin: '0 0 0.5rem' }}>{selectedProof.title}</h4>
+                    <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
+                      PDF Medical Certificate / Note Attached
+                    </p>
+                    <a
+                      href={selectedProof.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-primary"
+                      style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '0.55rem 1.25rem' }}
+                    >
+                      <span>↗ Open / View Full PDF</span>
+                    </a>
+                  </div>
+                ) : (
+                  <img
+                    src={selectedProof.url}
+                    alt="Medical proof document"
+                    style={{ width: '100%', maxHeight: '480px', objectFit: 'contain', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}
+                  />
+                )}
               </div>
               <div className="modal-footer" style={{ justifyContent: 'center' }}>
                 <button className="btn-primary" onClick={() => setSelectedProof(null)}>
