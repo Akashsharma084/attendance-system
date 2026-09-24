@@ -353,7 +353,7 @@ a { color: var(--navy-900); }
   font-weight: 700;
   font-size: 0.85rem;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .sw-avatar-img {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'swl-attendance-v6'
+const CACHE_NAME = 'swl-attendance-v7'
 const STATIC_ASSETS = [
   '/',
   '/index.html',
