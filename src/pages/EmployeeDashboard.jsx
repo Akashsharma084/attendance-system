@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../firebase'
 import { useAuth } from '../context/AuthContext'
@@ -17,9 +17,21 @@ import {
 } from '../utils/dateHelpers'
 import { mockGetAttendanceList } from '../mockService'
 import NavBar from '../components/NavBar'
+import TeamAttendanceView from '../components/TeamAttendanceView'
 
 export default function EmployeeDashboard() {
-  const { user, profile } = useAuth()
+  const { user, profile, isAdmin } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+  // Admin is strictly locked to team attendance & arrivals (never sees personal my attendance)
+  const activeHubTab = isAdmin ? 'team' : (searchParams.get('tab') === 'team' ? 'team' : 'my')
+
+  function handleTabChange(tab) {
+    if (tab === 'team') {
+      setSearchParams({ tab: 'team' })
+    } else {
+      setSearchParams({})
+    }
+  }
   const [selectedMonth, setSelectedMonth] = useState(monthKey())
   const [records, setRecords] = useState([])
   const [allUserRecords, setAllUserRecords] = useState([])
@@ -61,7 +73,10 @@ export default function EmployeeDashboard() {
 
   useEffect(() => {
     let cancelled = false
-    if (!user?.uid) return
+    if (!user?.uid || isAdmin) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
 
     if (!isFirebaseConfigured || !db) {
@@ -248,7 +263,34 @@ export default function EmployeeDashboard() {
       <NavBar />
 
       <div className="page-body">
-        {/* Top Header & Month Filter */}
+        {/* Main Hub Tabs: My Attendance vs Team Attendance (Employees only - Admin sees Team Attendance only) */}
+        {!isAdmin && (
+          <div className="sw-hub-main-tabs">
+            <button
+              type="button"
+              className={`sw-hub-tab-btn ${activeHubTab === 'my' ? 'active' : ''}`}
+              onClick={() => handleTabChange('my')}
+              id="hub-tab-my"
+            >
+              👤 My Attendance
+            </button>
+            <button
+              type="button"
+              className={`sw-hub-tab-btn ${activeHubTab === 'team' ? 'active' : ''}`}
+              onClick={() => handleTabChange('team')}
+              id="hub-tab-team"
+            >
+              👥 Team Attendance &amp; Arrivals
+              <span className="sw-tab-live-badge">Live</span>
+            </button>
+          </div>
+        )}
+
+        {activeHubTab === 'team' ? (
+          <TeamAttendanceView onSelectSelfie={setSelectedSelfie} />
+        ) : (
+          <>
+            {/* Top Header & Month Filter */}
         <div className="row-between" style={{ alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
@@ -939,6 +981,8 @@ export default function EmployeeDashboard() {
                 </div>
               )
             )}
+          </>
+        )}
           </>
         )}
       </div>

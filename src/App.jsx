@@ -55,57 +55,63 @@ class ErrorBoundary extends Component {
   }
 }
 
+import { NotificationProvider } from './context/NotificationContext'
+import InAppArrivalToast from './components/InAppArrivalToast'
+
 export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <BrowserRouter>
-          <ScrollToTop />
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<RoleHome />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <EmployeeDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/leaves"
-              element={
-                <ProtectedRoute>
-                  <EmployeeLeaves />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/users"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminUsers />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/leaves"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminLeaves />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
-        </BrowserRouter>
+        <NotificationProvider>
+          <BrowserRouter>
+            <ScrollToTop />
+            <InAppArrivalToast />
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/" element={<RoleHome />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <EmployeeDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/leaves"
+                element={
+                  <ProtectedRoute>
+                    <EmployeeLeaves />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/users"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminUsers />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/leaves"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminLeaves />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </BrowserRouter>
+        </NotificationProvider>
       </AuthProvider>
     </ErrorBoundary>
   )

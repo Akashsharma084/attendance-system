@@ -5,6 +5,7 @@ import { subscribeLeaves } from '../services/leaveService'
 import DemoBanner from './DemoBanner'
 import InstallPwaButton from './InstallPwaButton'
 import DocumentUploadBox from './DocumentUploadBox'
+import NotificationBellMenu from './NotificationBellMenu'
 
 export default function NavBar() {
   const { profile, user, isAdmin, logout, updateUserProfile, changePassword, isDemoMode } = useAuth()
@@ -409,6 +410,7 @@ export default function NavBar() {
           {/* Header Right Actions */}
           <div className="sw-header-actions">
             <InstallPwaButton className="sw-header-pwa-btn" />
+            <NotificationBellMenu />
 
             {/* User Profile Trigger Button */}
             <button

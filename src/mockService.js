@@ -55,72 +55,146 @@ const DEFAULT_USERS = [
     status: 'active'
   },
   {
-    uid: 'demo-emp-1',
-    email: 'alex@company.com',
-    name: 'Alex Chen',
+    uid: 'swl-emp-rohit',
+    email: 'rohit.sharma@softwindlabs.com',
+    name: 'Rohit Sharma',
     role: 'employee',
-    status: 'active'
+    status: 'active',
+    photoURL: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&h=300&q=80'
   },
   {
-    uid: 'demo-emp-2',
-    email: 'maria@company.com',
-    name: 'Maria Santos',
+    uid: 'swl-emp-pooja',
+    email: 'pooja.verma@softwindlabs.com',
+    name: 'Pooja Verma',
     role: 'employee',
-    status: 'active'
+    status: 'active',
+    photoURL: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&h=300&q=80'
   },
   {
-    uid: 'demo-emp-3',
-    email: 'liam@company.com',
-    name: 'Liam Patel',
+    uid: 'swl-emp-amit',
+    email: 'amit.kumar@softwindlabs.com',
+    name: 'Amit Kumar',
     role: 'employee',
-    status: 'disabled'
+    status: 'active',
+    photoURL: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&h=300&q=80'
+  },
+  {
+    uid: 'swl-emp-neha',
+    email: 'neha.singh@softwindlabs.com',
+    name: 'Neha Singh',
+    role: 'employee',
+    status: 'active',
+    photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&h=300&q=80'
+  },
+  {
+    uid: 'swl-emp-rajesh',
+    email: 'rajesh.patel@softwindlabs.com',
+    name: 'Rajesh Patel',
+    role: 'employee',
+    status: 'active',
+    photoURL: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=300&h=300&q=80'
+  },
+  {
+    uid: 'swl-emp-sneha',
+    email: 'sneha.gupta@softwindlabs.com',
+    name: 'Sneha Gupta',
+    role: 'employee',
+    status: 'active',
+    photoURL: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&h=300&q=80'
+  },
+  {
+    uid: 'swl-emp-vikram',
+    email: 'vikram.malhotra@softwindlabs.com',
+    name: 'Vikram Malhotra',
+    role: 'employee',
+    status: 'active',
+    photoURL: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=300&h=300&q=80'
+  },
+  {
+    uid: 'swl-emp-ananya',
+    email: 'ananya.sen@softwindlabs.com',
+    name: 'Ananya Sen',
+    role: 'employee',
+    status: 'active',
+    photoURL: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&h=300&q=80'
   }
 ]
 
-// Generate realistic seed attendance records for the current month
+// Generate realistic seed attendance records for the past 2 months
 function generateSeedAttendance() {
-  const currentMonth = monthKey()
-  const today = new Date()
-  const currentYear = today.getFullYear()
-  const currentMonthNum = today.getMonth() // 0-indexed
   const records = []
+  const seedEmployees = DEFAULT_USERS.filter((u) => u.role !== 'admin')
 
-  const seedEmployees = [
-    { uid: 'demo-emp-1', name: 'Alex Chen' },
-    { uid: 'demo-emp-2', name: 'Maria Santos' }
-  ]
+  // Generate working days from Aug 7, 2026 to today (Oct 8, 2026)
+  const pad = (n) => String(n).padStart(2, '0')
+  const startDate = new Date(2026, 7, 7)
+  const endDate = new Date(2026, 9, 8)
+  const curr = new Date(startDate)
 
-  // For the last 5 business days
-  for (let d = Math.max(1, today.getDate() - 5); d < today.getDate(); d++) {
-    const dayDate = new Date(currentYear, currentMonthNum, d)
-    if (dayDate.getDay() === 0) continue // skip Sunday (off day)
+  while (curr <= endDate) {
+    const y = curr.getFullYear()
+    const m = curr.getMonth() + 1
+    const d = curr.getDate()
+    const dayOfWeek = curr.getDay()
+    const dateStr = `${y}-${pad(m)}-${pad(d)}`
+    const monthStr = `${y}-${pad(m)}`
+    const isToday = dateStr === '2026-10-08'
 
-    const pad = (n) => String(n).padStart(2, '0')
-    const dateStr = `${currentYear}-${pad(currentMonthNum + 1)}-${pad(d)}`
+    if (dayOfWeek !== 0) {
+      seedEmployees.forEach((emp, empIdx) => {
+        if (isToday) {
+          if (empIdx < 6) {
+            const inMin = 45 + ((empIdx * 7) % 30)
+            const inHour = inMin >= 60 ? 10 : 9
+            const checkInDate = new Date(2026, 9, 8, inHour, inMin % 60, 0)
+            let checkOutDate = null
+            if (empIdx === 0) checkOutDate = new Date(2026, 9, 8, 14, 30, 0)
+            if (empIdx === 1) checkOutDate = new Date(2026, 9, 8, 15, 15, 0)
 
-    seedEmployees.forEach((emp, i) => {
-      const checkInHour = 9 + (i === 0 ? 0 : 1)
-      const checkInMin = 15 + i * 10
-      const checkOutHour = 17 + i
-      const checkOutMin = 30 + i * 5
+            records.push({
+              id: `rec-${emp.uid}-${dateStr}`,
+              uid: emp.uid,
+              name: emp.name,
+              date: dateStr,
+              month: monthStr,
+              checkInTime: checkInDate.toISOString(),
+              checkInLocation: { lat: 28.6139, lng: 77.2090, accuracy: 8 },
+              checkInSelfieUrl: emp.photoURL,
+              checkOutTime: checkOutDate ? checkOutDate.toISOString() : null,
+              checkOutLocation: checkOutDate ? { lat: 28.6139, lng: 77.2090, accuracy: 10 } : null,
+              checkOutSelfieUrl: checkOutDate ? emp.photoURL : null
+            })
+          }
+          return
+        }
 
-      const checkInDate = new Date(currentYear, currentMonthNum, d, checkInHour, checkInMin)
-      const checkOutDate = new Date(currentYear, currentMonthNum, d, checkOutHour, checkOutMin)
+        // Past days: ~90% attendance
+        const seedNum = (empIdx * 37 + d * 13 + m * 7) % 100
+        if (seedNum < 8) return // absent/leave
 
-      records.push({
-        id: `rec-${emp.uid}-${dateStr}`,
-        uid: emp.uid,
-        name: emp.name,
-        date: dateStr,
-        month: currentMonth,
-        checkInTime: checkInDate.toISOString(),
-        checkInLocation: { lat: 37.7749, lng: -122.4194, accuracy: 12 },
-        checkInSelfieUrl: `https://images.unsplash.com/photo-${i === 0 ? '1534528741775-53994a69daeb' : '1507003211169-0a1dd7228f2d'}?auto=format&fit=crop&w=200&h=200&q=80`,
-        checkOutTime: checkOutDate.toISOString(),
-        checkOutLocation: { lat: 37.7749, lng: -122.4194, accuracy: 15 },
-        checkOutSelfieUrl: `https://images.unsplash.com/photo-${i === 0 ? '1534528741775-53994a69daeb' : '1507003211169-0a1dd7228f2d'}?auto=format&fit=crop&w=200&h=200&q=80`
+        const isPunctual = seedNum % 4 !== 0
+        const inHour = isPunctual ? 9 : 10
+        const inMin = isPunctual ? 45 + (seedNum % 15) : 5 + (seedNum % 25)
+        const workHours = 4 + ((seedNum % 35) / 10) // 4 to 7.5 hours
+        const checkInDate = new Date(y, m - 1, d, inHour, inMin, 0)
+        const checkOutDate = new Date(checkInDate.getTime() + workHours * 3600000)
+
+        records.push({
+          id: `rec-${emp.uid}-${dateStr}`,
+          uid: emp.uid,
+          name: emp.name,
+          date: dateStr,
+          month: monthStr,
+          checkInTime: checkInDate.toISOString(),
+          checkInLocation: { lat: 28.6139, lng: 77.2090, accuracy: 8 },
+          checkInSelfieUrl: emp.photoURL,
+          checkOutTime: checkOutDate.toISOString(),
+          checkOutLocation: { lat: 28.6139, lng: 77.2090, accuracy: 10 },
+          checkOutSelfieUrl: emp.photoURL
+        })
       })
-    })
+    }
+    curr.setDate(curr.getDate() + 1)
   }
 
   return records
@@ -224,7 +298,7 @@ export function mockGetTodayRecord(uid) {
   return all.find((r) => r.uid === uid && r.date === today) || null
 }
 
-export function mockSaveAttendance({ uid, name, location, selfieUrl, isCheckIn }) {
+export function mockSaveAttendance({ uid, name, location, selfieUrl, network, isCheckIn }) {
   const all = getStoredAttendance()
   const today = todayDateKey()
   const currentMonth = monthKey()
@@ -240,9 +314,13 @@ export function mockSaveAttendance({ uid, name, location, selfieUrl, isCheckIn }
       checkInTime: new Date().toISOString(),
       checkInLocation: location,
       checkInSelfieUrl: selfieUrl,
+      checkInNetwork: network?.name || null,
+      checkInNetworkType: network?.type || null,
       checkOutTime: null,
       checkOutLocation: null,
-      checkOutSelfieUrl: null
+      checkOutSelfieUrl: null,
+      checkOutNetwork: null,
+      checkOutNetworkType: null
     }
     const updated = [newRecord, ...all]
     localStorage.setItem(STORAGE_KEY_ATTENDANCE, JSON.stringify(updated))
@@ -253,7 +331,9 @@ export function mockSaveAttendance({ uid, name, location, selfieUrl, isCheckIn }
         ...all[existingIndex],
         checkOutTime: new Date().toISOString(),
         checkOutLocation: location,
-        checkOutSelfieUrl: selfieUrl
+        checkOutSelfieUrl: selfieUrl,
+        checkOutNetwork: network?.name || null,
+        checkOutNetworkType: network?.type || null
       }
       localStorage.setItem(STORAGE_KEY_ATTENDANCE, JSON.stringify([...all]))
       return all[existingIndex]

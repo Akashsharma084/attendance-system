@@ -18,6 +18,8 @@ import {
 } from '../utils/dateHelpers'
 import { mockGetAttendanceList, getStoredUsers } from '../mockService'
 import { subscribeLeaves } from '../services/leaveService'
+import { useAuth } from '../context/AuthContext'
+import OfficeNetworkModal from '../components/OfficeNetworkModal'
 import NavBar from '../components/NavBar'
 import DocumentUploadBox from '../components/DocumentUploadBox'
 
@@ -35,11 +37,13 @@ const DEFAULT_SUPPORT_TICKETS = [
 ]
 
 export default function AdminDashboard() {
+  const { user, profile } = useAuth()
   const [selectedMonth, setSelectedMonth] = useState(monthKey())
   const [employeeFilter, setEmployeeFilter] = useState('all')
   const [records, setRecords] = useState([])
   const [usersList, setUsersList] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showWifiModal, setShowWifiModal] = useState(false)
   const [selectedSelfie, setSelectedSelfie] = useState(null)
   const [selectedDayRoster, setSelectedDayRoster] = useState(null)
   const [rosterFilter, setRosterFilter] = useState('all') // 'all' | 'present' | 'absent'
@@ -618,6 +622,24 @@ export default function AdminDashboard() {
             >
               <span>💬</span>
               <span>Support Inquiries {supportMessages.filter((m) => m.status !== 'resolved').length > 0 ? `(${supportMessages.filter((m) => m.status !== 'resolved').length})` : ''}</span>
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                padding: '0.45rem 0.95rem',
+                borderRadius: '8px'
+              }}
+              onClick={() => setShowWifiModal(true)}
+              title="Configure Office GPS Radius & Geofencing"
+            >
+              <span>📍</span>
+              <span>Office Geofence</span>
             </button>
             <button
               type="button"
@@ -2071,6 +2093,13 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Office Wi-Fi Setup Modal */}
+      <OfficeNetworkModal
+        isOpen={showWifiModal}
+        onClose={() => setShowWifiModal(false)}
+        adminName={profile?.name || user?.email || 'Admin'}
+      />
     </div>
   )
 }

@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   collection,
   query,
   where,
   onSnapshot,
-  getDocs,
   addDoc,
   updateDoc,
   doc,
@@ -13,8 +12,9 @@ import {
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../firebase'
 import { useAuth } from '../context/AuthContext'
-import { todayDateKey, monthKey, formatTime, buildEmployeeSchedule } from '../utils/dateHelpers'
-import { mockGetTodayRecord, mockSaveAttendance, mockGetAttendanceList } from '../mockService'
+import { todayDateKey, monthKey, formatTime } from '../utils/dateHelpers'
+import { mockGetTodayRecord, mockSaveAttendance } from '../mockService'
+import { subscribeOfficeNetworkConfig, checkGeofence } from '../services/networkService'
 import NavBar from '../components/NavBar'
 
 // Stages: 'loading' | 'ready' | 'camera' | 'preview' | 'saving' | 'done-in' | 'done-out'
@@ -30,9 +30,8 @@ export default function CheckIn() {
   const [greetingModal, setGreetingModal] = useState(null)
   const [error, setError] = useState('')
   const [liveTime, setLiveTime] = useState(new Date())
-  const [recentDays, setRecentDays] = useState([])
-  const [showDaysDrawer, setShowDaysDrawer] = useState(false)
   const [shutterFlash, setShutterFlash] = useState(false)
+  const [officeConfig, setOfficeConfig] = useState(null)
   const [permissionChoice, setPermissionChoice] = useState(() => localStorage.getItem('punch_perm_pref') || null)
   const [permissionBlocked, setPermissionBlocked] = useState(false)
   const [showPermPrompt, setShowPermPrompt] = useState(false)
@@ -50,6 +49,28 @@ export default function CheckIn() {
     const timer = setInterval(() => setLiveTime(new Date()), 1000)
     return () => clearInterval(timer)
   }, [])
+
+  // Subscribe to Office Geofence configuration & pre-lock GPS
+  useEffect(() => {
+    let mounted = true
+    const unsubscribe = subscribeOfficeNetworkConfig((cfg) => {
+      if (mounted) setOfficeConfig(cfg)
+    })
+
+    // Pre-lock GPS location on component mount
+    fetchAndLockLocation()
+
+    return () => {
+      mounted = false
+      if (unsubscribe) unsubscribe()
+    }
+  }, [])
+
+  const geofenceStatus = useMemo(() => {
+    if (!officeConfig?.latitude || !officeConfig?.longitude) return null
+    if (!cachedLocation?.lat || !cachedLocation?.lng) return null
+    return checkGeofence(cachedLocation, officeConfig)
+  }, [cachedLocation, officeConfig])
 
   // Auto-close welcome greeting notification popup in 5 seconds
   useEffect(() => {
@@ -107,30 +128,6 @@ export default function CheckIn() {
     }
   }, [user?.uid])
 
-  // Load recent days attendance for the quick days drawer
-  useEffect(() => {
-    if (!user) return
-    const curMonth = monthKey()
-
-    if (!isFirebaseConfigured || !db) {
-      const list = mockGetAttendanceList({ uid: user.uid, month: curMonth })
-      const res = buildEmployeeSchedule(list, curMonth, profile || user)
-      setRecentDays(res.schedule.slice(0, 5))
-    } else {
-      const qRecent = query(
-        collection(db, 'attendance'),
-        where('uid', '==', user.uid),
-        where('month', '==', curMonth)
-      )
-      getDocs(qRecent)
-        .then((snap) => {
-          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-          const res = buildEmployeeSchedule(list, curMonth, profile || user)
-          setRecentDays(res.schedule.slice(0, 5))
-        })
-        .catch((err) => console.error('Recent days fetch error:', err))
-    }
-  }, [user?.uid, todayDoc])
 
   // Real-time face detection inside the circle/oval (Green when in, Red when out)
   useEffect(() => {
@@ -492,6 +489,16 @@ export default function CheckIn() {
     try {
       const location = await getLocation()
 
+      // STRICT GEOFENCE VALIDATION: Block punch if outside office radius!
+      if (officeConfig?.latitude != null && officeConfig?.longitude != null) {
+        const gf = checkGeofence(location, officeConfig)
+        if (!gf.isAllowed) {
+          setError(`🚫 Attendance Blocked: You are ${gf.distanceMeters != null ? gf.distanceMeters + 'm away from the office' : 'outside the office'}. Punch is only allowed inside the office radius (${gf.allowedRadius}m).`)
+          setStage('ready')
+          return
+        }
+      }
+
       if (!isFirebaseConfigured || !db) {
         const saved = mockSaveAttendance({
           uid: user.uid,
@@ -847,6 +854,38 @@ export default function CheckIn() {
                     </div>
                   )}
 
+                  {/* Office Geofence Presence Indicator */}
+                  {officeConfig?.latitude != null && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        marginBottom: '0.85rem',
+                        padding: '0.35rem 0.85rem',
+                        borderRadius: '20px',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        background: geofenceStatus ? (geofenceStatus.isAllowed ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)') : 'rgba(241, 245, 249, 0.85)',
+                        color: geofenceStatus ? (geofenceStatus.isAllowed ? '#047857' : '#b91c1c') : '#64748b',
+                        border: `1px solid ${geofenceStatus ? (geofenceStatus.isAllowed ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)') : 'rgba(226, 232, 240, 0.85)'}`,
+                        width: 'fit-content',
+                        marginLeft: 'auto',
+                        marginRight: 'auto'
+                      }}
+                    >
+                      <span>{geofenceStatus ? (geofenceStatus.isAllowed ? '🟢' : '🔴') : '📍'}</span>
+                      <span>
+                        {geofenceStatus
+                          ? geofenceStatus.isAllowed
+                            ? `Inside Office Premise (${geofenceStatus.distanceMeters}m away)`
+                            : `Outside Office Premise (${geofenceStatus.distanceMeters}m away • Allowed: ${geofenceStatus.allowedRadius}m)`
+                          : 'Checking Office Location…'}
+                      </span>
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     className={`sw-punch-hero-btn ${isCheckIn ? 'in' : 'out'}`}
@@ -916,78 +955,7 @@ export default function CheckIn() {
                 </div>
               )}
 
-              {/* CREATIVE "VIEW DAYS" QUICK DRAWER / ACCORDION */}
-              <div style={{ marginTop: '1.25rem' }}>
-                <button
-                  type="button"
-                  className="sw-view-days-btn"
-                  onClick={() => setShowDaysDrawer(!showDaysDrawer)}
-                  title="View your past working days attendance record"
-                >
-                  <span>📅 {showDaysDrawer ? 'Hide Recent Days' : 'Quick View Past Working Days'}</span>
-                  <span style={{ fontSize: '0.75rem', transition: 'transform 0.2s', transform: showDaysDrawer ? 'rotate(180deg)' : 'none' }}>
-                    ▼
-                  </span>
-                </button>
 
-                {showDaysDrawer && (
-                  <div className="sw-recent-days-drawer">
-                    <div className="sw-recent-days-header">
-                      <span>Past 5 Working Days (This Month)</span>
-                      <Link to="/dashboard" style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: 700, textDecoration: 'none' }}>
-                        Full Month Calendar →
-                      </Link>
-                    </div>
-
-                    <div className="sw-recent-days-list">
-                      {recentDays.map((d) => (
-                        <div key={d.date} className="sw-recent-day-item">
-                          <div className="sw-recent-day-left">
-                            <span className={`sw-recent-day-tag ${d.status === 'P' ? 'p' : 'a'}`}>
-                              {d.status}
-                            </span>
-                            <div>
-                              <strong>{d.date}</strong> <span style={{ color: '#64748b', fontSize: '0.76rem' }}>({d.weekday})</span>
-                            </div>
-                          </div>
-                          <div className="sw-recent-day-times" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            {d.checkInTime ? (
-                              <span>
-                                In: <strong>{formatTime(d.checkInTime)}</strong>
-                                {d.checkOutTime ? ` • Out: ${formatTime(d.checkOutTime)}` : ' (In only)'}
-                              </span>
-                            ) : (
-                              <span style={{ color: '#ef4444' }}>Absent / Unrecorded</span>
-                            )}
-                            <div style={{ display: 'flex', gap: '5px', marginLeft: 'auto' }}>
-                              {d.checkInSelfieUrl && (
-                                <img
-                                  src={d.checkInSelfieUrl}
-                                  alt="In"
-                                  className="selfie-thumb-circle"
-                                  style={{ width: '28px', height: '28px', borderColor: '#10b981', cursor: 'pointer' }}
-                                  onClick={() => setSelectedSelfie({ url: d.checkInSelfieUrl, title: `${d.date} — Check-In Selfie` })}
-                                  title="Check-In Selfie"
-                                />
-                              )}
-                              {d.checkOutSelfieUrl && (
-                                <img
-                                  src={d.checkOutSelfieUrl}
-                                  alt="Out"
-                                  className="selfie-thumb-circle"
-                                  style={{ width: '28px', height: '28px', borderColor: '#f43f5e', cursor: 'pointer' }}
-                                  onClick={() => setSelectedSelfie({ url: d.checkOutSelfieUrl, title: `${d.date} — Check-Out Selfie` })}
-                                  title="Check-Out Selfie"
-                                />
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
             </>
           )}
 
