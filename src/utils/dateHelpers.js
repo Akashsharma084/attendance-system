@@ -64,6 +64,116 @@ export function lastNMonthKeys(n = 6) {
   return getAvailableMonthKeys()
 }
 
+/**
+ * Returns available year keys (e.g. ['2026']) from company start to current.
+ */
+export function getAvailableYearKeys() {
+  const [startYear] = COMPANY_START_MONTH.split('-').map(Number)
+  const curYear = new Date().getFullYear()
+  const years = []
+  for (let y = curYear; y >= startYear; y--) {
+    years.push(String(y))
+  }
+  return years.length ? years : ['2026']
+}
+
+/**
+ * Generates recent weekly ranges (Monday - Sunday) going back from current date.
+ */
+export function getAvailableWeeks(count = 12) {
+  const pad = (n) => String(n).padStart(2, '0')
+  const weeks = []
+  const today = new Date()
+
+  // Find current week's Monday
+  const dayOfWeek = today.getDay() // 0 = Sun, 1 = Mon ...
+  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+  const currentMonday = new Date(today)
+  currentMonday.setDate(today.getDate() + diffToMonday)
+  currentMonday.setHours(0, 0, 0, 0)
+
+  for (let i = 0; i < count; i++) {
+    const mon = new Date(currentMonday)
+    mon.setDate(currentMonday.getDate() - i * 7)
+    const sun = new Date(mon)
+    sun.setDate(mon.getDate() + 6)
+
+    const startKey = `${mon.getFullYear()}-${pad(mon.getMonth() + 1)}-${pad(mon.getDate())}`
+    const endKey = `${sun.getFullYear()}-${pad(sun.getMonth() + 1)}-${pad(sun.getDate())}`
+
+    const startMonth = mon.toLocaleDateString('en-US', { month: 'short' })
+    const endMonth = sun.toLocaleDateString('en-US', { month: 'short' })
+    const label = i === 0 
+      ? `This Week (${startMonth} ${mon.getDate()} - ${endMonth} ${sun.getDate()}, ${sun.getFullYear()})`
+      : i === 1
+      ? `Last Week (${startMonth} ${mon.getDate()} - ${endMonth} ${sun.getDate()}, ${sun.getFullYear()})`
+      : `${startMonth} ${mon.getDate()} - ${endMonth} ${sun.getDate()}, ${sun.getFullYear()}`
+
+    weeks.push({
+      key: `week-${startKey}`,
+      start: startKey,
+      end: endKey,
+      label,
+      weekNumber: i === 0 ? 'Current' : `-${i}`
+    })
+  }
+  return weeks
+}
+
+/**
+ * Calculates work duration in minutes between check-in and check-out.
+ */
+export function calcWorkDurationMinutes(inTime, outTime, allowLiveToday = false) {
+  if (!inTime) return 0
+  const dIn = inTime.toDate ? inTime.toDate() : new Date(inTime)
+  let dOut = null
+  if (outTime) {
+    dOut = outTime.toDate ? outTime.toDate() : new Date(outTime)
+  } else if (allowLiveToday) {
+    dOut = new Date()
+  }
+  if (!dOut || isNaN(dIn.getTime()) || isNaN(dOut.getTime())) return 0
+  const diffMs = Math.max(0, dOut.getTime() - dIn.getTime())
+  return Math.floor(diffMs / 60000)
+}
+
+/**
+ * Formats minutes into 'Xh Ym' (e.g. 8h 24m).
+ */
+export function formatDurationMinutes(minutes) {
+  if (minutes == null || isNaN(minutes) || minutes <= 0) return '0h 0m'
+  const hrs = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  return `${hrs}h ${mins}m`
+}
+
+/**
+ * Determines if a check-in is late (past 10:00 AM by default)
+ */
+export function checkPunctuality(inTime, cutoffHour = 10, cutoffMinute = 0) {
+  if (!inTime) return { isLate: false, label: 'No Punch', diffMinutes: 0 }
+  const d = inTime.toDate ? inTime.toDate() : new Date(inTime)
+  if (isNaN(d.getTime())) return { isLate: false, label: '—', diffMinutes: 0 }
+  const punchHour = d.getHours()
+  const punchMin = d.getMinutes()
+  const totalPunchMin = punchHour * 60 + punchMin
+  const totalCutoffMin = cutoffHour * 60 + cutoffMinute
+  const diff = totalPunchMin - totalCutoffMin
+  if (diff > 0) {
+    return {
+      isLate: true,
+      label: `Late (+${diff > 60 ? `${Math.floor(diff / 60)}h ${diff % 60}m` : `${diff}m`})`,
+      diffMinutes: diff
+    }
+  }
+  return {
+    isLate: false,
+    label: 'On Time',
+    diffMinutes: 0
+  }
+}
+
+
 export function getWeekday(dateStr, format = 'short') {
   if (!dateStr) return '—'
   const [year, month, day] = dateStr.split('-').map(Number)

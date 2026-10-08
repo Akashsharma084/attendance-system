@@ -10,6 +10,7 @@ import EmployeeLeaves from './pages/EmployeeLeaves'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminUsers from './pages/AdminUsers'
 import AdminLeaves from './pages/AdminLeaves'
+import AdminReports from './pages/AdminReports'
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -106,6 +107,14 @@ export default function App() {
                 element={
                   <ProtectedRoute requireAdmin>
                     <AdminLeaves />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/reports"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminReports />
                   </ProtectedRoute>
                 }
               />
