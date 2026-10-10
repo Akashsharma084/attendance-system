@@ -838,11 +838,11 @@ function LiveLoginScreen({ onSuccess }) {
   // Prefill helpful sample credentials
   useEffect(() => {
     if (profileRole === 'admin') {
-      setEmail('admin@company.com')
-      setPassword('admin123')
+      setEmail('admin@softwindlabs.com')
+      setPassword('1234567')
     } else {
-      setEmail('rahul.sharma@softwindlabs.com')
-      setPassword('emp123')
+      setEmail('demo@softwindlabs.com')
+      setPassword('123456')
     }
     setErrorMsg('')
   }, [profileRole])
@@ -921,8 +921,8 @@ function LiveLoginScreen({ onSuccess }) {
             <div
               onClick={() => {
                 setProfileRole('employee')
-                setEmail('rohit.sharma@softwindlabs.com')
-                setPassword('emp123')
+                setEmail('demo@softwindlabs.com')
+                setPassword('123456')
                 setErrorMsg('')
               }}
               style={{
@@ -1012,8 +1012,8 @@ function LiveLoginScreen({ onSuccess }) {
             <div
               onClick={() => {
                 setProfileRole('admin')
-                setEmail('admin@company.com')
-                setPassword('admin123')
+                setEmail('admin@softwindlabs.com')
+                setPassword('1234567')
                 setErrorMsg('')
               }}
               style={{
@@ -1153,7 +1153,7 @@ function LiveLoginScreen({ onSuccess }) {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder={profileRole === 'admin' ? 'admin@company.com' : 'rohit.sharma@softwindlabs.com'}
+                placeholder={profileRole === 'admin' ? 'admin@softwindlabs.com' : 'demo@softwindlabs.com'}
               />
             </div>
           </div>

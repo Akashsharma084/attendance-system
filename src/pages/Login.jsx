@@ -35,11 +35,11 @@ export default function Login() {
       setRememberMe(true)
     } else if (isDemoMode) {
       if (loginPortal === 'admin') {
-        setEmail('admin@company.com')
-        setPassword('admin123')
+        setEmail('admin@softwindlabs.com')
+        setPassword('1234567')
       } else {
-        setEmail('alex@company.com')
-        setPassword('alex123')
+        setEmail('demo@softwindlabs.com')
+        setPassword('123456')
       }
     }
   }, [isDemoMode, loginPortal])
@@ -50,11 +50,11 @@ export default function Login() {
     if (isDemoMode) {
       setSelectedDemoRole(portal)
       if (portal === 'admin') {
-        setEmail('admin@company.com')
-        setPassword('admin123')
+        setEmail('admin@softwindlabs.com')
+        setPassword('1234567')
       } else {
-        setEmail('alex@company.com')
-        setPassword('alex123')
+        setEmail('demo@softwindlabs.com')
+        setPassword('123456')
       }
     } else {
       // Clear password on portal switch for security
@@ -95,11 +95,11 @@ export default function Login() {
     setSelectedDemoRole(role)
     setError('')
     if (role === 'admin') {
-      setEmail('admin@company.com')
-      setPassword('admin123')
+      setEmail('admin@softwindlabs.com')
+      setPassword('1234567')
     } else {
-      setEmail('alex@company.com')
-      setPassword('alex123')
+      setEmail('demo@softwindlabs.com')
+      setPassword('123456')
     }
   }
 
