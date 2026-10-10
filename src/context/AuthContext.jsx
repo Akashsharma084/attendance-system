@@ -9,7 +9,7 @@ import {
   updateProfile,
   updatePassword,
   setPersistence,
-  browserSessionPersistence
+  browserLocalPersistence
 } from 'firebase/auth'
 import { doc, onSnapshot, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db, isFirebaseConfigured } from '../firebase'
@@ -35,7 +35,7 @@ export function checkIsAdminEmail(email) {
 }
 
 function isPageReload() {
-  if (typeof window === 'undefined') return false
+  if (typeof window !== 'undefined') return false
   try {
     const navEntries = window.performance?.getEntriesByType?.('navigation')
     if (navEntries && navEntries.length > 0) {
@@ -55,43 +55,11 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const isReload = isPageReload()
-    const hadActiveSession = typeof window !== 'undefined' && sessionStorage.getItem('punch_session_active') === 'true'
-
-    // If reloading or had active session in this tab/window, preserve session marker
-    if (isReload || hadActiveSession) {
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('punch_session_active', 'true')
-      }
-    }
-
     if (isFirebaseConfigured && auth) {
-      setPersistence(auth, browserSessionPersistence).catch(() => {})
+      // Use permanent local persistence - user stays logged in until manual logout
+      setPersistence(auth, browserLocalPersistence).catch(() => {})
 
-      const unsubAuth = onAuthStateChanged(auth, async (user) => {
-        const isReloading = isPageReload()
-        const isSessionActive = typeof window !== 'undefined' && sessionStorage.getItem('punch_session_active') === 'true'
-
-        // Only purge if this is a genuinely NEW window/app launch after app close
-        // (i.e. NOT a page reload, and NO active session in this window)
-        if (user && !isSessionActive && !isReloading) {
-          try {
-            await firebaseSignOut(auth)
-          } catch (e) {
-            console.warn('Session auto-purge note:', e)
-          }
-          setCurrentUser(null)
-          setProfile(null)
-          setLoading(false)
-          return
-        }
-
-        if (user) {
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem('punch_session_active', 'true')
-          }
-        }
-
+      const unsubAuth = onAuthStateChanged(auth, (user) => {
         setCurrentUser(user)
         if (!user) {
           setProfile(null)
@@ -100,20 +68,9 @@ export function AuthProvider({ children }) {
       })
       return unsubAuth
     } else {
-      // Demo Mode:
-      if (!hadActiveSession && !isReload) {
-        mockSignOut()
-        setCurrentUser(null)
-        setProfile(null)
-        setLoading(false)
-        return
-      }
-
+      // Demo Mode: persist session
       const session = getMockSession()
       if (session) {
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('punch_session_active', 'true')
-        }
         const users = getStoredUsers()
         const refreshed = users.find((u) => u.uid === session.uid) || session
         setCurrentUser({ uid: refreshed.uid, email: refreshed.email })
@@ -196,7 +153,7 @@ export function AuthProvider({ children }) {
 
     if (isFirebaseConfigured && auth) {
       try {
-        await setPersistence(auth, browserSessionPersistence)
+        await setPersistence(auth, browserLocalPersistence)
       } catch (err) {
         console.warn('Set persistence in login note:', err)
       }
@@ -214,25 +171,42 @@ export function AuthProvider({ children }) {
         }
 
         const isAdminByEmail = checkIsAdminEmail(user.email)
-        const isAdminByPortal = portalHint === 'admin'
         const existingRole = snap?.exists() ? snap.data()?.role?.toLowerCase() : null
-        const existingIsAdmin = snap?.exists() ? snap.data()?.isAdmin : false
+        const existingIsAdmin = snap?.exists() ? (snap.data()?.isAdmin === true) : false
 
-        // Determine if account is an admin
-        const shouldBeAdmin = Boolean(
+        // Determine actual account role (Strict: never modified by portalHint!)
+        const isActualAdmin = Boolean(
           existingRole === 'admin' ||
-          existingIsAdmin === true ||
-          isAdminByEmail ||
-          isAdminByPortal
+          existingIsAdmin ||
+          isAdminByEmail
         )
 
-        const finalRole = shouldBeAdmin ? 'admin' : 'employee'
+        // Strict Portal Verification:
+        if (portalHint === 'admin' && !isActualAdmin) {
+          // Employee account tried logging in via Admin portal -> BLOCK!
+          await firebaseSignOut(auth)
+          sessionStorage.removeItem('punch_session_active')
+          setCurrentUser(null)
+          setProfile(null)
+          throw new Error('Access Denied: Yeh Employee account hai aur Admin portal access nahi kar sakta. Kripya Employee tab select karke login karein.')
+        }
+
+        if (portalHint === 'employee' && isActualAdmin) {
+          // Admin account tried logging in via Employee portal -> BLOCK!
+          await firebaseSignOut(auth)
+          sessionStorage.removeItem('punch_session_active')
+          setCurrentUser(null)
+          setProfile(null)
+          throw new Error('Access Denied: Yeh Administrator account hai aur Employee portal access nahi kar sakta. Kripya Admin tab select karke login karein.')
+        }
+
+        const finalRole = isActualAdmin ? 'admin' : 'employee'
 
         const profileData = {
-          name: user.displayName || email.split('@')[0] || (shouldBeAdmin ? 'Admin' : 'Employee'),
+          name: snap?.data()?.name || user.displayName || email.split('@')[0] || (isActualAdmin ? 'Admin' : 'Employee'),
           email: user.email,
           role: finalRole,
-          isAdmin: shouldBeAdmin,
+          isAdmin: isActualAdmin,
           status: 'active',
           updatedAt: serverTimestamp()
         }
@@ -256,9 +230,27 @@ export function AuthProvider({ children }) {
       // Demo Mode
       const user = await mockSignIn(email)
       const isAdminByEmail = checkIsAdminEmail(user.email)
-      const shouldBeAdmin = Boolean(user.role === 'admin' || isAdminByEmail || portalHint === 'admin')
-      user.role = shouldBeAdmin ? 'admin' : 'employee'
-      user.isAdmin = shouldBeAdmin
+      const isActualAdmin = Boolean(user.role === 'admin' || user.isAdmin === true || isAdminByEmail)
+
+      // Strict Portal Verification in Demo Mode:
+      if (portalHint === 'admin' && !isActualAdmin) {
+        mockSignOut()
+        sessionStorage.removeItem('punch_session_active')
+        setCurrentUser(null)
+        setProfile(null)
+        throw new Error('Access Denied: Yeh Employee account hai aur Admin portal access nahi kar sakta. Kripya Employee tab select karke login karein.')
+      }
+
+      if (portalHint === 'employee' && isActualAdmin) {
+        mockSignOut()
+        sessionStorage.removeItem('punch_session_active')
+        setCurrentUser(null)
+        setProfile(null)
+        throw new Error('Access Denied: Yeh Administrator account hai aur Employee portal access nahi kar sakta. Kripya Admin tab select karke login karein.')
+      }
+
+      user.role = isActualAdmin ? 'admin' : 'employee'
+      user.isAdmin = isActualAdmin
       setMockSession(user)
       setCurrentUser({ uid: user.uid, email: user.email })
       setProfile(user)
@@ -266,14 +258,14 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function loginWithGoogle(portalHint = 'employee') {
+  async function loginWithGoogle(portalHint = 'admin') {
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('punch_session_active', 'true')
     }
 
     if (isFirebaseConfigured && auth) {
       try {
-        await setPersistence(auth, browserSessionPersistence)
+        await setPersistence(auth, browserLocalPersistence)
       } catch (err) {
         console.warn('Set persistence in Google login note:', err)
       }
@@ -291,24 +283,39 @@ export function AuthProvider({ children }) {
         }
 
         const isAdminByEmail = checkIsAdminEmail(user.email)
-        const isAdminByPortal = portalHint === 'admin'
         const existingRole = snap?.exists() ? snap.data()?.role?.toLowerCase() : null
-        const existingIsAdmin = snap?.exists() ? snap.data()?.isAdmin : false
+        const existingIsAdmin = snap?.exists() ? (snap.data()?.isAdmin === true) : false
 
-        const shouldBeAdmin = Boolean(
+        const isActualAdmin = Boolean(
           existingRole === 'admin' ||
-          existingIsAdmin === true ||
-          isAdminByEmail ||
-          isAdminByPortal
+          existingIsAdmin ||
+          isAdminByEmail
         )
 
-        const finalRole = shouldBeAdmin ? 'admin' : 'employee'
+        // Strict Portal Verification:
+        if (portalHint === 'admin' && !isActualAdmin) {
+          await firebaseSignOut(auth)
+          sessionStorage.removeItem('punch_session_active')
+          setCurrentUser(null)
+          setProfile(null)
+          throw new Error('Access Denied: Yeh Google account Employee profile hai aur Administrator portal access nahi kar sakta.')
+        }
+
+        if (portalHint === 'employee' && isActualAdmin) {
+          await firebaseSignOut(auth)
+          sessionStorage.removeItem('punch_session_active')
+          setCurrentUser(null)
+          setProfile(null)
+          throw new Error('Access Denied: Yeh Google account Administrator hai aur Employee portal access nahi kar sakta.')
+        }
+
+        const finalRole = isActualAdmin ? 'admin' : 'employee'
 
         const profileData = {
-          name: user.displayName || user.email.split('@')[0] || (shouldBeAdmin ? 'Admin' : 'Employee'),
+          name: snap?.data()?.name || user.displayName || user.email.split('@')[0] || (isActualAdmin ? 'Admin' : 'Employee'),
           email: user.email,
           role: finalRole,
-          isAdmin: shouldBeAdmin,
+          isAdmin: isActualAdmin,
           status: 'active',
           updatedAt: serverTimestamp()
         }
@@ -331,9 +338,26 @@ export function AuthProvider({ children }) {
     } else {
       const user = await mockGoogleSignIn()
       const isAdminByEmail = checkIsAdminEmail(user.email)
-      const shouldBeAdmin = Boolean(user.role === 'admin' || isAdminByEmail || portalHint === 'admin')
-      user.role = shouldBeAdmin ? 'admin' : 'employee'
-      user.isAdmin = shouldBeAdmin
+      const isActualAdmin = Boolean(user.role === 'admin' || user.isAdmin === true || isAdminByEmail)
+
+      if (portalHint === 'admin' && !isActualAdmin) {
+        mockSignOut()
+        sessionStorage.removeItem('punch_session_active')
+        setCurrentUser(null)
+        setProfile(null)
+        throw new Error('Access Denied: Yeh Google account Employee profile hai aur Administrator portal access nahi kar sakta.')
+      }
+
+      if (portalHint === 'employee' && isActualAdmin) {
+        mockSignOut()
+        sessionStorage.removeItem('punch_session_active')
+        setCurrentUser(null)
+        setProfile(null)
+        throw new Error('Access Denied: Yeh Google account Administrator hai aur Employee portal access nahi kar sakta.')
+      }
+
+      user.role = isActualAdmin ? 'admin' : 'employee'
+      user.isAdmin = isActualAdmin
       setMockSession(user)
       setCurrentUser({ uid: user.uid, email: user.email })
       setProfile(user)

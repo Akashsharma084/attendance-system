@@ -216,3 +216,129 @@ export function checkGeofence(userLocation, officeConfig) {
     reason: `You are ${distance}m away from the office. Punch is only permitted within ${allowedRadius}m.`
   }
 }
+
+/* =========================================================================
+   OFFICE TIMINGS & SHIFT CONFIGURATION SERVICE
+   ========================================================================= */
+
+export const STORAGE_KEY_OFFICE_TIMING = 'punch_office_timing_settings'
+
+export const DEFAULT_OFFICE_TIMING = {
+  startTime: '09:00', // 24-hr format (09:00 AM)
+  endTime: '18:00',   // 24-hr format (06:00 PM)
+  graceMinutes: 30,   // Grace period in minutes (e.g. up to 09:30 AM before marked late)
+  workDays: 'Mon – Sat', // 'Mon – Sat', 'Mon – Fri', 'All 7 Days'
+  updatedAt: null,
+  updatedBy: null
+}
+
+/**
+ * Formats 'HH:mm' 24-hour string to 'hh:mm AM/PM'
+ */
+export function formatTime24to12(time24) {
+  if (!time24) return '09:00 AM'
+  const parts = String(time24).split(':')
+  let hours = parseInt(parts[0], 10)
+  const minutes = parts[1] || '00'
+  if (isNaN(hours)) return '09:00 AM'
+  const ampm = hours >= 12 ? 'PM' : 'AM'
+  hours = hours % 12
+  hours = hours ? hours : 12 // 0 becomes 12
+  return `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`
+}
+
+/**
+ * Read cached or fallback office timing settings from localStorage
+ */
+export function getLocalOfficeTiming() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_OFFICE_TIMING)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      return {
+        startTime: parsed.startTime || DEFAULT_OFFICE_TIMING.startTime,
+        endTime: parsed.endTime || DEFAULT_OFFICE_TIMING.endTime,
+        graceMinutes: parsed.graceMinutes != null ? Number(parsed.graceMinutes) : DEFAULT_OFFICE_TIMING.graceMinutes,
+        workDays: parsed.workDays || DEFAULT_OFFICE_TIMING.workDays,
+        updatedAt: parsed.updatedAt || null,
+        updatedBy: parsed.updatedBy || null
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return { ...DEFAULT_OFFICE_TIMING }
+}
+
+/**
+ * Subscribe to office timing settings in Firestore (with localStorage fallback)
+ */
+export function subscribeOfficeTimingConfig(callback) {
+  // Emit local cache immediately
+  callback(getLocalOfficeTiming())
+
+  if (!isFirebaseConfigured || !db) {
+    return () => {}
+  }
+
+  const docRef = doc(db, 'settings', 'officeTiming')
+  const unsubscribe = onSnapshot(
+    docRef,
+    (snap) => {
+      if (snap.exists()) {
+        const data = snap.data()
+        const config = {
+          startTime: data.startTime || DEFAULT_OFFICE_TIMING.startTime,
+          endTime: data.endTime || DEFAULT_OFFICE_TIMING.endTime,
+          graceMinutes: data.graceMinutes != null ? Number(data.graceMinutes) : DEFAULT_OFFICE_TIMING.graceMinutes,
+          workDays: data.workDays || DEFAULT_OFFICE_TIMING.workDays,
+          updatedAt: data.updatedAt || null,
+          updatedBy: data.updatedBy || null
+        }
+        try {
+          localStorage.setItem(STORAGE_KEY_OFFICE_TIMING, JSON.stringify(config))
+        } catch {}
+        callback(config)
+      } else {
+        callback(getLocalOfficeTiming())
+      }
+    },
+    (err) => {
+      console.warn('Office timing settings snapshot warning:', err)
+      callback(getLocalOfficeTiming())
+    }
+  )
+
+  return unsubscribe
+}
+
+/**
+ * Save office timing configuration to Firestore and localStorage (Admin only)
+ */
+export async function saveOfficeTimingConfig({ startTime, endTime, graceMinutes, workDays, updatedBy }) {
+  const payload = {
+    startTime: startTime || '09:00',
+    endTime: endTime || '18:00',
+    graceMinutes: graceMinutes != null ? Number(graceMinutes) : 30,
+    workDays: workDays || 'Mon – Sat',
+    updatedAt: new Date().toISOString(),
+    updatedBy: updatedBy || 'Admin'
+  }
+
+  try {
+    localStorage.setItem(STORAGE_KEY_OFFICE_TIMING, JSON.stringify(payload))
+  } catch {}
+
+  if (isFirebaseConfigured && db) {
+    const docRef = doc(db, 'settings', 'officeTiming')
+    await setDoc(
+      docRef,
+      {
+        ...payload,
+        serverUpdatedAt: serverTimestamp()
+      },
+      { merge: true }
+    )
+  }
+  return payload
+}

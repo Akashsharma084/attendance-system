@@ -24,14 +24,36 @@
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js').then((reg) => {
-            // Force service worker to check for new version on every launch
             reg.update()
+
+            if (reg.waiting) {
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' })
+            }
+
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    newWorker.postMessage({ type: 'SKIP_WAITING' })
+                  }
+                })
+              }
+            })
+
+            document.addEventListener('visibilitychange', () => {
+              if (document.visibilityState === 'visible') {
+                reg.update()
+              }
+            })
+            window.addEventListener('focus', () => {
+              reg.update()
+            })
           }).catch((err) => {
             console.warn('ServiceWorker note:', err)
           })
         })
 
-        // Auto-reload to immediately show updates as soon as new Service Worker activates
         let isRefreshing = false
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (!isRefreshing) {

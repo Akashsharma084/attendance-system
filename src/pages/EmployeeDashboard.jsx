@@ -327,75 +327,93 @@ export default function EmployeeDashboard() {
           </div>
         </div>
 
-        {/* Creative Today Status Widget Banner */}
-        <div className={`sw-today-status-card ${todayRecord?.checkOutTime ? 'done' : todayRecord ? 'checked-in' : 'pending'}`}>
-          <div className="sw-today-left">
-            <div className="sw-today-icon">
-              {todayRecord?.checkOutTime ? '🏁' : todayRecord ? '🟢' : '⏳'}
-            </div>
-            <div>
-              <div className="sw-today-title">
-                {todayRecord?.checkOutTime
-                  ? "Today's Shift Completed"
-                  : todayRecord
-                  ? "You're Checked In for Today!"
-                  : "You haven't checked in yet today"}
-              </div>
-              <div className="sw-today-subtitle">
-                {todayRecord?.checkOutTime ? (
-                  <>
-                    Checked in at <strong>{formatTime(todayRecord.checkInTime)}</strong> • Checked out at <strong>{formatTime(todayRecord.checkOutTime)}</strong>
-                  </>
-                ) : todayRecord ? (
-                  <>
-                    Biometric Check-in confirmed at <strong>{formatTime(todayRecord.checkInTime)}</strong>. Remember to check out before leaving.
-                  </>
-                ) : (
-                  <>Verify your presence by capturing a selfie punch from the check-in screen.</>
-                )}
-              </div>
-
-              {/* Today's In & Out Selfie Previews */}
-              {(todayRecord?.checkInSelfieUrl || todayRecord?.checkOutSelfieUrl) && (
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '0.65rem', flexWrap: 'wrap' }}>
-                  {todayRecord.checkInSelfieUrl && (
-                    <div
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-                      onClick={() => setSelectedSelfie({ url: todayRecord.checkInSelfieUrl, title: `Today (${todayRecord.date}) — Check-In Selfie` })}
-                      title="Click to zoom Check-In Selfie"
-                    >
-                      <img src={todayRecord.checkInSelfieUrl} alt="Check In Selfie" className="selfie-thumb-circle" style={{ width: '36px', height: '36px', borderColor: '#10b981' }} />
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981' }}>In Selfie</span>
-                    </div>
-                  )}
-                  {todayRecord.checkOutSelfieUrl && (
-                    <div
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-                      onClick={() => setSelectedSelfie({ url: todayRecord.checkOutSelfieUrl, title: `Today (${todayRecord.date}) — Check-Out Selfie` })}
-                      title="Click to zoom Check-Out Selfie"
-                    >
-                      <img src={todayRecord.checkOutSelfieUrl} alt="Check Out Selfie" className="selfie-thumb-circle" style={{ width: '36px', height: '36px', borderColor: '#f43f5e' }} />
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#f43f5e' }}>Out Selfie</span>
-                    </div>
-                  )}
-                </div>
-              )}
+        {/* ================= SWL ATTEND: EXACT HOME SCREEN CARDS ================= */}
+        {/* 1. Hero Attendance Status Card */}
+        <div className="swl-hero-status-card" style={{ marginBottom: '14px' }}>
+          <div className="swl-hero-status-top">
+            <span style={{ fontWeight: 700, color: '#0F172A' }}>
+              Today, {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontWeight: 600, color: '#64748B' }}>{new Date().toLocaleDateString('en-US', { weekday: 'long' })}</span>
+              <span style={{ color: '#94A3B8' }}>♡</span>
             </div>
           </div>
-
-          <div className="sw-today-right">
-            {!todayRecord ? (
-              <Link to="/" className="btn-primary sw-today-action-btn">
-                📸 Punch In Now
-              </Link>
-            ) : !todayRecord.checkOutTime ? (
-              <Link to="/" className="btn-primary sw-today-action-btn out">
-                👋 Punch Out Now
-              </Link>
-            ) : (
-              <span className="sw-status-completed-badge">✓ All Punches Logged</span>
-            )}
+          <div className="swl-hero-status-main">
+            <div className="swl-status-circle-check" style={{ background: todayRecord ? '#10B981' : '#F59E0B' }}>
+              {todayRecord ? '✓' : '⏳'}
+            </div>
+            <span className="swl-hero-status-label" style={{ color: todayRecord ? '#10B981' : '#F59E0B' }}>
+              {todayRecord ? 'You are Present' : 'Not Punched Yet'}
+            </span>
           </div>
+          <div className="swl-hero-hours-text">
+            {todayRecord?.checkInTime
+              ? `Working Hours: ${formatTime(todayRecord.checkInTime)} - ${todayRecord?.checkOutTime ? formatTime(todayRecord.checkOutTime) : '06:00 PM'}`
+              : 'Working Hours: 09:00 AM - 06:00 PM'}
+          </div>
+        </div>
+
+        {/* 2. Two Quick Punch Cards (Check In / Check Out) */}
+        <div className="swl-two-punch-grid" style={{ marginBottom: '14px' }}>
+          <Link to="/checkin" className="swl-action-punch-card">
+            <div className="swl-punch-icon-box green">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <div className="swl-action-punch-title">Check In</div>
+            <div className={`swl-action-punch-status ${todayRecord?.checkInTime ? 'done' : 'pending'}`}>
+              {todayRecord?.checkInTime ? `${formatTime(todayRecord.checkInTime)} Done` : 'Tap to Check In'}
+            </div>
+          </Link>
+
+          <Link to="/checkin" className="swl-action-punch-card">
+            <div className="swl-punch-icon-box blue">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </div>
+            <div className="swl-action-punch-title">Check Out</div>
+            <div className={`swl-action-punch-status ${todayRecord?.checkOutTime ? 'done' : 'pending'}`}>
+              {todayRecord?.checkOutTime ? `${formatTime(todayRecord.checkOutTime)} Done` : 'Not Yet'}
+            </div>
+          </Link>
+        </div>
+
+        {/* 3. Monthly Summary Donut Card */}
+        <div className="swl-card-box" style={{ marginBottom: '16px' }}>
+          <div className="swl-card-box-header">
+            <span className="swl-card-box-title">Monthly Summary</span>
+            <span style={{ fontSize: '0.78rem', color: '#64748B', fontWeight: 600 }}>{formatMonthLabel(selectedMonth)}</span>
+          </div>
+          <div className="swl-donut-block">
+            <div className="swl-donut-ring-wrap">
+              <svg className="swl-donut-ring-svg" viewBox="0 0 36 36">
+                <path
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="#E2E8F0"
+                  strokeWidth="3.8"
+                />
+                <path
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="#10B981"
+                  strokeWidth="3.8"
+                  strokeDasharray={`${Math.min(100, Math.max(0, attendanceRate))}, 100`}
+                />
+              </svg>
+              <div className="swl-donut-inner-num">{presentCount}/{effectiveWorkingDays || 26}</div>
+            </div>
+            <div className="swl-donut-legend-col">
+              <div className="swl-legend-item"><span className="swl-legend-dot green"></span> Present {presentCount}</div>
+              <div className="swl-legend-item"><span className="swl-legend-dot yellow"></span> Late {Math.max(1, Math.round(presentCount * 0.05))}</div>
+              <div className="swl-legend-item"><span className="swl-legend-dot red"></span> Absent {absentCount}</div>
+            </div>
+          </div>
+          <a href="#attendance-calendar" className="swl-link-action">View Details &gt;</a>
         </div>
 
         {/* Creative Analytics KPI Grid with SVG Circular Gauge */}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Navigate } from 'react-router-dom'
+import { useNavigate, Navigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import DemoBanner from '../components/DemoBanner'
 import InstallPwaButton from '../components/InstallPwaButton'
@@ -152,7 +152,7 @@ export default function Login() {
 
           <div className="sw-showcase-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '0.85rem' }}>
-              <img src="/icon-192.png" alt="Softwind Labs Logo" style={{ width: '52px', height: '52px', borderRadius: '14px', objectFit: 'contain', background: '#ffffff', padding: '3px', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)', border: '1px solid rgba(255, 255, 255, 0.2)' }} />
+              <img src="/softwind-logo.png" alt="Softwind Labs Logo" style={{ width: '54px', height: '54px', borderRadius: '14px', objectFit: 'contain', background: '#ffffff', padding: '3px', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)', border: '1px solid rgba(255, 255, 255, 0.2)' }} />
               <div className="sw-brand-text sw-brand-showcase-title" style={{ margin: 0 }}>
                 SOFTWIND<span className="sw-brand-highlight">.LABS</span>
               </div>
@@ -220,7 +220,7 @@ export default function Login() {
         {/* Right Side: High-End Glassmorphic Login Card */}
         <div className="sw-card-wrap">
           <div className="sw-login-card">
-            {/* Dual Portal Switcher Tabs: Employee vs Admin */}
+            {/* 2 Profile Login Options: Employee Profile vs Admin Profile */}
             <div className="sw-portal-tabs" role="tablist">
               <button
                 type="button"
@@ -232,8 +232,8 @@ export default function Login() {
               >
                 <span className="sw-portal-tab-icon">👤</span>
                 <div className="sw-portal-tab-text">
-                  <strong>Employee Login</strong>
-                  <span>Punch &amp; attendance</span>
+                  <strong>Employee Profile</strong>
+                  <span>Email &amp; Password</span>
                 </div>
               </button>
 
@@ -247,29 +247,56 @@ export default function Login() {
               >
                 <span className="sw-portal-tab-icon">🛡️</span>
                 <div className="sw-portal-tab-text">
-                  <strong>Admin Login</strong>
-                  <span>Workforce &amp; reports</span>
+                  <strong>Admin Profile</strong>
+                  <span>Email &amp; Google</span>
                 </div>
               </button>
             </div>
 
+            <Link
+              to="/showcase"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'linear-gradient(135deg, #EEF4FF 0%, #E0EDFF 100%)',
+                border: '1.5px solid #1E5AE6',
+                borderRadius: '12px',
+                padding: '10px 14px',
+                marginBottom: '1rem',
+                textDecoration: 'none',
+                color: '#0F172A',
+                fontWeight: '600',
+                fontSize: '0.84rem'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '1.3rem' }}>📱</span>
+                <div>
+                  <div style={{ color: '#1E5AE6', fontWeight: '800' }}>SWL Attend Design System</div>
+                  <div style={{ fontSize: '0.74rem', color: '#64748B' }}>Exact UI replica of all 13 screens &amp; icon legend</div>
+                </div>
+              </div>
+              <span style={{ color: '#1E5AE6', fontWeight: '800', fontSize: '0.82rem' }}>View Showcase →</span>
+            </Link>
+
             <div className="sw-card-header">
               <div className="sw-mobile-logo" style={{ marginBottom: '0.85rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                <img src="/icon-192.png" alt="Softwind Labs Logo" style={{ width: '72px', height: '72px', borderRadius: '18px', objectFit: 'contain', background: '#ffffff', padding: '4px', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', border: '1px solid rgba(226, 232, 240, 0.8)' }} />
+                <img src="/softwind-logo.png" alt="Softwind Labs Logo" style={{ width: '74px', height: '74px', borderRadius: '18px', objectFit: 'contain', background: '#ffffff', padding: '4px', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', border: '1px solid rgba(226, 232, 240, 0.8)' }} />
                 <span className="sw-brand-text" style={{ fontSize: '1.45rem', justifyContent: 'center' }}>
                   SOFTWIND<span className="sw-brand-highlight">.LABS</span>
                 </span>
               </div>
               <div className="sw-card-eyebrow">
-                {loginPortal === 'admin' ? '🛡️ Administrative Access' : '👤 Staff & Employee Workspace'}
+                {loginPortal === 'admin' ? '🛡️ Admin Profile Selected' : '👤 Employee Profile Selected'}
               </div>
               <h2 className="sw-card-title">
-                {loginPortal === 'admin' ? 'Workforce Admin Portal' : 'Employee Attendance Portal'}
+                {loginPortal === 'admin' ? 'Admin Profile Login' : 'Employee Profile Login'}
               </h2>
               <p className="sw-card-sub">
                 {loginPortal === 'admin'
-                  ? 'Sign in with management credentials to view all live attendance & manage users.'
-                  : 'Enter your employee email and password to verify your presence today.'}
+                  ? 'Sign in via email and password, or use your authorized Google account.'
+                  : 'Enter your registered work email and password to log in.'}
               </p>
             </div>
 
@@ -417,7 +444,7 @@ export default function Login() {
                   </span>
                 ) : (
                   <span className="sw-btn-content">
-                    <span>Sign In to Workspace</span>
+                    <span>{loginPortal === 'admin' ? 'Sign In as Admin' : 'Sign In as Employee'}</span>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="9 18 15 12 9 6" />
                     </svg>

@@ -1472,33 +1472,33 @@ export default function AdminDashboard() {
                         </td>
                         <td data-label="Selfie">
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                            {r.checkInSelfieUrl && (
+                            {(r.checkInSelfieUrl || r.checkInPhotoUrl) && (
                               <div style={{ position: 'relative', display: 'inline-block' }}>
                                 <img
-                                  src={r.checkInSelfieUrl}
+                                  src={r.checkInSelfieUrl || r.checkInPhotoUrl}
                                   alt={`${r.name} check-in selfie`}
                                   className="selfie-thumb-circle"
                                   style={{ borderColor: '#10b981' }}
-                                  onClick={() => setSelectedSelfie({ url: r.checkInSelfieUrl, title: `${r.name} — Check-In (${r.date})` })}
+                                  onClick={() => setSelectedSelfie({ url: r.checkInSelfieUrl || r.checkInPhotoUrl, title: `${r.name} — Check-In (${r.date})` })}
                                   title="Click to zoom Check-In Selfie"
                                 />
                                 <span style={{ position: 'absolute', bottom: '-4px', right: '-4px', background: '#10b981', color: '#fff', fontSize: '9px', fontWeight: 800, padding: '1px 4px', borderRadius: '4px', textTransform: 'uppercase', lineHeight: 1 }}>IN</span>
                               </div>
                             )}
-                            {r.checkOutSelfieUrl && (
+                            {(r.checkOutSelfieUrl || r.checkOutPhotoUrl) && (
                               <div style={{ position: 'relative', display: 'inline-block' }}>
                                 <img
-                                  src={r.checkOutSelfieUrl}
+                                  src={r.checkOutSelfieUrl || r.checkOutPhotoUrl}
                                   alt={`${r.name} check-out selfie`}
                                   className="selfie-thumb-circle"
                                   style={{ borderColor: '#f43f5e' }}
-                                  onClick={() => setSelectedSelfie({ url: r.checkOutSelfieUrl, title: `${r.name} — Check-Out (${r.date})` })}
+                                  onClick={() => setSelectedSelfie({ url: r.checkOutSelfieUrl || r.checkOutPhotoUrl, title: `${r.name} — Check-Out (${r.date})` })}
                                   title="Click to zoom Check-Out Selfie"
                                 />
                                 <span style={{ position: 'absolute', bottom: '-4px', right: '-4px', background: '#f43f5e', color: '#fff', fontSize: '9px', fontWeight: 800, padding: '1px 4px', borderRadius: '4px', textTransform: 'uppercase', lineHeight: 1 }}>OUT</span>
                               </div>
                             )}
-                            {!r.checkInSelfieUrl && !r.checkOutSelfieUrl && (
+                            {!(r.checkInSelfieUrl || r.checkInPhotoUrl) && !(r.checkOutSelfieUrl || r.checkOutPhotoUrl) && (
                               <span className="selfie-empty-dash">—</span>
                             )}
                           </div>
@@ -1506,15 +1506,13 @@ export default function AdminDashboard() {
                         <td data-label="Location">
                           {r.checkInLocation ? (
                             <a
-                              href={`https://maps.google.com/?q=${r.checkInLocation.lat},${r.checkInLocation.lng}`}
+                              href={`https://maps.google.com/?q=${r.checkInLocation.lat || r.checkInLocation.latitude || 28.6129},${r.checkInLocation.lng || r.checkInLocation.longitude || 77.2090}`}
                               target="_blank"
                               rel="noreferrer"
                               className="table-link map-link"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 700, color: '#1E5AE6' }}
                             >
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z" />
-                                <circle cx="12" cy="10" r="3" />
-                              </svg>
+                              <span>📍</span>
                               <span>Map</span>
                             </a>
                           ) : (

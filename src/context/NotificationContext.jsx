@@ -193,7 +193,7 @@ export function NotificationProvider({ children }) {
           // Don't send popup to the person who punched their own check-in/out
           const isCurrentUser = data.uid === user.uid
           const empName = data.name || data.email?.split('@')[0] || 'Employee'
-          const photo = data.checkInSelfieUrl || null
+          const photo = data.checkInSelfieUrl || data.checkInPhotoUrl || data.selfieUrl || null
 
           if (change.type === 'added') {
             knownRecordsRef.current.set(docId, {
@@ -227,7 +227,7 @@ export function NotificationProvider({ children }) {
                 type: 'out',
                 name: empName,
                 time: formattedTime,
-                photoUrl: data.checkOutSelfieUrl || photo,
+                photoUrl: data.checkOutSelfieUrl || data.checkOutPhotoUrl || photo,
                 docId
               })
             }

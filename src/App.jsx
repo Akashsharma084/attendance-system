@@ -58,6 +58,9 @@ class ErrorBoundary extends Component {
 
 import { NotificationProvider } from './context/NotificationContext'
 import InAppArrivalToast from './components/InAppArrivalToast'
+import SWLDesignShowcase from './components/SWLDesignShowcase'
+import SWLLiveMasterApp from './components/SWLLiveMasterApp'
+import './components/SWLLiveApp.css'
 
 export default function App() {
   return (
@@ -68,56 +71,20 @@ export default function App() {
             <ScrollToTop />
             <InAppArrivalToast />
             <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/" element={<RoleHome />} />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <EmployeeDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/leaves"
-                element={
-                  <ProtectedRoute>
-                    <EmployeeLeaves />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/users"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <AdminUsers />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/leaves"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <AdminLeaves />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/reports"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <AdminReports />
-                  </ProtectedRoute>
-                }
-              />
+              {/* Primary Live Application (Pristine Showcase UI) */}
+              <Route path="/" element={<SWLLiveMasterApp />} />
+              <Route path="/login" element={<SWLLiveMasterApp />} />
+              <Route path="/dashboard" element={<SWLLiveMasterApp />} />
+              <Route path="/checkin" element={<SWLLiveMasterApp />} />
+              <Route path="/leaves" element={<SWLLiveMasterApp />} />
+              <Route path="/admin" element={<SWLLiveMasterApp />} />
+              <Route path="/admin/*" element={<SWLLiveMasterApp />} />
+
+              {/* Design Showcase Explorer */}
+              <Route path="/showcase" element={<SWLDesignShowcase />} />
+
+              {/* Fallback to root */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
         </NotificationProvider>
@@ -139,5 +106,5 @@ function RoleHome() {
 function RoleHomeInner() {
   const { isAdmin, loading } = useAuth()
   if (loading) return <div className="screen-center">Loading…</div>
-  return isAdmin ? <Navigate to="/admin" replace /> : <CheckIn />
+  return isAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/dashboard" replace />
 }

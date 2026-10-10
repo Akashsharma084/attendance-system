@@ -310,10 +310,11 @@ export default function AdminReports() {
     const today = todayDateKey()
 
     const list = periodRecords.map((r) => {
+      const selfie = r.checkInSelfieUrl || r.checkInPhotoUrl || r.photoUrl || null
       const emp = employees.find((e) => e.uid === r.uid) || {
         name: r.name || 'Employee',
         email: r.email || '—',
-        photoURL: r.checkInSelfieUrl
+        photoURL: selfie
       }
       const isToday = r.date === today
       const durationMin = calcWorkDurationMinutes(r.checkInTime, r.checkOutTime, isToday)
@@ -1064,20 +1065,20 @@ export default function AdminReports() {
 
                           {/* Check-In Selfie Thumbnail */}
                           <td data-label="Arrival Selfie" style={{ textAlign: 'center' }}>
-                            {record.checkInSelfieUrl ? (
+                            {(record.checkInSelfieUrl || record.checkInPhotoUrl) ? (
                               <button
                                 type="button"
                                 className="sw-selfie-thumb-btn"
                                 onClick={() =>
                                   setSelectedSelfiePreview({
-                                    url: record.checkInSelfieUrl,
+                                    url: record.checkInSelfieUrl || record.checkInPhotoUrl,
                                     title: `Check-In Selfie: ${record.employeeName}`,
                                     sub: `${record.date} at ${formatTime(record.checkInTime)}`
                                   })
                                 }
                                 title="Click to view arrival photo"
                               >
-                                <img src={record.checkInSelfieUrl} alt="In Selfie" className="sw-selfie-thumb" />
+                                <img src={record.checkInSelfieUrl || record.checkInPhotoUrl} alt="In Selfie" className="sw-selfie-thumb" />
                                 <span className="sw-selfie-zoom-icon">🔍</span>
                               </button>
                             ) : (
@@ -1109,20 +1110,20 @@ export default function AdminReports() {
 
                           {/* Check-Out Selfie Thumbnail */}
                           <td data-label="Exit Selfie" style={{ textAlign: 'center' }}>
-                            {record.checkOutSelfieUrl ? (
+                            {(record.checkOutSelfieUrl || record.checkOutPhotoUrl) ? (
                               <button
                                 type="button"
                                 className="sw-selfie-thumb-btn"
                                 onClick={() =>
                                   setSelectedSelfiePreview({
-                                    url: record.checkOutSelfieUrl,
+                                    url: record.checkOutSelfieUrl || record.checkOutPhotoUrl,
                                     title: `Check-Out Selfie: ${record.employeeName}`,
                                     sub: `${record.date} at ${formatTime(record.checkOutTime)}`
                                   })
                                 }
                                 title="Click to view departure photo"
                               >
-                                <img src={record.checkOutSelfieUrl} alt="Out Selfie" className="sw-selfie-thumb" />
+                                <img src={record.checkOutSelfieUrl || record.checkOutPhotoUrl} alt="Out Selfie" className="sw-selfie-thumb" />
                                 <span className="sw-selfie-zoom-icon">🔍</span>
                               </button>
                             ) : (
@@ -1142,12 +1143,37 @@ export default function AdminReports() {
                             )}
                           </td>
 
-                          {/* GPS / Geofence Column */}
+                          {/* GPS / Geofence Column with Map Check Button */}
                           <td data-label="GPS & Geofence">
                             {record.checkInLocation ? (
-                              <div className="sw-gps-badge" title={`Coordinates: ${record.checkInLocation.lat?.toFixed(4)}, ${record.checkInLocation.lng?.toFixed(4)}`}>
-                                <span>📍 Inside Office</span>
-                                <span className="sw-gps-acc">({Math.round(record.checkInLocation.accuracy || 10)}m)</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-start' }}>
+                                <div className="sw-gps-badge" title={`Coordinates: ${(record.checkInLocation.lat || record.checkInLocation.latitude)?.toFixed?.(4)}, ${(record.checkInLocation.lng || record.checkInLocation.longitude)?.toFixed?.(4)}`}>
+                                  <span>📍 Inside Office</span>
+                                  <span className="sw-gps-acc">({Math.round(record.checkInLocation.accuracy || 10)}m)</span>
+                                </div>
+                                <a
+                                  href={`https://www.google.com/maps?q=${record.checkInLocation.lat || record.checkInLocation.latitude || 28.6129},${record.checkInLocation.lng || record.checkInLocation.longitude || 77.2090}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn-map-check"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    fontSize: '0.74rem',
+                                    color: '#1E5AE6',
+                                    background: '#EEF4FF',
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                    fontWeight: '700',
+                                    textDecoration: 'none',
+                                    border: '1px solid rgba(30, 90, 230, 0.2)'
+                                  }}
+                                  title="Open exact GPS pin in Google Maps"
+                                >
+                                  <span>🗺️</span>
+                                  <span>Check Location</span>
+                                </a>
                               </div>
                             ) : (
                               <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>—</span>
@@ -1330,19 +1356,19 @@ export default function AdminReports() {
                               </td>
 
                               <td style={{ textAlign: 'center' }}>
-                                {r.checkInSelfieUrl ? (
+                                {(r.checkInSelfieUrl || r.checkInPhotoUrl) ? (
                                   <button
                                     type="button"
                                     className="sw-selfie-thumb-btn mini"
                                     onClick={() =>
                                       setSelectedSelfiePreview({
-                                        url: r.checkInSelfieUrl,
+                                        url: r.checkInSelfieUrl || r.checkInPhotoUrl,
                                         title: `Arrival Selfie: ${selectedMemberModal.name}`,
                                         sub: `${r.date} at ${formatTime(r.checkInTime)}`
                                       })
                                     }
                                   >
-                                    <img src={r.checkInSelfieUrl} alt="In Selfie" className="sw-selfie-thumb mini" />
+                                    <img src={r.checkInSelfieUrl || r.checkInPhotoUrl} alt="In Selfie" className="sw-selfie-thumb mini" />
                                   </button>
                                 ) : (
                                   <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>—</span>
@@ -1358,19 +1384,19 @@ export default function AdminReports() {
                               </td>
 
                               <td style={{ textAlign: 'center' }}>
-                                {r.checkOutSelfieUrl ? (
+                                {(r.checkOutSelfieUrl || r.checkOutPhotoUrl) ? (
                                   <button
                                     type="button"
                                     className="sw-selfie-thumb-btn mini"
                                     onClick={() =>
                                       setSelectedSelfiePreview({
-                                        url: r.checkOutSelfieUrl,
+                                        url: r.checkOutSelfieUrl || r.checkOutPhotoUrl,
                                         title: `Departure Selfie: ${selectedMemberModal.name}`,
                                         sub: `${r.date} at ${formatTime(r.checkOutTime)}`
                                       })
                                     }
                                   >
-                                    <img src={r.checkOutSelfieUrl} alt="Out Selfie" className="sw-selfie-thumb mini" />
+                                    <img src={r.checkOutSelfieUrl || r.checkOutPhotoUrl} alt="Out Selfie" className="sw-selfie-thumb mini" />
                                   </button>
                                 ) : (
                                   <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>—</span>
