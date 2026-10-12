@@ -1143,37 +1143,14 @@ export default function AdminReports() {
                             )}
                           </td>
 
-                          {/* GPS / Geofence Column with Map Check Button */}
+                          {/* GPS / Geofence Column */}
                           <td data-label="GPS & Geofence">
                             {record.checkInLocation ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-start' }}>
-                                <div className="sw-gps-badge" title={`Coordinates: ${(record.checkInLocation.lat || record.checkInLocation.latitude)?.toFixed?.(4)}, ${(record.checkInLocation.lng || record.checkInLocation.longitude)?.toFixed?.(4)}`}>
+                                <div className="sw-gps-badge" title="Office GPS Verified">
                                   <span>📍 Inside Office</span>
                                   <span className="sw-gps-acc">({Math.round(record.checkInLocation.accuracy || 10)}m)</span>
                                 </div>
-                                <a
-                                  href={`https://www.google.com/maps?q=${record.checkInLocation.lat || record.checkInLocation.latitude || 28.6129},${record.checkInLocation.lng || record.checkInLocation.longitude || 77.2090}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="btn-map-check"
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    fontSize: '0.74rem',
-                                    color: '#1E5AE6',
-                                    background: '#EEF4FF',
-                                    padding: '3px 8px',
-                                    borderRadius: '6px',
-                                    fontWeight: '700',
-                                    textDecoration: 'none',
-                                    border: '1px solid rgba(30, 90, 230, 0.2)'
-                                  }}
-                                  title="Open exact GPS pin in Google Maps"
-                                >
-                                  <span>🗺️</span>
-                                  <span>Check Location</span>
-                                </a>
                               </div>
                             ) : (
                               <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>—</span>

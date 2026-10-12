@@ -55,6 +55,14 @@ const DEFAULT_USERS = [
     status: 'active'
   },
   {
+    uid: 'muldFhT5eRP9s2BFvdaVRSqyvkA2',
+    email: 'demo@softwindlabs.com',
+    name: 'Aarav Mehta',
+    role: 'employee',
+    status: 'active',
+    photoURL: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=300&h=300&q=80'
+  },
+  {
     uid: 'swl-emp-rohit',
     email: 'rohit.sharma@softwindlabs.com',
     name: 'Rohit Sharma',
@@ -125,10 +133,12 @@ function generateSeedAttendance() {
   const records = []
   const seedEmployees = DEFAULT_USERS.filter((u) => u.role !== 'admin')
 
-  // Generate working days from Aug 7, 2026 to today (Oct 8, 2026)
+  // Generate working days from Aug 7, 2026 to today
   const pad = (n) => String(n).padStart(2, '0')
   const startDate = new Date(2026, 7, 7)
-  const endDate = new Date(2026, 9, 8)
+  const todayKey = todayDateKey()
+  const todayObj = new Date()
+  const endDate = todayObj < startDate ? new Date(2026, 9, 12) : todayObj
   const curr = new Date(startDate)
 
   while (curr <= endDate) {
@@ -138,18 +148,18 @@ function generateSeedAttendance() {
     const dayOfWeek = curr.getDay()
     const dateStr = `${y}-${pad(m)}-${pad(d)}`
     const monthStr = `${y}-${pad(m)}`
-    const isToday = dateStr === '2026-10-08'
+    const isToday = dateStr === todayKey || dateStr === '2026-10-12'
 
     if (dayOfWeek !== 0) {
       seedEmployees.forEach((emp, empIdx) => {
         if (isToday) {
-          if (empIdx < 6) {
+          if (empIdx < 8) {
             const inMin = 45 + ((empIdx * 7) % 30)
             const inHour = inMin >= 60 ? 10 : 9
-            const checkInDate = new Date(2026, 9, 8, inHour, inMin % 60, 0)
+            const checkInDate = new Date(y, m - 1, d, inHour, inMin % 60, 0)
             let checkOutDate = null
-            if (empIdx === 0) checkOutDate = new Date(2026, 9, 8, 14, 30, 0)
-            if (empIdx === 1) checkOutDate = new Date(2026, 9, 8, 15, 15, 0)
+            if (empIdx === 1) checkOutDate = new Date(y, m - 1, d, 13, 20, 0)
+            if (empIdx === 5) checkOutDate = new Date(y, m - 1, d, 13, 10, 0)
 
             records.push({
               id: `rec-${emp.uid}-${dateStr}`,
@@ -160,6 +170,7 @@ function generateSeedAttendance() {
               checkInTime: checkInDate.toISOString(),
               checkInLocation: { lat: 28.6139, lng: 77.2090, accuracy: 8 },
               checkInSelfieUrl: emp.photoURL,
+              isLate: inHour >= 10 || (inHour === 9 && inMin % 60 > 30),
               checkOutTime: checkOutDate ? checkOutDate.toISOString() : null,
               checkOutLocation: checkOutDate ? { lat: 28.6139, lng: 77.2090, accuracy: 10 } : null,
               checkOutSelfieUrl: checkOutDate ? emp.photoURL : null
@@ -215,16 +226,31 @@ export function getStoredUsers() {
 
 export function getStoredAttendance() {
   const data = localStorage.getItem(STORAGE_KEY_ATTENDANCE)
+  let records = []
   if (!data) {
-    const seed = generateSeedAttendance()
-    localStorage.setItem(STORAGE_KEY_ATTENDANCE, JSON.stringify(seed))
-    return seed
+    records = generateSeedAttendance()
+    localStorage.setItem(STORAGE_KEY_ATTENDANCE, JSON.stringify(records))
+    return records
   }
   try {
-    return JSON.parse(data)
+    records = JSON.parse(data) || []
   } catch {
-    return []
+    records = generateSeedAttendance()
   }
+
+  // Ensure today's records are always populated in demo store
+  const todayKey = todayDateKey()
+  const hasToday = records.some((r) => r.date === todayKey)
+  if (!hasToday) {
+    const freshToday = generateSeedAttendance().filter((r) => r.date === todayKey)
+    if (freshToday.length > 0) {
+      records = [...records, ...freshToday]
+      try {
+        localStorage.setItem(STORAGE_KEY_ATTENDANCE, JSON.stringify(records))
+      } catch {}
+    }
+  }
+  return records
 }
 
 // Clean up any legacy cross-session mock login stored in localStorage

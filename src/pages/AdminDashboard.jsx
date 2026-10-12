@@ -1388,18 +1388,7 @@ export default function AdminDashboard() {
                         </td>
                         <td data-label="Location">
                           {r.checkInLocation ? (
-                            <a
-                              href={`https://maps.google.com/?q=${r.checkInLocation.lat},${r.checkInLocation.lng}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="table-link map-link"
-                            >
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z" />
-                                <circle cx="12" cy="10" r="3" />
-                              </svg>
-                              <span>Map</span>
-                            </a>
+                            <span style={{ fontSize: '0.78rem', color: '#10b981', fontWeight: 600 }}>📍 Office</span>
                           ) : (
                             <span className="empty-dash">—</span>
                           )}
@@ -1505,16 +1494,7 @@ export default function AdminDashboard() {
                         </td>
                         <td data-label="Location">
                           {r.checkInLocation ? (
-                            <a
-                              href={`https://maps.google.com/?q=${r.checkInLocation.lat || r.checkInLocation.latitude || 28.6129},${r.checkInLocation.lng || r.checkInLocation.longitude || 77.2090}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="table-link map-link"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 700, color: '#1E5AE6' }}
-                            >
-                              <span>📍</span>
-                              <span>Map</span>
-                            </a>
+                            <span style={{ fontSize: '0.78rem', color: '#10b981', fontWeight: 600 }}>📍 Office</span>
                           ) : (
                             <span className="empty-dash">—</span>
                           )}
@@ -1840,18 +1820,7 @@ export default function AdminDashboard() {
                                 )}
                               </div>
 
-                              {/* Location map link */}
-                              {item.record.checkInLocation && (
-                                <a
-                                  href={`https://maps.google.com/?q=${item.record.checkInLocation.lat},${item.record.checkInLocation.lng}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="table-link map-link"
-                                  title="View GPS Pin"
-                                >
-                                  📍 Map
-                                </a>
-                              )}
+
 
                               {/* Delete Action Button */}
                               <button

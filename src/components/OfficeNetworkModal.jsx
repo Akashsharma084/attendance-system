@@ -237,8 +237,8 @@ export default function OfficeNetworkModal({ isOpen, onClose, onSaved, adminName
           </div>
 
           {/* Manual Latitude & Longitude */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '1rem' }}>
-            <div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '10px', marginBottom: '1rem' }}>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#475569', marginBottom: '3px' }}>
                 Latitude
               </label>
@@ -248,10 +248,10 @@ export default function OfficeNetworkModal({ isOpen, onClose, onSaved, adminName
                 value={latitude}
                 onChange={(e) => setLatitude(e.target.value)}
                 placeholder="e.g. 28.5355"
-                style={{ width: '100%', padding: '0.5rem 0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', fontFamily: 'monospace' }}
+                style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '0.5rem 0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', fontFamily: 'monospace' }}
               />
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#475569', marginBottom: '3px' }}>
                 Longitude
               </label>
@@ -261,7 +261,7 @@ export default function OfficeNetworkModal({ isOpen, onClose, onSaved, adminName
                 value={longitude}
                 onChange={(e) => setLongitude(e.target.value)}
                 placeholder="e.g. 77.3910"
-                style={{ width: '100%', padding: '0.5rem 0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', fontFamily: 'monospace' }}
+                style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '0.5rem 0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', fontFamily: 'monospace' }}
               />
             </div>
           </div>

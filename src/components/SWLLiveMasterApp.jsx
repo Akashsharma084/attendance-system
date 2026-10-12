@@ -189,24 +189,9 @@ function SelfiePairThumbs({
   )
 }
 
-/* Reusable Check Location Link Button (Google Maps) */
-function LocationBtn({ location, label = '🗺️ Check Location' }) {
-  const lat = location?.latitude ?? location?.lat
-  const lng = location?.longitude ?? location?.lng
-  if (lat == null || lng == null) return null
-  const url = `https://www.google.com/maps?q=${lat},${lng}`
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="swl-location-btn"
-      onClick={(e) => e.stopPropagation()}
-      title={`Open Coordinates: ${typeof lat === 'number' ? lat.toFixed(5) : lat}, ${typeof lng === 'number' ? lng.toFixed(5) : lng}`}
-    >
-      {label}
-    </a>
-  )
+/* Reusable Check Location Link Button (Hidden per user request across all profiles) */
+function LocationBtn() {
+  return null
 }
 
 /* Live Team Arrivals Modal (Bell Notification Feed) */
@@ -479,30 +464,6 @@ function LiveSelfieZoomModal({ selfie, onClose }) {
         />
 
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {hasCoords ? (
-            <a
-              href={gmapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="swl-btn-login"
-              style={{
-                textDecoration: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                padding: '10px 14px',
-                fontSize: '0.78rem'
-              }}
-            >
-              🗺️ Open Exact Location on Google Maps
-            </a>
-          ) : (
-            <div style={{ fontSize: '0.72rem', color: '#94A3B8' }}>
-              📍 GPS coordinates not recorded for this punch
-            </div>
-          )}
-
           <button
             type="button"
             onClick={onClose}
@@ -511,8 +472,8 @@ function LiveSelfieZoomModal({ selfie, onClose }) {
               color: '#475569',
               border: 'none',
               borderRadius: 10,
-              padding: '8px',
-              fontSize: '0.78rem',
+              padding: '10px',
+              fontSize: '0.8rem',
               fontWeight: 700,
               cursor: 'pointer'
             }}
@@ -6301,14 +6262,14 @@ function LiveGeofenceModal({ officeConfig, onClose, adminName }) {
                 {acquiring ? 'Locking…' : '🎯 Use Current GPS'}
               </button>
             </div>
-            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8, marginTop: 4 }}>
               <input
                 type="text"
                 required
                 value={latitude}
                 onChange={(e) => setLatitude(e.target.value)}
                 placeholder="Latitude"
-                style={{ flex: 1, padding: '7px 8px', borderRadius: 8, border: '1px solid #E2E8F0', outline: 'none', fontSize: '0.75rem' }}
+                style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '7px 8px', borderRadius: 8, border: '1px solid #E2E8F0', outline: 'none', fontSize: '0.75rem' }}
               />
               <input
                 type="text"
@@ -6316,7 +6277,7 @@ function LiveGeofenceModal({ officeConfig, onClose, adminName }) {
                 value={longitude}
                 onChange={(e) => setLongitude(e.target.value)}
                 placeholder="Longitude"
-                style={{ flex: 1, padding: '7px 8px', borderRadius: 8, border: '1px solid #E2E8F0', outline: 'none', fontSize: '0.75rem' }}
+                style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '7px 8px', borderRadius: 8, border: '1px solid #E2E8F0', outline: 'none', fontSize: '0.75rem' }}
               />
             </div>
           </div>
@@ -6344,6 +6305,8 @@ function LiveGeofenceModal({ officeConfig, onClose, adminName }) {
                 placeholder="Type manual radius (e.g. 75, 120, 250)"
                 style={{
                   width: '100%',
+                  minWidth: 0,
+                  boxSizing: 'border-box',
                   padding: '8px 55px 8px 10px',
                   borderRadius: 10,
                   border: '1.5px solid #CBD5E1',
@@ -6404,7 +6367,7 @@ function LiveGeofenceModal({ officeConfig, onClose, adminName }) {
               value={officeAddress}
               onChange={(e) => setOfficeAddress(e.target.value)}
               placeholder="e.g. Softwind Labs HQ"
-              style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid #E2E8F0', outline: 'none', fontSize: '0.78rem', marginTop: 4 }}
+              style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '7px 10px', borderRadius: 8, border: '1px solid #E2E8F0', outline: 'none', fontSize: '0.78rem', marginTop: 4 }}
             />
           </div>
 

@@ -464,7 +464,6 @@ export default function TeamAttendanceView({ onSelectSelfie }) {
                 <th style={{ minWidth: '130px' }}>Departure (Check Out)</th>
                 <th style={{ minWidth: '110px' }}>Duration</th>
                 <th style={{ minWidth: '120px' }}>Selfies</th>
-                <th style={{ minWidth: '135px' }}>Location</th>
               </tr>
             </thead>
             <tbody>
@@ -600,37 +599,6 @@ export default function TeamAttendanceView({ onSelectSelfie }) {
                         )}
                       </div>
                     </td>
-
-                    {/* Location Check */}
-                    <td>
-                      {item.record?.checkInLocation ? (
-                        <a
-                          href={`https://www.google.com/maps?q=${item.record.checkInLocation.latitude || item.record.checkInLocation.lat || 28.6129},${item.record.checkInLocation.longitude || item.record.checkInLocation.lng || 77.2090}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-map-check"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            fontSize: '0.74rem',
-                            color: '#1E5AE6',
-                            background: '#EEF4FF',
-                            padding: '3px 8px',
-                            borderRadius: '6px',
-                            fontWeight: '700',
-                            textDecoration: 'none',
-                            border: '1px solid rgba(30, 90, 230, 0.2)'
-                          }}
-                          title="Open GPS location in Google Maps"
-                        >
-                          <span>🗺️</span>
-                          <span>Check Location</span>
-                        </a>
-                      ) : (
-                        <span className="subtle">—</span>
-                      )}
-                    </td>
                   </tr>
                 )
               })}
@@ -752,34 +720,6 @@ export default function TeamAttendanceView({ onSelectSelfie }) {
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
-
-                {item.record?.checkInLocation && (
-                  <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#64748B' }}>📍 GPS Locked</span>
-                    <a
-                      href={`https://www.google.com/maps?q=${item.record.checkInLocation.latitude || item.record.checkInLocation.lat || 28.6129},${item.record.checkInLocation.longitude || item.record.checkInLocation.lng || 77.2090}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-map-check"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        fontSize: '0.72rem',
-                        color: '#1E5AE6',
-                        background: '#EEF4FF',
-                        padding: '3px 8px',
-                        borderRadius: '6px',
-                        fontWeight: '700',
-                        textDecoration: 'none'
-                      }}
-                      title="Open GPS location in Google Maps"
-                    >
-                      <span>🗺️</span>
-                      <span>Check Location</span>
-                    </a>
                   </div>
                 )}
               </div>
