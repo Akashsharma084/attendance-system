@@ -917,19 +917,25 @@ export default function SWLLiveMasterApp() {
 function LiveLoginScreen({ onSuccess }) {
   const { login, loginWithGoogle, resetPassword } = useAuth()
   const [profileRole, setProfileRole] = useState('employee') // 'employee' | 'admin'
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('swl_last_employee_email') || ''
+    }
+    return ''
+  })
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
-  // Prefill helpful sample credentials
+  // Prefill helpful sample credentials or remember last employee email
   useEffect(() => {
     if (profileRole === 'admin') {
       setEmail('admin@softwindlabs.com')
       setPassword('admin123')
     } else {
-      setEmail('')
+      const saved = typeof window !== 'undefined' ? (localStorage.getItem('swl_last_employee_email') || '') : ''
+      setEmail(saved)
       setPassword('')
     }
     setErrorMsg('')
@@ -944,6 +950,11 @@ function LiveLoginScreen({ onSuccess }) {
     setSubmitting(true)
     setErrorMsg('')
     try {
+      if (profileRole === 'employee' && typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('swl_last_employee_email', email.trim())
+        } catch {}
+      }
       await login(email.trim(), password, profileRole)
       onSuccess(profileRole)
     } catch (err) {
@@ -1229,7 +1240,7 @@ function LiveLoginScreen({ onSuccess }) {
           </div>
         )}
 
-        <form onSubmit={handleEmailLogin} autoComplete="off" data-lpignore="true">
+        <form onSubmit={handleEmailLogin}>
           <div className="swl-form-group" style={{ marginBottom: 14 }}>
             <label style={{ fontSize: '0.76rem', fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>
               {profileRole === 'admin' ? 'Admin Email Address' : 'Work Email Address'}
@@ -1237,9 +1248,10 @@ function LiveLoginScreen({ onSuccess }) {
             <div className="swl-input-box" style={{ padding: '12px 14px' }}>
               <Icons.User />
               <input
+                id="swl-login-email"
                 type="email"
-                name="auth_user"
-                autoComplete="off"
+                name="email"
+                autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}

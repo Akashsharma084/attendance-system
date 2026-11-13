@@ -325,7 +325,7 @@ export default function Login() {
               </>
             )}
 
-            <form onSubmit={handleSubmit} className="sw-login-form" autoComplete="off" data-lpignore="true">
+            <form onSubmit={handleSubmit} className="sw-login-form">
               {/* Email Input */}
               <div className="sw-form-group">
                 <label htmlFor="sw-email" className="sw-input-label">Work Email</label>
@@ -339,11 +339,11 @@ export default function Login() {
                   <input
                     id="sw-email"
                     type="email"
-                    name="auth_email_token"
+                    name="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    autoComplete="off"
+                    autoComplete="email"
                     placeholder="name@softwindlabs.com"
                     className="sw-input"
                   />
