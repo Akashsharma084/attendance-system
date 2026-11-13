@@ -23,17 +23,28 @@ import './SWLDesignShowcase.css'
 
 export function isUserAdmin(u) {
   if (!u) return false
-  const role = (u.role || '').toLowerCase().trim()
   const email = (u.email || '').toLowerCase().trim()
-  return (
+  const name = (u.name || '').toLowerCase().trim()
+  const role = (u.role || '').toLowerCase().trim()
+
+  // STRICT RULE: "Jai" (email: jai@softwindlabs.com or name "Jai") is an EMPLOYEE / Worker, NOT Admin!
+  if (email === 'jai@softwindlabs.com') return false
+  if (name === 'jai' && !name.includes('chaturvedi') && role !== 'admin') return false
+
+  // "Jai Chaturvedi" / admin@softwindlabs.com / role: 'admin' is the Administrator
+  if (
+    email === 'admin@softwindlabs.com' ||
+    email === 'jai.chaturvedi@softwindlabs.com' ||
+    name.includes('chaturvedi') ||
     role === 'admin' ||
     u.isAdmin === true ||
     checkIsAdminEmail(email) ||
-    email.startsWith('admin@') ||
-    email === 'admin@softwindlabs.com' ||
-    email === 'jai.chaturvedi@softwindlabs.com' ||
-    email === 'jai@softwindlabs.com'
-  )
+    email.startsWith('admin@')
+  ) {
+    return true
+  }
+
+  return false
 }
 
 const Icons = {
@@ -4261,7 +4272,7 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
             </div>
             <div onClick={() => onNavigate('adm_profile')} style={{ cursor: 'pointer' }} title="Admin Profile">
               <UserAvatar
-                name={profile?.name || user?.displayName || 'Jai'}
+                name={profile?.name || user?.displayName || 'Jai Chaturvedi'}
                 photoURL={profile?.photoURL || user?.photoURL}
                 size={28}
                 fontSize="0.75rem"

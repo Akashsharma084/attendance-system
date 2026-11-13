@@ -173,16 +173,22 @@ export default function AdminDashboard() {
   const employees = useMemo(() => {
     const isEmpAdmin = (u) => {
       if (!u) return false
-      const role = (u.role || '').toLowerCase().trim()
       const email = (u.email || '').toLowerCase().trim()
+      const name = (u.name || '').toLowerCase().trim()
+      const role = (u.role || '').toLowerCase().trim()
+
+      // Employee "Jai" (jai@softwindlabs.com or name "Jai") is strictly an employee
+      if (email === 'jai@softwindlabs.com') return false
+      if (name === 'jai' && !name.includes('chaturvedi') && role !== 'admin') return false
+
       return (
+        email === 'admin@softwindlabs.com' ||
+        email === 'jai.chaturvedi@softwindlabs.com' ||
+        name.includes('chaturvedi') ||
         role === 'admin' ||
         u.isAdmin === true ||
         checkIsAdminEmail(email) ||
-        email.startsWith('admin@') ||
-        email === 'admin@softwindlabs.com' ||
-        email === 'jai.chaturvedi@softwindlabs.com' ||
-        email === 'jai@softwindlabs.com'
+        email.startsWith('admin@')
       )
     }
     const map = new Map()

@@ -82,6 +82,15 @@ const DEFAULT_USERS = [
     status: 'active',
     employeeId: 'SWL-107',
     department: 'Engineering'
+  },
+  {
+    uid: 'GOlxMC8609Up8oF7TwQWyRTCSnI3',
+    email: 'jai@softwindlabs.com',
+    name: 'Jai',
+    role: 'employee',
+    status: 'active',
+    employeeId: 'SWL-108',
+    department: 'Operations'
   }
 ]
 
