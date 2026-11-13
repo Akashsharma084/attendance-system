@@ -325,7 +325,7 @@ export default function Login() {
               </>
             )}
 
-            <form onSubmit={handleSubmit} className="sw-login-form">
+            <form onSubmit={handleSubmit} className="sw-login-form" autoComplete="off" data-lpignore="true">
               {/* Email Input */}
               <div className="sw-form-group">
                 <label htmlFor="sw-email" className="sw-input-label">Work Email</label>
@@ -339,10 +339,11 @@ export default function Login() {
                   <input
                     id="sw-email"
                     type="email"
+                    name="auth_email_token"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    autoComplete="email"
+                    autoComplete="off"
                     placeholder="name@softwindlabs.com"
                     className="sw-input"
                   />
@@ -373,13 +374,23 @@ export default function Login() {
                   </span>
                   <input
                     id="sw-password"
-                    type={showPassword ? 'text' : 'password'}
+                    type="text"
+                    name="auth_key_token"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                    data-lpignore="true"
+                    data-form-type="other"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="current-password"
                     placeholder="••••••••••••"
                     className="sw-input sw-input-password"
+                    style={{
+                      WebkitTextSecurity: showPassword ? 'none' : 'disc',
+                      textSecurity: showPassword ? 'none' : 'disc'
+                    }}
                   />
                   <button
                     type="button"

@@ -882,7 +882,7 @@ function LoginScreen({ onNavigate }) {
         <div className="swl-form-group">
           <div className="swl-input-box">
             <Icons.Lock />
-            <input type="password" placeholder="Password" defaultValue="••••••••••••" />
+            <input type="text" placeholder="Password" defaultValue="••••••••••••" style={{ WebkitTextSecurity: 'disc', textSecurity: 'disc' }} />
             <Icons.Eye />
           </div>
         </div>
@@ -1477,7 +1477,7 @@ function AdminLoginScreen({ onNavigate }) {
         <div className="swl-form-group">
           <div className="swl-input-box">
             <Icons.Lock />
-            <input type="password" placeholder="Password" defaultValue="••••••••••••" />
+            <input type="text" placeholder="Password" defaultValue="••••••••••••" style={{ WebkitTextSecurity: 'disc', textSecurity: 'disc' }} />
             <Icons.Eye />
           </div>
         </div>

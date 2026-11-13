@@ -1229,7 +1229,7 @@ function LiveLoginScreen({ onSuccess }) {
           </div>
         )}
 
-        <form onSubmit={handleEmailLogin}>
+        <form onSubmit={handleEmailLogin} autoComplete="off" data-lpignore="true">
           <div className="swl-form-group" style={{ marginBottom: 14 }}>
             <label style={{ fontSize: '0.76rem', fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>
               {profileRole === 'admin' ? 'Admin Email Address' : 'Work Email Address'}
@@ -1238,6 +1238,8 @@ function LiveLoginScreen({ onSuccess }) {
               <Icons.User />
               <input
                 type="email"
+                name="auth_user"
+                autoComplete="off"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -1274,11 +1276,22 @@ function LiveLoginScreen({ onSuccess }) {
             <div className="swl-input-box" style={{ padding: '12px 14px' }}>
               <Icons.Lock />
               <input
-                type={showPassword ? 'text' : 'password'}
+                type="text"
+                name="auth_key"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                data-lpignore="true"
+                data-form-type="other"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
+                style={{
+                  WebkitTextSecurity: showPassword ? 'none' : 'disc',
+                  textSecurity: showPassword ? 'none' : 'disc'
+                }}
               />
               <span
                 style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
@@ -4000,24 +4013,40 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
                 <div>
                   <label className="swl-input-label">New Password</label>
                   <input
-                    type="password"
+                    type="text"
+                    name="user_new_token"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                    data-lpignore="true"
+                    data-form-type="other"
                     required
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     className="swl-input-field"
                     placeholder="Minimum 6 characters"
+                    style={{ WebkitTextSecurity: 'disc', textSecurity: 'disc' }}
                   />
                 </div>
 
                 <div>
                   <label className="swl-input-label">Confirm New Password</label>
                   <input
-                    type="password"
+                    type="text"
+                    name="user_confirm_token"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                    data-lpignore="true"
+                    data-form-type="other"
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="swl-input-field"
                     placeholder="Re-type new password"
+                    style={{ WebkitTextSecurity: 'disc', textSecurity: 'disc' }}
                   />
                 </div>
               </div>
@@ -6204,24 +6233,38 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
                 <div>
                   <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155' }}>New Password</label>
                   <input
-                    type="password"
+                    type="text"
+                    name="admin_new_token"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                    data-lpignore="true"
+                    data-form-type="other"
                     required
                     placeholder="Min 6 characters"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: '0.8rem', marginTop: 4, outline: 'none' }}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: '0.8rem', marginTop: 4, outline: 'none', WebkitTextSecurity: 'disc', textSecurity: 'disc' }}
                   />
                 </div>
 
                 <div>
                   <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155' }}>Confirm New Password</label>
                   <input
-                    type="password"
+                    type="text"
+                    name="admin_confirm_token"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                    data-lpignore="true"
+                    data-form-type="other"
                     required
                     placeholder="Repeat new password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: '0.8rem', marginTop: 4, outline: 'none' }}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: '0.8rem', marginTop: 4, outline: 'none', WebkitTextSecurity: 'disc', textSecurity: 'disc' }}
                   />
                 </div>
 
