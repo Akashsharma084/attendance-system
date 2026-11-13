@@ -1,10 +1,12 @@
-import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, getDocs, doc, serverTimestamp } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../firebase'
 import {
   mockGetLeavesList,
   mockCreateLeaveRequest,
   mockUpdateLeaveStatus,
-  mockCancelLeaveRequest
+  mockCancelLeaveRequest,
+  mockDeleteLeaveRequest,
+  mockClearLeaveRecords
 } from '../mockService'
 
 /**
@@ -165,4 +167,51 @@ export async function cancelLeaveRequest({ leaveId, uid }) {
   })
 
   return { id: leaveId, status: 'cancelled' }
+}
+
+/**
+ * Delete a specific leave request record.
+ */
+export async function deleteLeaveRequest({ leaveId, uid }) {
+  if (!isFirebaseConfigured || !db) {
+    return mockDeleteLeaveRequest({ leaveId, uid })
+  }
+
+  const leaveDocRef = doc(db, 'leaves', leaveId)
+  await deleteDoc(leaveDocRef)
+  return { id: leaveId, deleted: true }
+}
+
+/**
+ * Clear multiple leave records (e.g. for an employee or an admin purging past records).
+ */
+export async function clearLeaveRecords({ uid, leaveIds, status }) {
+  if (!isFirebaseConfigured || !db) {
+    return mockClearLeaveRecords({ uid, status })
+  }
+
+  if (leaveIds && leaveIds.length > 0) {
+    for (const id of leaveIds) {
+      await deleteDoc(doc(db, 'leaves', id))
+    }
+    return { clearedCount: leaveIds.length }
+  }
+
+  const colRef = collection(db, 'leaves')
+  let q
+  if (uid && status) {
+    q = query(colRef, where('uid', '==', uid), where('status', '==', status))
+  } else if (uid) {
+    q = query(colRef, where('uid', '==', uid))
+  } else if (status) {
+    q = query(colRef, where('status', '==', status))
+  } else {
+    q = query(colRef)
+  }
+
+  const snap = await getDocs(q)
+  for (const d of snap.docs) {
+    await deleteDoc(d.ref)
+  }
+  return { clearedCount: snap.docs.length }
 }

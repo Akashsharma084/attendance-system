@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { subscribeLeaves, submitLeaveRequest, cancelLeaveRequest } from '../services/leaveService'
+import {
+  subscribeLeaves,
+  submitLeaveRequest,
+  cancelLeaveRequest,
+  deleteLeaveRequest,
+  clearLeaveRecords
+} from '../services/leaveService'
 import { todayDateKey } from '../utils/dateHelpers'
 import { getUpcomingHoliday } from '../utils/holidays.js'
 import NavBar from '../components/NavBar'
@@ -184,6 +190,25 @@ export default function EmployeeLeaves() {
       alert('Could not cancel request: ' + (err.message || 'Please try again.'))
     } finally {
       setCancellingId(null)
+    }
+  }
+
+  async function handleDeleteLeave(leaveId) {
+    if (!window.confirm('Delete this leave record permanently from your history?')) return
+    try {
+      await deleteLeaveRequest({ leaveId, uid: user.uid })
+    } catch (err) {
+      alert('Could not delete leave record: ' + err.message)
+    }
+  }
+
+  async function handleClearAllLeaves() {
+    if (leaves.length === 0) return
+    if (!window.confirm(`Are you sure you want to clear all ${leaves.length} leave records from your history? This action cannot be undone.`)) return
+    try {
+      await clearLeaveRecords({ uid: user.uid, leaveIds: leaves.map((l) => l.id) })
+    } catch (err) {
+      alert('Could not clear leave history: ' + err.message)
     }
   }
 

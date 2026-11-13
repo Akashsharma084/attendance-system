@@ -408,3 +408,30 @@ export function mockCancelLeaveRequest({ leaveId, uid }) {
   return all[idx]
 }
 
+export function mockDeleteLeaveRequest({ leaveId, uid }) {
+  const all = getStoredLeaves()
+  const idx = all.findIndex((l) => l.id === leaveId)
+  if (idx === -1) return true
+  if (uid && all[idx].uid !== uid) {
+    throw new Error('You can only delete your own leave records.')
+  }
+  all.splice(idx, 1)
+  localStorage.setItem(STORAGE_KEY_LEAVES, JSON.stringify([...all]))
+  return true
+}
+
+export function mockClearLeaveRecords({ uid, status }) {
+  let all = getStoredLeaves()
+  if (uid && status) {
+    all = all.filter((l) => !(l.uid === uid && l.status === status))
+  } else if (uid) {
+    all = all.filter((l) => l.uid !== uid)
+  } else if (status) {
+    all = all.filter((l) => l.status !== status)
+  } else {
+    all = []
+  }
+  localStorage.setItem(STORAGE_KEY_LEAVES, JSON.stringify([...all]))
+  return true
+}
+

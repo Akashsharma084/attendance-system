@@ -59,7 +59,14 @@ const Icons = {
   ))
 }
 import { todayDateKey, monthKey, formatTime, buildEmployeeSchedule } from '../utils/dateHelpers'
-import { subscribeLeaves, submitLeaveRequest, reviewLeaveRequest, cancelLeaveRequest } from '../services/leaveService'
+import {
+  subscribeLeaves,
+  submitLeaveRequest,
+  reviewLeaveRequest,
+  cancelLeaveRequest,
+  deleteLeaveRequest,
+  clearLeaveRecords
+} from '../services/leaveService'
 import {
   subscribeOfficeNetworkConfig,
   checkGeofence,
@@ -3044,6 +3051,71 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie }) {
   )
 }
 
+export function formatLeaveTargetDates(startDate, endDate) {
+  if (!startDate) return '—'
+  const parse = (dStr) => {
+    if (!dStr) return ''
+    try {
+      const parts = dStr.split('-')
+      if (parts.length === 3) {
+        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+        }
+      }
+      const d = new Date(dStr)
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+      }
+    } catch {}
+    return dStr
+  }
+
+  const sFormatted = parse(startDate)
+  const eFormatted = endDate ? parse(endDate) : sFormatted
+
+  if (!endDate || startDate === endDate) {
+    return `${sFormatted} (1 Day)`
+  }
+
+  try {
+    const d1 = new Date(startDate)
+    const d2 = new Date(endDate)
+    const diff = Math.max(1, Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1)
+    return `${sFormatted} – ${eFormatted} (${diff} Days)`
+  } catch {
+    return `${sFormatted} – ${eFormatted}`
+  }
+}
+
+export function formatLeaveRequestDateTime(timestamp) {
+  if (!timestamp) return 'Just now'
+  try {
+    let date = null
+    if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+      date = timestamp.toDate()
+    } else if (timestamp instanceof Date) {
+      date = timestamp
+    } else if (typeof timestamp === 'number' || typeof timestamp === 'string') {
+      date = new Date(timestamp)
+    }
+    if (!date || isNaN(date.getTime())) return 'Recently'
+    const datePart = date.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    })
+    const timePart = date.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    })
+    return `${datePart} at ${timePart}`
+  } catch {
+    return 'Recently'
+  }
+}
+
 /* =========================================================================
    5. LIVE LEAVE APPLICATION SCREEN (SCREEN 6) - LEAVE APPLY & MEDICAL PROOF
    ========================================================================= */
@@ -3130,6 +3202,27 @@ function LiveLeaveAppScreen({ onNavigate }) {
       await cancelLeaveRequest({ leaveId, uid: user.uid })
     } catch (err) {
       alert('Could not cancel leave: ' + err.message)
+    }
+  }
+
+  async function handleDeleteLeave(leaveId) {
+    if (!window.confirm('Delete this leave record permanently from your history?')) return
+    try {
+      await deleteLeaveRequest({ leaveId, uid: user.uid })
+    } catch (err) {
+      alert('Could not delete leave record: ' + err.message)
+    }
+  }
+
+  async function handleClearAllLeaves() {
+    if (myLeaves.length === 0) return
+    if (!window.confirm(`Are you sure you want to clear all ${myLeaves.length} leave records from your history? This action cannot be undone.`)) {
+      return
+    }
+    try {
+      await clearLeaveRecords({ uid: user.uid, leaveIds: myLeaves.map((l) => l.id) })
+    } catch (err) {
+      alert('Could not clear leave history: ' + err.message)
     }
   }
 
@@ -3295,47 +3388,148 @@ function LiveLeaveAppScreen({ onNavigate }) {
           </>
         ) : (
           /* My Requests Tab */
-          <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Header with Clear Records Button */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 2px' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0F172A' }}>
+                Leave Requests ({myLeaves.length})
+              </span>
+              {myLeaves.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearAllLeaves}
+                  style={{
+                    background: '#FFF1F2',
+                    color: '#E11D48',
+                    border: '1px solid #FECDD3',
+                    borderRadius: 6,
+                    padding: '4px 8px',
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                  title="Clear all past leave records"
+                >
+                  <span>🗑️ Clear History</span>
+                </button>
+              )}
+            </div>
+
             {myLeaves.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '30px 10px', color: '#94A3B8', fontSize: '0.8rem' }}>
+              <div style={{ textAlign: 'center', padding: '36px 10px', color: '#94A3B8', fontSize: '0.8rem' }}>
                 No leave requests submitted yet.
               </div>
             ) : (
               myLeaves.map((l) => (
-                <div key={l.id} className="swl-approval-card">
-                  <div className="swl-approval-top">
+                <div key={l.id} className="swl-approval-card" style={{ padding: 12, borderRadius: 12 }}>
+                  <div className="swl-approval-top" style={{ marginBottom: 6 }}>
                     <div>
-                      <p style={{ margin: '0 0 2px 0', fontSize: '0.8rem', fontWeight: 800, color: '#0F172A' }}>
+                      <p style={{ margin: '0 0 2px 0', fontSize: '0.84rem', fontWeight: 800, color: '#0F172A' }}>
                         {l.leaveType ? (l.leaveType.charAt(0).toUpperCase() + l.leaveType.slice(1) + ' Leave') : 'Leave'}
                       </p>
-                      <p style={{ margin: 0, fontSize: '0.65rem', color: '#64748B' }}>
-                        {l.startDate} {l.endDate && l.endDate !== l.startDate ? `to ${l.endDate}` : ''}
-                      </p>
-                      <p style={{ margin: '2px 0 0 0', fontSize: '0.64rem', color: '#334155' }}>"{l.reason}"</p>
                     </div>
                     <span className={`swl-badge-pill ${l.status === 'approved' ? 'green' : (l.status === 'rejected' ? 'red' : 'yellow')}`}>
                       {l.status}
                     </span>
                   </div>
-                  {l.status === 'pending' && (
-                    <div style={{ marginTop: 6, textAlign: 'right' }}>
+
+                  {/* Target Leave Dates */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F8FAFC', padding: '6px 10px', borderRadius: 8, border: '1px solid #E2E8F0', margin: '4px 0' }}>
+                    <span style={{ fontSize: '0.82rem' }}>📅</span>
+                    <div>
+                      <span style={{ fontSize: '0.64rem', color: '#64748B', display: 'block' }}>Leave Dates:</span>
+                      <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#0F172A' }}>
+                        {formatLeaveTargetDates(l.startDate, l.endDate)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Request Applied Date & Time */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, margin: '4px 0 6px 2px' }}>
+                    <span style={{ fontSize: '0.66rem', color: '#64748B' }}>🕒 Applied on:</span>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#334155' }}>
+                      {formatLeaveRequestDateTime(l.createdAt)}
+                    </span>
+                  </div>
+
+                  {/* Reason */}
+                  {l.reason && (
+                    <div style={{ fontSize: '0.72rem', color: '#475569', fontStyle: 'italic', margin: '4px 0 8px 2px' }}>
+                      "{l.reason}"
+                    </div>
+                  )}
+
+                  {/* Doctor Proof Slip if attached */}
+                  {l.proofPhotoUrl && (
+                    <div style={{ margin: '6px 0' }}>
+                      <a
+                        href={l.proofPhotoUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontSize: '0.68rem',
+                          color: '#059669',
+                          background: '#ECFDF5',
+                          border: '1px solid #A7F3D0',
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          textDecoration: 'none',
+                          fontWeight: 700
+                        }}
+                      >
+                        📎 View Attached Proof
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Bottom Action Row (Cancel pending / Delete record) */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginTop: 8, paddingTop: 6, borderTop: '1px solid #F1F5F9' }}>
+                    {l.status === 'pending' && (
                       <button
                         type="button"
                         onClick={() => handleCancel(l.id)}
                         style={{
-                          border: '1px solid #EF4444',
-                          background: 'transparent',
-                          color: '#EF4444',
-                          padding: '3px 8px',
+                          border: '1px solid #CBD5E1',
+                          background: '#FFFFFF',
+                          color: '#64748B',
+                          padding: '3px 9px',
                           borderRadius: 6,
                           fontSize: '0.68rem',
+                          fontWeight: 700,
                           cursor: 'pointer'
                         }}
                       >
                         Cancel Request
                       </button>
-                    </div>
-                  )}
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteLeave(l.id)}
+                      style={{
+                        border: '1px solid #FECDD3',
+                        background: '#FFF1F2',
+                        color: '#E11D48',
+                        padding: '3px 9px',
+                        borderRadius: 6,
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 3
+                      }}
+                      title="Permanently delete this record"
+                    >
+                      <span>🗑️ Delete</span>
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -5435,6 +5629,27 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
     }
   }
 
+  async function handleDeleteLeave(leaveId, userName) {
+    if (!window.confirm(`Delete this leave record permanently ${userName ? `for ${userName}` : ''}?`)) return
+    try {
+      await deleteLeaveRequest({ leaveId })
+    } catch (err) {
+      alert('Could not delete leave record: ' + err.message)
+    }
+  }
+
+  async function handleClearTabRecords() {
+    if (currentList.length === 0) return
+    if (!window.confirm(`Are you sure you want to clear all ${currentList.length} ${tab.toLowerCase()} leave records? This action cannot be undone.`)) {
+      return
+    }
+    try {
+      await clearLeaveRecords({ leaveIds: currentList.map(l => l.id) })
+    } catch (err) {
+      alert('Could not clear records: ' + err.message)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -5459,22 +5674,54 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
           </button>
         </div>
 
+        {/* Action Header with Count & Clear Tab Records Button */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 16px 4px' }}>
+          <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#64748B' }}>
+            {currentList.length} {tab} Request{currentList.length === 1 ? '' : 's'}
+          </span>
+          {currentList.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearTabRecords}
+              style={{
+                background: '#FFF1F2',
+                color: '#E11D48',
+                border: '1px solid #FECDD3',
+                borderRadius: 6,
+                padding: '3px 8px',
+                fontSize: '0.66rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+              title={`Clear all ${tab.toLowerCase()} leave records`}
+            >
+              <span>🗑️ Clear {tab}</span>
+            </button>
+          )}
+        </div>
+
         {/* List */}
-        <div className="swl-approvals-list">
+        <div className="swl-approvals-list" style={{ padding: '0 16px 16px' }}>
           {currentList.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '30px 10px', color: '#94A3B8', fontSize: '0.8rem' }}>
+            <div style={{ textAlign: 'center', padding: '36px 10px', color: '#94A3B8', fontSize: '0.8rem' }}>
               No {tab.toLowerCase()} leave requests found.
             </div>
           ) : (
             currentList.map((item) => (
-              <div key={item.id} className="swl-approval-card">
-                <div className="swl-approval-top">
+              <div key={item.id} className="swl-approval-card" style={{ padding: 12, borderRadius: 12 }}>
+                <div className="swl-approval-top" style={{ marginBottom: 6 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <img src={DEFAULT_AVATARS.neha} alt={item.userName} style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} />
+                    <UserAvatar name={item.userName || item.userEmail} size={34} fontSize="0.75rem" />
                     <div>
-                      <p style={{ margin: '0 0 2px 0', fontSize: '0.8rem', fontWeight: 800, color: '#0F172A' }}>{item.userName}</p>
-                      <p style={{ margin: 0, fontSize: '0.68rem', color: '#64748B' }}>{item.leaveType} Leave</p>
-                      <p style={{ margin: 0, fontSize: '0.65rem', color: '#94A3B8' }}>{item.startDate} {item.endDate ? `to ${item.endDate}` : ''}</p>
+                      <p style={{ margin: '0 0 2px 0', fontSize: '0.84rem', fontWeight: 800, color: '#0F172A' }}>
+                        {item.userName || item.userEmail?.split('@')[0] || 'Employee'}
+                      </p>
+                      <p style={{ margin: 0, fontSize: '0.68rem', fontWeight: 600, color: '#1E5AE6' }}>
+                        {item.leaveType ? (item.leaveType.charAt(0).toUpperCase() + item.leaveType.slice(1) + ' Leave') : 'Leave'}
+                      </p>
                     </div>
                   </div>
                   <span className={`swl-badge-pill ${item.status === 'approved' ? 'green' : (item.status === 'rejected' ? 'red' : 'yellow')}`}>
@@ -5482,9 +5729,31 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
                   </span>
                 </div>
 
-                <div style={{ fontSize: '0.72rem', color: '#334155', margin: '4px 0 6px 0' }}>
-                  "{item.reason}"
+                {/* Target Leave Dates */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F8FAFC', padding: '6px 10px', borderRadius: 8, border: '1px solid #E2E8F0', margin: '6px 0 4px' }}>
+                  <span style={{ fontSize: '0.82rem' }}>📅</span>
+                  <div>
+                    <span style={{ fontSize: '0.64rem', color: '#64748B', display: 'block' }}>Leave Dates:</span>
+                    <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#0F172A' }}>
+                      {formatLeaveTargetDates(item.startDate, item.endDate)}
+                    </span>
+                  </div>
                 </div>
+
+                {/* Request Applied Date & Time */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, margin: '4px 0 6px 2px' }}>
+                  <span style={{ fontSize: '0.66rem', color: '#64748B' }}>🕒 Requested on:</span>
+                  <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#334155' }}>
+                    {formatLeaveRequestDateTime(item.createdAt)}
+                  </span>
+                </div>
+
+                {/* Reason */}
+                {item.reason && (
+                  <div style={{ fontSize: '0.72rem', color: '#475569', fontStyle: 'italic', margin: '4px 0 8px 2px' }}>
+                    "{item.reason}"
+                  </div>
+                )}
 
                 {item.proofPhotoUrl && (
                   <button
@@ -5498,23 +5767,55 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
                       borderRadius: 6,
                       fontSize: '0.68rem',
                       cursor: 'pointer',
-                      marginBottom: 8
+                      marginBottom: 8,
+                      fontWeight: 700
                     }}
                   >
                     🩺 View Medical Proof Slip
                   </button>
                 )}
 
-                {item.status === 'pending' && (
-                  <div className="swl-approval-actions">
-                    <button className="swl-btn-approve" onClick={() => handleAction(item.id, 'approved')}>
-                      Approve
-                    </button>
-                    <button className="swl-btn-reject" onClick={() => handleAction(item.id, 'rejected')}>
-                      Reject
-                    </button>
+                {/* Bottom action row with Approve / Reject and Delete */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 8, paddingTop: 6, borderTop: '1px solid #F1F5F9' }}>
+                  <div>
+                    {item.status === 'pending' ? (
+                      <div className="swl-approval-actions" style={{ margin: 0, gap: 6 }}>
+                        <button className="swl-btn-approve" onClick={() => handleAction(item.id, 'approved')}>
+                          Approve
+                        </button>
+                        <button className="swl-btn-reject" onClick={() => handleAction(item.id, 'rejected')}>
+                          Reject
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: '0.64rem', color: '#64748B' }}>
+                        {item.reviewedByName ? `✓ Reviewed by ${item.reviewedByName}` : '✓ Reviewed'}
+                      </span>
+                    )}
                   </div>
-                )}
+
+                  {/* Quick Delete button */}
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteLeave(item.id, item.userName)}
+                    style={{
+                      border: '1px solid #FECDD3',
+                      background: '#FFF1F2',
+                      color: '#E11D48',
+                      padding: '3px 8px',
+                      borderRadius: 6,
+                      fontSize: '0.66rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 3
+                    }}
+                    title="Permanently delete this leave record"
+                  >
+                    <span>🗑️ Delete</span>
+                  </button>
+                </div>
               </div>
             ))
           )}

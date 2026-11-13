@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { subscribeLeaves, reviewLeaveRequest } from '../services/leaveService'
+import {
+  subscribeLeaves,
+  reviewLeaveRequest,
+  deleteLeaveRequest,
+  clearLeaveRecords
+} from '../services/leaveService'
 import { todayDateKey } from '../utils/dateHelpers'
 import NavBar from '../components/NavBar'
 
