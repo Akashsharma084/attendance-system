@@ -7,208 +7,87 @@ const STORAGE_KEY_SESSION = 'punch_demo_session'
 
 const SAMPLE_MEDICAL_PROOF = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="100%" height="100%" fill="%23f8fafc"/><rect x="20" y="20" width="560" height="360" rx="12" fill="%23ffffff" stroke="%23cbd5e1" stroke-width="2"/><text x="50" y="65" font-family="sans-serif" font-size="20" font-weight="bold" fill="%230f172a">🏥 CITY GENERAL HOSPITAL</text><text x="50" y="90" font-family="sans-serif" font-size="12" fill="%2364748b">Medical Consultation %26 Sickness Certificate</text><line x1="50" y1="105" x2="550" y2="105" stroke="%23e2e8f0" stroke-width="1.5"/><text x="50" y="140" font-family="sans-serif" font-size="14" font-weight="bold" fill="%23334155">Patient Name:</text><text x="160" y="140" font-family="sans-serif" font-size="14" fill="%230f172a">Maria Santos</text><text x="50" y="170" font-family="sans-serif" font-size="14" font-weight="bold" fill="%23334155">Diagnosis:</text><text x="160" y="170" font-family="sans-serif" font-size="14" fill="%230f172a">Acute Viral Pharyngitis %26 High Grade Fever</text><text x="50" y="200" font-family="sans-serif" font-size="14" font-weight="bold" fill="%23334155">Recommended:</text><text x="160" y="200" font-family="sans-serif" font-size="14" fill="%230f172a">Strict bed rest for 2 days (Sep 10 - Sep 11, 2026)</text><rect x="50" y="235" width="220" height="70" rx="8" fill="%23f0fdf4" stroke="%2386efac" stroke-width="1"/><text x="65" y="260" font-family="sans-serif" font-size="12" font-weight="bold" fill="%2315803d">✓ VERIFIED MEDICAL SLIP</text><text x="65" y="282" font-family="sans-serif" font-size="11" fill="%23166534">Dr. Robert Chen, MD • Reg #84920</text><circle cx="500" cy="270" r="35" fill="%23f1f5f9" stroke="%2394a3b8" stroke-dasharray="4"/><text x="500" y="275" font-family="sans-serif" font-size="11" text-anchor="middle" fill="%2364748b">OFFICIAL STAMP</text></svg>'
 
-const DEFAULT_LEAVES = [
-  {
-    id: 'leave-demo-1',
-    uid: 'demo-emp-1',
-    userName: 'Alex Chen',
-    userEmail: 'alex@company.com',
-    leaveType: 'vacation',
-    startDate: '2026-09-22',
-    endDate: '2026-09-24',
-    daysCount: 3,
-    reason: 'Attending family reunion out of state',
-    proofPhotoUrl: null,
-    status: 'pending',
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    reviewedBy: null,
-    reviewedByName: null,
-    reviewedAt: null,
-    adminNote: ''
-  },
-  {
-    id: 'leave-demo-2',
-    uid: 'demo-emp-2',
-    userName: 'Maria Santos',
-    userEmail: 'maria@company.com',
-    leaveType: 'sick',
-    startDate: '2026-09-10',
-    endDate: '2026-09-11',
-    daysCount: 2,
-    reason: 'Severe seasonal flu and doctor consultation',
-    proofPhotoUrl: SAMPLE_MEDICAL_PROOF,
-    status: 'approved',
-    createdAt: new Date(Date.now() - 864000000).toISOString(),
-    reviewedBy: 'demo-admin-uid',
-    reviewedByName: 'Sarah Connor (Admin)',
-    reviewedAt: new Date(Date.now() - 800000000).toISOString(),
-    adminNote: 'Approved. Hope you feel better soon!'
-  }
-]
+const DEFAULT_LEAVES = []
 
 const DEFAULT_USERS = [
   {
-    uid: 'demo-admin-uid',
-    email: 'admin@company.com',
-    name: 'Sarah Connor (Admin)',
+    uid: 'swl-admin-jai',
+    email: 'admin@softwindlabs.com',
+    name: 'Jai Chaturvedi',
     role: 'admin',
-    status: 'active'
+    isAdmin: true,
+    status: 'active',
+    employeeId: 'SWL-ADM01',
+    department: 'Management'
   },
   {
-    uid: 'muldFhT5eRP9s2BFvdaVRSqyvkA2',
-    email: 'demo@softwindlabs.com',
-    name: 'Aarav Mehta',
+    uid: 'orb5VodOu8MupkouNauVtFpZI1t1',
+    email: 'akash@softwindlabs.com',
+    name: 'Akash',
     role: 'employee',
     status: 'active',
-    photoURL: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=300&h=300&q=80'
+    employeeId: 'SWL-101',
+    department: 'Engineering'
   },
   {
-    uid: 'swl-emp-rohit',
-    email: 'rohit.sharma@softwindlabs.com',
-    name: 'Rohit Sharma',
+    uid: 'G81Oj1ojTWPD9zK0XXGOYec861g2',
+    email: 'vipin@softwindlabs.com',
+    name: 'Vipin',
     role: 'employee',
     status: 'active',
-    photoURL: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&h=300&q=80'
+    employeeId: 'SWL-102',
+    department: 'Operations'
   },
   {
-    uid: 'swl-emp-pooja',
-    email: 'pooja.verma@softwindlabs.com',
-    name: 'Pooja Verma',
+    uid: 'J9NCovlzGRfCuM894Lrw9q2erRy1',
+    email: 'abhishek@softwindlabs.com',
+    name: 'Abhishek',
     role: 'employee',
     status: 'active',
-    photoURL: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&h=300&q=80'
+    employeeId: 'SWL-103',
+    department: 'Engineering'
   },
   {
-    uid: 'swl-emp-amit',
-    email: 'amit.kumar@softwindlabs.com',
-    name: 'Amit Kumar',
+    uid: '20ujjczIVJZcT0nqZlZbJWbZ83I2',
+    email: 'rohit@softwindlabs.com',
+    name: 'Rohit',
     role: 'employee',
     status: 'active',
-    photoURL: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&h=300&q=80'
+    employeeId: 'SWL-104',
+    department: 'Operations'
   },
   {
-    uid: 'swl-emp-neha',
-    email: 'neha.singh@softwindlabs.com',
-    name: 'Neha Singh',
+    uid: 'wrpVMbA4jfhYYj11h8gSybrrtTl2',
+    email: 'dushyant@softwindlabs.com',
+    name: 'Dushyant',
     role: 'employee',
     status: 'active',
-    photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&h=300&q=80'
+    employeeId: 'SWL-105',
+    department: 'Engineering'
   },
   {
-    uid: 'swl-emp-rajesh',
-    email: 'rajesh.patel@softwindlabs.com',
-    name: 'Rajesh Patel',
+    uid: 'nyBEzJ2tYxMvpiczsPo4EB5nRyb2',
+    email: 'satrughan@softwindlabs.com',
+    name: 'Satrughan',
     role: 'employee',
     status: 'active',
-    photoURL: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=300&h=300&q=80'
+    employeeId: 'SWL-106',
+    department: 'Operations'
   },
   {
-    uid: 'swl-emp-sneha',
-    email: 'sneha.gupta@softwindlabs.com',
-    name: 'Sneha Gupta',
+    uid: 'MQR2SJVx0EQXwDFg0mbQc69tBdl1',
+    email: 'dhananjay@softwindlabs.com',
+    name: 'Dhananjay',
     role: 'employee',
     status: 'active',
-    photoURL: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&h=300&q=80'
-  },
-  {
-    uid: 'swl-emp-vikram',
-    email: 'vikram.malhotra@softwindlabs.com',
-    name: 'Vikram Malhotra',
-    role: 'employee',
-    status: 'active',
-    photoURL: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=300&h=300&q=80'
-  },
-  {
-    uid: 'swl-emp-ananya',
-    email: 'ananya.sen@softwindlabs.com',
-    name: 'Ananya Sen',
-    role: 'employee',
-    status: 'active',
-    photoURL: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&h=300&q=80'
+    employeeId: 'SWL-107',
+    department: 'Engineering'
   }
 ]
 
-// Generate realistic seed attendance records for the past 2 months
+// Empty seed attendance - start fresh for real profiles
 function generateSeedAttendance() {
-  const records = []
-  const seedEmployees = DEFAULT_USERS.filter((u) => u.role !== 'admin')
-
-  // Generate working days from Aug 7, 2026 to today
-  const pad = (n) => String(n).padStart(2, '0')
-  const startDate = new Date(2026, 7, 7)
-  const todayKey = todayDateKey()
-  const todayObj = new Date()
-  const endDate = todayObj < startDate ? new Date(2026, 9, 12) : todayObj
-  const curr = new Date(startDate)
-
-  while (curr <= endDate) {
-    const y = curr.getFullYear()
-    const m = curr.getMonth() + 1
-    const d = curr.getDate()
-    const dayOfWeek = curr.getDay()
-    const dateStr = `${y}-${pad(m)}-${pad(d)}`
-    const monthStr = `${y}-${pad(m)}`
-    const isToday = dateStr === todayKey || dateStr === '2026-10-12'
-
-    if (dayOfWeek !== 0) {
-      seedEmployees.forEach((emp, empIdx) => {
-        if (isToday) {
-          if (empIdx < 8) {
-            const inMin = 45 + ((empIdx * 7) % 30)
-            const inHour = inMin >= 60 ? 10 : 9
-            const checkInDate = new Date(y, m - 1, d, inHour, inMin % 60, 0)
-            let checkOutDate = null
-            if (empIdx === 1) checkOutDate = new Date(y, m - 1, d, 13, 20, 0)
-            if (empIdx === 5) checkOutDate = new Date(y, m - 1, d, 13, 10, 0)
-
-            records.push({
-              id: `rec-${emp.uid}-${dateStr}`,
-              uid: emp.uid,
-              name: emp.name,
-              date: dateStr,
-              month: monthStr,
-              checkInTime: checkInDate.toISOString(),
-              checkInLocation: { lat: 28.6139, lng: 77.2090, accuracy: 8 },
-              checkInSelfieUrl: emp.photoURL,
-              isLate: inHour >= 10 || (inHour === 9 && inMin % 60 > 30),
-              checkOutTime: checkOutDate ? checkOutDate.toISOString() : null,
-              checkOutLocation: checkOutDate ? { lat: 28.6139, lng: 77.2090, accuracy: 10 } : null,
-              checkOutSelfieUrl: checkOutDate ? emp.photoURL : null
-            })
-          }
-          return
-        }
-
-        // Past days: ~90% attendance
-        const seedNum = (empIdx * 37 + d * 13 + m * 7) % 100
-        if (seedNum < 8) return // absent/leave
-
-        const isPunctual = seedNum % 4 !== 0
-        const inHour = isPunctual ? 9 : 10
-        const inMin = isPunctual ? 45 + (seedNum % 15) : 5 + (seedNum % 25)
-        const workHours = 4 + ((seedNum % 35) / 10) // 4 to 7.5 hours
-        const checkInDate = new Date(y, m - 1, d, inHour, inMin, 0)
-        const checkOutDate = new Date(checkInDate.getTime() + workHours * 3600000)
-
-        records.push({
-          id: `rec-${emp.uid}-${dateStr}`,
-          uid: emp.uid,
-          name: emp.name,
-          date: dateStr,
-          month: monthStr,
-          checkInTime: checkInDate.toISOString(),
-          checkInLocation: { lat: 28.6139, lng: 77.2090, accuracy: 8 },
-          checkInSelfieUrl: emp.photoURL,
-          checkOutTime: checkOutDate.toISOString(),
-          checkOutLocation: { lat: 28.6139, lng: 77.2090, accuracy: 10 },
-          checkOutSelfieUrl: emp.photoURL
-        })
-      })
-    }
-    curr.setDate(curr.getDate() + 1)
-  }
-
-  return records
+  return []
 }
 
 export function getStoredUsers() {

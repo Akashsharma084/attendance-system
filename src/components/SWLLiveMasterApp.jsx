@@ -16,6 +16,7 @@ import { initializeApp, getApps } from 'firebase/app'
 import { getAuth, createUserWithEmailAndPassword, signOut as secondarySignOut, updatePassword, updateProfile } from 'firebase/auth'
 import { db, auth, isFirebaseConfigured, firebaseConfig } from '../firebase'
 import { useAuth } from '../context/AuthContext'
+import { getOrCreateDeviceId, detectDeviceName, getDeviceDetails, getHardwareModelId, detectPhoneModel } from '../services/deviceService'
 import { useNotifications } from '../context/NotificationContext'
 import { Icons as BaseIcons } from './SWLDesignShowcase'
 import './SWLDesignShowcase.css'
@@ -59,6 +60,132 @@ const DEFAULT_AVATARS = {
   pooja: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&h=400&q=80',
   sahil: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=400&h=400&q=80',
   anjali: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&h=400&q=80'
+}
+
+/**
+ * Optimizes an image file (camera or gallery) to a clean, fast-loading base64 data URL.
+ */
+function processImageFile(file, maxWidth = 350, maxHeight = 350, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    if (!file) return reject(new Error('No file selected'))
+    if (!file.type || !file.type.startsWith('image/')) {
+      return reject(new Error('Please select a valid image file (JPG, PNG, WebP).'))
+    }
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        let width = img.width
+        let height = img.height
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width)
+            width = maxWidth
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height)
+            height = maxHeight
+          }
+        }
+
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+        const dataUrl = canvas.toDataURL('image/jpeg', quality)
+        resolve(dataUrl)
+      }
+      img.onerror = () => reject(new Error('Failed to parse image file.'))
+      img.src = e.target.result
+    }
+    reader.onerror = () => reject(new Error('Failed to read image file.'))
+    reader.readAsDataURL(file)
+  })
+}
+
+/* Reusable Universal User Avatar (Shows Photo if uploaded, otherwise First Letter of Name) */
+function UserAvatar({
+  name = 'User',
+  photoURL = null,
+  size = 40,
+  fontSize,
+  style = {},
+  onClick,
+  title,
+  border = 'none'
+}) {
+  const safeName = (typeof name === 'string' && name.trim()) ? name.trim() : 'User'
+  const letter = safeName.charAt(0).toUpperCase()
+
+  // Elegant distinct gradients based on the character code
+  const colorGradients = [
+    'linear-gradient(135deg, #2563EB, #1D4ED8)', // Deep Blue (A, I, Q, Y)
+    'linear-gradient(135deg, #059669, #047857)', // Emerald Green (B, J, R, Z)
+    'linear-gradient(135deg, #7C3AED, #5B21B6)', // Purple (C, K, S)
+    'linear-gradient(135deg, #D97706, #B45309)', // Amber/Gold (D, L, T)
+    'linear-gradient(135deg, #DB2777, #9D174D)', // Rose (E, M, U)
+    'linear-gradient(135deg, #0891B2, #0E7490)', // Teal/Cyan (F, N, V)
+    'linear-gradient(135deg, #EA580C, #C2410C)', // Orange (G, O, W)
+    'linear-gradient(135deg, #4F46E5, #3730A3)'  // Indigo (H, P, X)
+  ]
+  const charCode = (letter.charCodeAt(0) || 0)
+  const bg = colorGradients[charCode % colorGradients.length]
+
+  if (photoURL && typeof photoURL === 'string' && (photoURL.startsWith('http') || photoURL.startsWith('data:image'))) {
+    return (
+      <img
+        src={photoURL}
+        alt={safeName}
+        title={title || safeName}
+        onClick={onClick}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: '50%',
+          objectFit: 'cover',
+          border: border,
+          cursor: onClick ? 'pointer' : 'default',
+          display: 'block',
+          flexShrink: 0,
+          ...style
+        }}
+      />
+    )
+  }
+
+  const calcFontSize = fontSize || `${Math.max(12, Math.round(size * 0.44))}px`
+
+  return (
+    <div
+      title={title || safeName}
+      onClick={onClick}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: bg,
+        color: '#FFFFFF',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: calcFontSize,
+        fontWeight: 800,
+        textTransform: 'uppercase',
+        userSelect: 'none',
+        border: border,
+        cursor: onClick ? 'pointer' : 'default',
+        flexShrink: 0,
+        boxShadow: '0 2px 5px rgba(0,0,0,0.12)',
+        letterSpacing: '-0.02em',
+        ...style
+      }}
+    >
+      {letter}
+    </div>
+  )
 }
 
 /* Reusable Selfie Thumbnail with Click-to-Zoom */
@@ -800,10 +927,10 @@ function LiveLoginScreen({ onSuccess }) {
   useEffect(() => {
     if (profileRole === 'admin') {
       setEmail('admin@softwindlabs.com')
-      setPassword('1234567')
+      setPassword('admin123')
     } else {
-      setEmail('demo@softwindlabs.com')
-      setPassword('123456')
+      setEmail('')
+      setPassword('')
     }
     setErrorMsg('')
   }, [profileRole])
@@ -882,8 +1009,8 @@ function LiveLoginScreen({ onSuccess }) {
             <div
               onClick={() => {
                 setProfileRole('employee')
-                setEmail('demo@softwindlabs.com')
-                setPassword('123456')
+                setEmail('')
+                setPassword('')
                 setErrorMsg('')
               }}
               style={{
@@ -974,7 +1101,7 @@ function LiveLoginScreen({ onSuccess }) {
               onClick={() => {
                 setProfileRole('admin')
                 setEmail('admin@softwindlabs.com')
-                setPassword('1234567')
+                setPassword('admin123')
                 setErrorMsg('')
               }}
               style={{
@@ -1114,7 +1241,7 @@ function LiveLoginScreen({ onSuccess }) {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder={profileRole === 'admin' ? 'admin@softwindlabs.com' : 'demo@softwindlabs.com'}
+                placeholder={profileRole === 'admin' ? 'admin@softwindlabs.com' : 'employee@softwindlabs.com'}
               />
             </div>
           </div>
@@ -1362,10 +1489,21 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
       <div className="swl-home-viewport" style={{ flex: 1, overflowY: 'auto' }}>
         {/* User Header */}
         <div className="swl-user-header">
-          <div>
-            <p className="swl-user-info-greeting">{greeting}</p>
-            <h3 className="swl-user-info-name">{employeeName} 👋</h3>
-            <p className="swl-user-info-role">{employeeRole}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <UserAvatar
+              name={employeeName}
+              photoURL={profile?.photoURL || user?.photoURL}
+              size={44}
+              fontSize="1.15rem"
+              border="2px solid #1E5AE6"
+              onClick={() => onNavigate('emp_profile')}
+              title="Click to view profile & upload photo"
+            />
+            <div>
+              <p className="swl-user-info-greeting">{greeting}</p>
+              <h3 className="swl-user-info-name">{employeeName} 👋</h3>
+              <p className="swl-user-info-role">{employeeRole}</p>
+            </div>
           </div>
           <div
             className="swl-bell-btn"
@@ -1882,6 +2020,23 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
       return
     }
 
+    // STRICT 1 PHONE = 1 EMPLOYEE DEVICE BINDING CHECK
+    // Checks both Device UUID and immutable Hardware Model ID (which survives Chrome data clears!)
+    const curDev = getDeviceDetails()
+    const isBound = Boolean(profile?.boundDeviceId || profile?.boundHardwareModelId || profile?.boundDeviceFingerprint)
+    if (isBound) {
+      const matchUuid = Boolean(profile?.boundDeviceId && profile.boundDeviceId === curDev.deviceId)
+      const matchHardware = Boolean(
+        (profile?.boundHardwareModelId && profile.boundHardwareModelId === curDev.hardwareModelId) ||
+        (profile?.boundDeviceFingerprint && profile.boundDeviceFingerprint === curDev.hardwareModelId)
+      )
+
+      if (!matchUuid && !matchHardware) {
+        alert(`🚫 Shared Device Blocked: Aapka account [${profile.boundDeviceName || profile.boundPhoneModel || 'Registered Phone'}] ke liye lock hai. Kisi doosre phone ya laptop se attendance punch allow nahi hai.`)
+        return
+      }
+    }
+
     // STRICT GEOFENCE ENFORCEMENT: Block punch if outside office radius!
     if (isOutsideGeofence) {
       alert(`🚫 Attendance Blocked: You are ${geofence?.distanceMeters ?? 'unknown'}m away from the office premise. Punch is strictly restricted to within ${geofence?.allowedRadius ?? 100}m of the office location.`)
@@ -1909,6 +2064,7 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
 
     try {
       const isCheckOut = Boolean(todayDoc?.checkInTime && !todayDoc?.checkOutTime)
+      const currentDeviceName = detectDeviceName()
 
       if (isFirebaseConfigured && db && user?.uid) {
         if (todayDoc) {
@@ -1918,6 +2074,8 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
             checkOutPhotoUrl: finalPhoto,
             checkOutSelfieUrl: finalPhoto,
             checkOutLocation: gpsLocation || null,
+            checkOutDeviceId: currentDeviceId,
+            checkOutDeviceName: currentDeviceName,
             status: 'completed'
           })
         } else {
@@ -1933,6 +2091,8 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
             checkInSelfieUrl: finalPhoto,
             selfieUrl: finalPhoto,
             checkInLocation: gpsLocation || null,
+            deviceId: currentDeviceId,
+            deviceName: currentDeviceName,
             checkOutTime: null,
             checkOutPhotoUrl: null,
             checkOutSelfieUrl: null,
@@ -2415,7 +2575,8 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie }) {
         name: u.name || u.email?.split('@')[0] || 'Team Member',
         email: u.email || '',
         role: u.role || u.designation || 'Staff',
-        avatar: Object.values(DEFAULT_AVATARS)[i % Object.values(DEFAULT_AVATARS).length],
+        photoURL: u.photoURL || null,
+        avatar: u.photoURL || null,
         attendance: att || null,
         duration: calcDuration,
         hasIn: Boolean(att?.checkInTime),
@@ -2701,10 +2862,10 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie }) {
                 <div key={member.uid} className="swl-team-member-row">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <img
-                        src={member.avatar}
-                        alt={member.name}
-                        style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }}
+                      <UserAvatar
+                        name={member.name}
+                        photoURL={member.photoURL || member.avatar}
+                        size={36}
                       />
                       <div>
                         <h4 style={{ margin: '0 0 2px 0', fontSize: '0.8rem', fontWeight: 800, color: '#0F172A' }}>
@@ -3116,7 +3277,7 @@ function LiveLeaveAppScreen({ onNavigate }) {
    6. LIVE PROFILE SCREEN (SCREEN 7)
    ========================================================================= */
 function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, officeTiming }) {
-  const { user, profile } = useAuth()
+  const { user, profile, currentDevice } = useAuth()
   const todayKey = todayDateKey()
 
   const [subview, setSubview] = useState('menu') // 'menu' | 'personal_info' | 'contact_admin' | 'change_password' | 'settings'
@@ -3128,6 +3289,8 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
   const [editDept, setEditDept] = useState(profile?.department || profile?.role || 'Software Engineering')
   const [infoSaving, setInfoSaving] = useState(false)
   const [infoMsg, setInfoMsg] = useState('')
+  const [photoUploading, setPhotoUploading] = useState(false)
+  const [photoMsg, setPhotoMsg] = useState('')
 
   // Change Password State
   const [newPassword, setNewPassword] = useState('')
@@ -3166,7 +3329,33 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
   const joinDate = profile?.joiningDate || '15 Jan 2024'
 
   const activeSelfie = todayRecord?.checkInSelfieUrl || todayRecord?.checkInPhotoUrl || todayRecord?.selfieUrl
-  const profilePhoto = activeSelfie || profile?.photoURL || user?.photoURL || DEFAULT_AVATARS.rahul
+  const profilePhoto = profile?.photoURL || user?.photoURL || null
+
+  async function handlePhotoSelected(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPhotoUploading(true)
+    setPhotoMsg('')
+    try {
+      const base64Url = await processImageFile(file, 350, 350, 0.82)
+      if (isFirebaseConfigured && db && user?.uid) {
+        await setDoc(doc(db, 'users', user.uid), {
+          photoURL: base64Url,
+          updatedAt: serverTimestamp()
+        }, { merge: true })
+        if (user && updateProfile) {
+          await updateProfile(user, { photoURL: base64Url }).catch(() => {})
+        }
+      }
+      setPhotoMsg('✓ Profile photo updated successfully!')
+      setTimeout(() => setPhotoMsg(''), 3000)
+    } catch (err) {
+      alert('Photo update failed: ' + (err.message || 'Please retry.'))
+    } finally {
+      setPhotoUploading(false)
+      if (e.target) e.target.value = ''
+    }
+  }
 
   async function handleSavePersonalInfo(e) {
     e.preventDefault()
@@ -3270,49 +3459,83 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
             {/* HERO PROFILE CARD */}
             <div className="swl-profile-hero" style={{ position: 'relative', margin: '0 16px', borderRadius: 18, padding: '18px 16px' }}>
               <div style={{ position: 'relative', display: 'inline-block' }}>
-                <img
-                  src={profilePhoto}
-                  alt={name}
-                  className="swl-profile-avatar"
-                  style={{
-                    width: 76,
-                    height: 76,
-                    border: '3px solid #1E5AE6',
-                    cursor: activeSelfie ? 'pointer' : 'default',
-                    objectFit: 'cover'
-                  }}
-                  title={activeSelfie ? "Click to view today's verified punch selfie" : name}
+                <UserAvatar
+                  name={name}
+                  photoURL={profilePhoto}
+                  size={78}
+                  fontSize="2rem"
+                  border="3px solid #1E5AE6"
+                  title={profilePhoto ? "Click to view full photo" : `${name}'s Profile Initial`}
                   onClick={() => {
-                    if (activeSelfie && onViewSelfie) {
+                    if (profilePhoto && onViewSelfie) {
                       onViewSelfie({
-                        photoUrl: activeSelfie,
-                        name: `${name}'s Verified Selfie`,
+                        photoUrl: profilePhoto,
+                        name: `${name}'s Profile Photo`,
                         date: todayRecord?.date || todayKey,
-                        time: todayRecord?.checkInTime ? formatTime(todayRecord.checkInTime) : '',
-                        location: todayRecord?.checkInLocation
+                        time: todayRecord?.checkInTime ? formatTime(todayRecord.checkInTime) : 'Profile Avatar'
                       })
                     }
                   }}
                 />
-                {activeSelfie && (
-                  <span
-                    style={{
-                      position: 'absolute',
-                      bottom: 2,
-                      right: 2,
-                      background: '#10B981',
-                      color: '#fff',
-                      fontSize: '0.62rem',
-                      fontWeight: 800,
-                      borderRadius: 999,
-                      padding: '2px 6px',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                    }}
-                  >
-                    📸
-                  </span>
-                )}
+                <label
+                  htmlFor="emp-photo-input"
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 0,
+                    background: '#1E5AE6',
+                    color: '#fff',
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: photoUploading ? 'wait' : 'pointer',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.25)',
+                    border: '2px solid #FFFFFF',
+                    fontSize: '0.8rem'
+                  }}
+                  title="Upload / Change Profile Photo"
+                >
+                  {photoUploading ? '⏳' : '📷'}
+                  <input
+                    id="emp-photo-input"
+                    type="file"
+                    accept="image/*"
+                    disabled={photoUploading}
+                    style={{ display: 'none' }}
+                    onChange={handlePhotoSelected}
+                  />
+                </label>
               </div>
+
+              <div style={{ marginTop: 6 }}>
+                <label
+                  htmlFor="emp-photo-input"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '3px 10px',
+                    background: '#F1F5F9',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: 999,
+                    fontSize: '0.66rem',
+                    fontWeight: 700,
+                    color: '#1E5AE6',
+                    cursor: 'pointer'
+                  }}
+                >
+                  📷 {photoUploading ? 'Saving Photo...' : 'Change Profile Photo'}
+                </label>
+              </div>
+
+              {photoMsg && (
+                <div style={{ fontSize: '0.68rem', color: '#059669', fontWeight: 700, marginTop: 4 }}>
+                  {photoMsg}
+                </div>
+              )}
 
               <h3 style={{ margin: '8px 0 2px 0', fontSize: '1.1rem', fontWeight: 800, color: '#0F172A' }}>
                 {name}
@@ -3343,10 +3566,30 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
                 </div>
               </div>
               <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: '10px 8px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-                <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Verification</div>
+                <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Phone Lock</div>
                 <div style={{ fontSize: '0.76rem', fontWeight: 800, color: '#10B981', marginTop: 3 }}>
-                  Face ID Active
+                  1 Phone Active
                 </div>
+              </div>
+            </div>
+
+            {/* REGISTERED DEVICE STATUS CARD */}
+            <div style={{ margin: '0 16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 14, padding: '12px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: '1rem' }}>📱</span>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0F172A' }}>Registered Device</span>
+                </div>
+                <span style={{ background: '#ECFDF5', color: '#065F46', fontSize: '0.62rem', fontWeight: 800, padding: '2px 8px', borderRadius: 999 }}>
+                  1 Phone Locked ✓
+                </span>
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div><strong>Phone Model:</strong> {profile?.boundDeviceName || profile?.boundPhoneModel || currentDevice?.deviceName || detectPhoneModel().modelName}</div>
+                <div><strong>Model ID (Hardware):</strong> <code style={{ fontSize: '0.66rem', background: '#E2E8F0', padding: '1px 5px', borderRadius: 4, color: '#1E293B' }}>{profile?.boundHardwareModelId || profile?.boundDeviceFingerprint || getHardwareModelId()}</code></div>
+              </div>
+              <div style={{ marginTop: 6, fontSize: '0.62rem', color: '#059669' }}>
+                🔒 Single-Device Policy Active: Chrome clear karne par bhi hardware id se aapka phone verified rahega. Doosre phones se punch blocked hai.
               </div>
             </div>
 
@@ -3481,6 +3724,48 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
 
             <form onSubmit={handleSavePersonalInfo} className="swl-subview-wrap">
               <div className="swl-card-white" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* Photo Upload Section */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 10, borderBottom: '1px solid #F1F5F9' }}>
+                  <UserAvatar
+                    name={name}
+                    photoURL={profilePhoto}
+                    size={56}
+                    fontSize="1.4rem"
+                    border="2.5px solid #1E5AE6"
+                  />
+                  <div>
+                    <label
+                      htmlFor="emp-photo-input-subview"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '6px 12px',
+                        background: '#EEF4FF',
+                        border: '1px solid #BFDBFE',
+                        borderRadius: 8,
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        color: '#1E5AE6',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      📷 {photoUploading ? 'Saving...' : 'Upload New Photo'}
+                      <input
+                        id="emp-photo-input-subview"
+                        type="file"
+                        accept="image/*"
+                        disabled={photoUploading}
+                        style={{ display: 'none' }}
+                        onChange={handlePhotoSelected}
+                      />
+                    </label>
+                    <div style={{ fontSize: '0.62rem', color: '#64748B', marginTop: 4 }}>
+                      Supported formats: JPG, PNG, WebP
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <label className="swl-input-label">Full Name</label>
                   <input
@@ -3864,12 +4149,14 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
               <Icons.Bell />
               {pendingLeavesCount > 0 && <div className="swl-bell-badge" />}
             </div>
-            <div
-              onClick={() => onNavigate('adm_profile')}
-              style={{ cursor: 'pointer', width: 28, height: 28, borderRadius: '50%', background: '#EEF4FF', color: '#1E5AE6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, border: '1px solid #BFDBFE' }}
-              title="Admin Profile"
-            >
-              🛡️
+            <div onClick={() => onNavigate('adm_profile')} style={{ cursor: 'pointer' }} title="Admin Profile">
+              <UserAvatar
+                name={profile?.name || user?.displayName || 'Jai'}
+                photoURL={profile?.photoURL || user?.photoURL}
+                size={28}
+                fontSize="0.75rem"
+                border="1.5px solid #1E5AE6"
+              />
             </div>
           </div>
         </div>
@@ -4118,7 +4405,8 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee }) {
         status: attStatus,
         isAccountDisabled,
         accountStatus: isAccountDisabled ? 'disabled' : 'active',
-        avatar: Object.values(DEFAULT_AVATARS)[i % Object.values(DEFAULT_AVATARS).length]
+        photoURL: u.photoURL || null,
+        avatar: u.photoURL || null
       }
     })
   }, [users, todayAtt])
@@ -4262,7 +4550,7 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee }) {
                   }}
                 >
                   <div className="swl-emp-item-left" style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
-                    <img src={emp.avatar} alt={emp.name} className="swl-emp-avatar-sm" />
+                    <UserAvatar name={emp.name} photoURL={emp.photoURL || emp.avatar} size={36} />
                     <div style={{ minWidth: 0, overflow: 'hidden' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <p className="swl-emp-name" style={{ margin: 0, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
@@ -4448,6 +4736,9 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee }) {
    9. LIVE ADMIN EMPLOYEE DETAILS (SCREEN 11) - PROFILE, ACCESS CONTROL & RECORDS
    ========================================================================= */
 function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin }) {
+  const { resetEmployeeDeviceBinding } = useAuth()
+  const [deviceResetting, setDeviceResetting] = useState(false)
+  const [empPhotoUploading, setEmpPhotoUploading] = useState(false)
   const [tab, setTab] = useState('attendance')
   const [records, setRecords] = useState([])
   const [userDoc, setUserDoc] = useState(employee)
@@ -4520,6 +4811,68 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin 
     }
   }
 
+  async function handleResetDevice() {
+    if (!userDoc?.uid || deviceResetting) return
+    const confirmReset = window.confirm(
+      `Kya aap ${name} ka device link reset karna chahte hain?\n\nReset ke baad yeh employee kisi naye phone se login kar sakega aur purana phone unlock ho jayega.`
+    )
+    if (!confirmReset) return
+
+    setDeviceResetting(true)
+    try {
+      if (resetEmployeeDeviceBinding) {
+        await resetEmployeeDeviceBinding(userDoc.uid)
+      } else if (isFirebaseConfigured && db) {
+        await updateDoc(doc(db, 'users', userDoc.uid), {
+          boundDeviceId: null,
+          boundDeviceFingerprint: null,
+          boundHardwareModelId: null,
+          boundDeviceName: null,
+          boundPhoneModel: null,
+          boundAt: null
+        })
+      }
+      setUserDoc(prev => ({
+        ...prev,
+        boundDeviceId: null,
+        boundDeviceFingerprint: null,
+        boundHardwareModelId: null,
+        boundDeviceName: null,
+        boundPhoneModel: null,
+        boundAt: null
+      }))
+      setDetailNotice('✓ Device link reset successfully! Employee ab naye phone se login kar sakta hai.')
+      setTimeout(() => setDetailNotice(''), 3000)
+    } catch (err) {
+      alert('Error resetting device: ' + (err.message || 'Permission denied'))
+    } finally {
+      setDeviceResetting(false)
+    }
+  }
+
+  async function handleAdminUploadEmployeePhoto(e) {
+    const file = e.target.files?.[0]
+    if (!file || !userDoc?.uid) return
+    setEmpPhotoUploading(true)
+    try {
+      const base64Url = await processImageFile(file, 350, 350, 0.82)
+      if (isFirebaseConfigured && db) {
+        await updateDoc(doc(db, 'users', userDoc.uid), {
+          photoURL: base64Url,
+          updatedAt: serverTimestamp()
+        })
+      }
+      setUserDoc(prev => ({ ...prev, photoURL: base64Url }))
+      setDetailNotice('✓ Employee photo updated successfully!')
+      setTimeout(() => setDetailNotice(''), 3000)
+    } catch (err) {
+      alert('Error updating photo: ' + (err.message || 'Please retry.'))
+    } finally {
+      setEmpPhotoUploading(false)
+      if (e.target) e.target.value = ''
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -4537,7 +4890,46 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin 
         {/* Profile Card */}
         <div style={{ padding: '14px 16px', background: '#FFFFFF', margin: '10px 16px', borderRadius: 14, border: '1px solid #E2E8F0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <img src={employee?.avatar || DEFAULT_AVATARS.amit} alt={name} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', border: isAccDisabled ? '2px solid #EF4444' : '2px solid #1E5AE6' }} />
+            <div style={{ position: 'relative' }}>
+              <UserAvatar
+                name={name}
+                photoURL={userDoc?.photoURL || employee?.photoURL}
+                size={52}
+                fontSize="1.35rem"
+                border={isAccDisabled ? '2px solid #EF4444' : '2px solid #1E5AE6'}
+              />
+              <label
+                htmlFor="admin-emp-photo-input"
+                style={{
+                  position: 'absolute',
+                  bottom: -2,
+                  right: -2,
+                  background: '#1E5AE6',
+                  color: '#fff',
+                  width: 22,
+                  height: 22,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.62rem',
+                  cursor: empPhotoUploading ? 'wait' : 'pointer',
+                  border: '2px solid #FFFFFF',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                }}
+                title="Admin: Change employee photo"
+              >
+                {empPhotoUploading ? '⏳' : '📷'}
+                <input
+                  id="admin-emp-photo-input"
+                  type="file"
+                  accept="image/*"
+                  disabled={empPhotoUploading}
+                  style={{ display: 'none' }}
+                  onChange={handleAdminUploadEmployeePhoto}
+                />
+              </label>
+            </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 800, color: '#0F172A' }}>{name}</h4>
@@ -4556,6 +4948,18 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin 
                   {empId}
                 </span>
                 <span style={{ fontSize: '0.68rem', color: '#64748B' }}>{role}</span>
+                <label
+                  htmlFor="admin-emp-photo-input"
+                  style={{
+                    fontSize: '0.62rem',
+                    color: '#1E5AE6',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    textDecoration: 'underline'
+                  }}
+                >
+                  {empPhotoUploading ? 'Saving...' : '📷 Change Photo'}
+                </label>
               </div>
             </div>
           </div>
@@ -4572,6 +4976,78 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin 
             {detailNotice}
           </div>
         )}
+
+        {/* 1 EMPLOYEE = 1 PHONE DEVICE BINDING MANAGEMENT CARD */}
+        {(() => {
+          const isBound = Boolean(userDoc?.boundDeviceId || userDoc?.boundHardwareModelId || userDoc?.boundDeviceFingerprint)
+          const phoneModel = userDoc?.boundDeviceName || userDoc?.boundPhoneModel || 'Linked Mobile Phone'
+          const hardwareId = userDoc?.boundHardwareModelId || userDoc?.boundDeviceFingerprint || ''
+
+          return (
+            <div style={{ margin: '0 16px 8px 16px', background: isBound ? '#F0FDF4' : '#FFFBEB', border: isBound ? '1px solid #BBF7D0' : '1px solid #FDE68A', borderRadius: 12, padding: '12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: '1.2rem' }}>📱</span>
+                  <div>
+                    <div style={{ fontSize: '0.78rem', fontWeight: 800, color: isBound ? '#166534' : '#92400E' }}>
+                      {isBound ? 'Registered Phone (Locked)' : 'No Phone Bound'}
+                    </div>
+                    <div style={{ fontSize: '0.64rem', color: isBound ? '#15803D' : '#B45309' }}>
+                      {isBound ? phoneModel : 'Pending first employee login on personal phone'}
+                    </div>
+                  </div>
+                </div>
+                <span style={{
+                  background: isBound ? '#DCFCE7' : '#FEF3C7',
+                  color: isBound ? '#166534' : '#92400E',
+                  fontSize: '0.62rem',
+                  fontWeight: 800,
+                  padding: '2px 8px',
+                  borderRadius: 999
+                }}>
+                  {isBound ? '1 Phone Lock Active' : 'Unbound'}
+                </span>
+              </div>
+
+              {isBound && (
+                <div style={{ fontSize: '0.65rem', color: '#334155', background: '#FFFFFF', padding: '8px 10px', borderRadius: 8, border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div><strong>Phone Model:</strong> {phoneModel}</div>
+                  {hardwareId && (
+                    <div><strong>Hardware Model ID:</strong> <code style={{ fontSize: '0.65rem', background: '#F1F5F9', padding: '1px 5px', borderRadius: 4, color: '#0F172A' }}>{hardwareId}</code></div>
+                  )}
+                  {userDoc?.boundDeviceId && (
+                    <div style={{ wordBreak: 'break-all', color: '#64748B' }}><strong>Device UUID:</strong> {userDoc.boundDeviceId}</div>
+                  )}
+                </div>
+              )}
+
+              {isBound ? (
+                <button
+                  type="button"
+                  disabled={deviceResetting}
+                  onClick={handleResetDevice}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    background: '#FEF2F2',
+                    color: '#DC2626',
+                    border: '1px solid #FECACA',
+                    borderRadius: 8,
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {deviceResetting ? 'Resetting Device Lock...' : '🔄 Reset Device Binding (Employee Changed Phone)'}
+                </button>
+              ) : (
+                <div style={{ fontSize: '0.64rem', color: '#B45309', fontStyle: 'italic' }}>
+                  ℹ️ Jab employee apne phone se pehli baar login karega, uska phone model aur hardware ID is account se permanently link ho jayenge.
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Account Access & Status Control Card */}
         {isAccDisabled ? (
@@ -5050,7 +5526,8 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee }) {
         ...u,
         name: u.name || u.email?.split('@')[0] || 'Employee',
         role: u.role || 'Staff Member',
-        avatar: Object.values(DEFAULT_AVATARS)[i % Object.values(DEFAULT_AVATARS).length],
+        photoURL: u.photoURL || null,
+        avatar: u.photoURL || null,
         totalPunches: uRecords.length,
         presentCount: uPresent,
         lateCount: uLate,
@@ -5216,7 +5693,7 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee }) {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <img src={emp.avatar} alt={emp.name} style={{ width: 38, height: 38, borderRadius: '50%', objectFit: 'cover' }} />
+                      <UserAvatar name={emp.name} photoURL={emp.photoURL || emp.avatar} size={38} />
                       <div>
                         <h4 style={{ margin: '0 0 2px 0', fontSize: '0.82rem', fontWeight: 800, color: '#0F172A' }}>{emp.name}</h4>
                         <p style={{ margin: 0, fontSize: '0.66rem', color: '#64748B' }}>{emp.email}</p>
@@ -5375,6 +5852,8 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
   const [adminDept, setAdminDept] = useState(profile?.department || 'Executive Management')
   const [saveMsg, setSaveMsg] = useState('')
   const [saving, setSaving] = useState(false)
+  const [photoUploading, setPhotoUploading] = useState(false)
+  const [photoMsg, setPhotoMsg] = useState('')
 
   // Password change state
   const [newPassword, setNewPassword] = useState('')
@@ -5384,7 +5863,33 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
 
   const name = profile?.name || user?.displayName || user?.email?.split('@')[0] || 'Administrator'
   const email = user?.email || 'admin@softwindlabs.com'
-  const avatarUrl = profile?.photoURL || user?.photoURL || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=400&h=400&q=80'
+  const avatarUrl = profile?.photoURL || user?.photoURL || null
+
+  async function handleAdminPhotoUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPhotoUploading(true)
+    setPhotoMsg('')
+    try {
+      const base64Url = await processImageFile(file, 350, 350, 0.82)
+      if (user && db) {
+        await updateDoc(doc(db, 'users', user.uid), {
+          photoURL: base64Url,
+          updatedAt: serverTimestamp()
+        })
+        if (updateProfile && user) {
+          await updateProfile(user, { photoURL: base64Url }).catch(() => {})
+        }
+      }
+      setPhotoMsg('✓ Admin photo updated successfully!')
+      setTimeout(() => setPhotoMsg(''), 3000)
+    } catch (err) {
+      alert('Photo update failed: ' + (err.message || 'Please retry.'))
+    } finally {
+      setPhotoUploading(false)
+      if (e.target) e.target.value = ''
+    }
+  }
 
   useEffect(() => {
     if (profile?.name) setAdminName(profile.name)
@@ -5482,12 +5987,15 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
             <div style={{ background: '#fff', borderRadius: 16, padding: '18px', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
                 <div style={{ position: 'relative' }}>
-                  <img
-                    src={avatarUrl}
-                    alt={name}
-                    style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '3px solid #1E5AE6', cursor: 'pointer' }}
+                  <UserAvatar
+                    name={name}
+                    photoURL={avatarUrl}
+                    size={56}
+                    fontSize="1.4rem"
+                    border="3px solid #1E5AE6"
+                    title={avatarUrl ? "Admin Photo" : `${name}'s Initial`}
                     onClick={() =>
-                      onViewSelfie &&
+                      avatarUrl && onViewSelfie &&
                       onViewSelfie({
                         photoUrl: avatarUrl,
                         name: `${name} (Admin Photo)`,
@@ -5502,7 +6010,33 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
                 </div>
                 <div>
                   <h4 style={{ margin: '0 0 2px 0', fontSize: '0.95rem', fontWeight: 800, color: '#0F172A' }}>{name}</h4>
-                  <p style={{ margin: 0, fontSize: '0.72rem', color: '#64748B' }}>Workspace Administrator</p>
+                  <p style={{ margin: '0 0 6px 0', fontSize: '0.72rem', color: '#64748B' }}>Workspace Administrator</p>
+                  <label
+                    htmlFor="admin-photo-input-subview"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '4px 10px',
+                      background: '#EEF4FF',
+                      border: '1px solid #BFDBFE',
+                      borderRadius: 6,
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      color: '#1E5AE6',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    📷 {photoUploading ? 'Saving...' : 'Change Admin Photo'}
+                    <input
+                      id="admin-photo-input-subview"
+                      type="file"
+                      accept="image/*"
+                      disabled={photoUploading}
+                      style={{ display: 'none' }}
+                      onChange={handleAdminPhotoUpload}
+                    />
+                  </label>
                 </div>
               </div>
 
@@ -5725,52 +6259,84 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
             {/* ADMIN HERO CARD */}
             <div className="swl-profile-hero" style={{ padding: '18px 16px 14px 16px', margin: '0 16px', borderRadius: 18 }}>
               <div style={{ position: 'relative', display: 'inline-block' }}>
-                <img
-                  src={avatarUrl}
-                  alt={name}
-                  className="swl-profile-avatar"
-                  style={{ width: 76, height: 76, border: '3px solid #1E5AE6', cursor: 'pointer', display: 'block', objectFit: 'cover' }}
-                  onClick={() =>
-                    onViewSelfie &&
-                    onViewSelfie({
-                      photoUrl: avatarUrl,
-                      name: `${name} (Admin Avatar / Photo)`,
-                      date: 'Admin Profile',
-                      time: 'Active Administrator',
-                      location: 'Office Admin Desk'
-                    })
-                  }
-                  title="Click to zoom / view full admin photo"
-                />
-                <button
-                  type="button"
-                  style={{
-                    position: 'absolute',
-                    bottom: -3,
-                    right: -3,
-                    background: '#1E5AE6',
-                    color: '#fff',
-                    border: '2px solid #fff',
-                    borderRadius: 999,
-                    fontSize: '0.58rem',
-                    fontWeight: 800,
-                    padding: '2px 6px',
-                    cursor: 'pointer'
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onViewSelfie &&
+                <UserAvatar
+                  name={name}
+                  photoURL={avatarUrl}
+                  size={78}
+                  fontSize="2rem"
+                  border="3px solid #1E5AE6"
+                  title={avatarUrl ? "Click to view full photo" : `${name}'s Profile Initial`}
+                  onClick={() => {
+                    if (avatarUrl && onViewSelfie) {
                       onViewSelfie({
                         photoUrl: avatarUrl,
                         name: `${name} (Admin Photo)`,
                         date: 'Admin Profile',
+                        time: 'Active Administrator',
                         location: 'Office Admin Desk'
                       })
+                    }
+                  }}
+                />
+                <label
+                  htmlFor="admin-photo-input-main"
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 0,
+                    background: '#1E5AE6',
+                    color: '#fff',
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.8rem',
+                    cursor: photoUploading ? 'wait' : 'pointer',
+                    border: '2px solid #FFFFFF',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.25)'
+                  }}
+                  title="Upload / Change Admin Photo"
+                >
+                  {photoUploading ? '⏳' : '📷'}
+                  <input
+                    id="admin-photo-input-main"
+                    type="file"
+                    accept="image/*"
+                    disabled={photoUploading}
+                    style={{ display: 'none' }}
+                    onChange={handleAdminPhotoUpload}
+                  />
+                </label>
+              </div>
+
+              <div style={{ marginTop: 6 }}>
+                <label
+                  htmlFor="admin-photo-input-main"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '3px 10px',
+                    background: '#F1F5F9',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: 999,
+                    fontSize: '0.66rem',
+                    fontWeight: 700,
+                    color: '#1E5AE6',
+                    cursor: 'pointer'
                   }}
                 >
-                  🔍 View
-                </button>
+                  📷 {photoUploading ? 'Saving Photo...' : 'Change Admin Photo'}
+                </label>
               </div>
+
+              {photoMsg && (
+                <div style={{ fontSize: '0.68rem', color: '#059669', fontWeight: 700, marginTop: 4 }}>
+                  {photoMsg}
+                </div>
+              )}
 
               <h3 style={{ margin: '8px 0 2px 0', fontSize: '1.1rem', fontWeight: 800, color: '#0F172A' }}>
                 {name}

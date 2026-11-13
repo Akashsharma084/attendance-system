@@ -22,6 +22,11 @@ import {
   mockGoogleSignIn,
   resetDemoData
 } from '../mockService'
+import {
+  validateAndBindEmployeeDevice,
+  getDeviceDetails,
+  clearLocalDeviceBinding
+} from '../services/deviceService'
 
 export function checkIsAdminEmail(email) {
   if (!email) return false
@@ -202,6 +207,20 @@ export function AuthProvider({ children }) {
 
         const finalRole = isActualAdmin ? 'admin' : 'employee'
 
+        // --- 1 EMPLOYEE = 1 PHONE UNIQUE DEVICE BINDING ---
+        let deviceResult = null
+        if (!isActualAdmin) {
+          try {
+            deviceResult = validateAndBindEmployeeDevice(user, snap?.data(), false)
+          } catch (deviceErr) {
+            await firebaseSignOut(auth)
+            sessionStorage.removeItem('punch_session_active')
+            setCurrentUser(null)
+            setProfile(null)
+            throw deviceErr
+          }
+        }
+
         const profileData = {
           name: snap?.data()?.name || user.displayName || email.split('@')[0] || (isActualAdmin ? 'Admin' : 'Employee'),
           email: user.email,
@@ -209,6 +228,15 @@ export function AuthProvider({ children }) {
           isAdmin: isActualAdmin,
           status: 'active',
           updatedAt: serverTimestamp()
+        }
+
+        if (deviceResult?.deviceData && deviceResult?.isNewBinding) {
+          profileData.boundDeviceId = deviceResult.deviceData.deviceId
+          profileData.boundDeviceFingerprint = deviceResult.deviceData.deviceFingerprint
+          profileData.boundHardwareModelId = deviceResult.deviceData.hardwareModelId
+          profileData.boundDeviceName = deviceResult.deviceData.deviceName
+          profileData.boundPhoneModel = deviceResult.deviceData.phoneModel
+          profileData.boundAt = serverTimestamp()
         }
 
         if (!snap || !snap.exists()) {
@@ -247,6 +275,26 @@ export function AuthProvider({ children }) {
         setCurrentUser(null)
         setProfile(null)
         throw new Error('Access Denied: Yeh Administrator account hai aur Employee portal access nahi kar sakta. Kripya Admin tab select karke login karein.')
+      }
+
+      // --- 1 EMPLOYEE = 1 PHONE UNIQUE DEVICE BINDING (DEMO) ---
+      if (!isActualAdmin) {
+        try {
+          const deviceResult = validateAndBindEmployeeDevice(user, user, false)
+          if (deviceResult?.deviceData && deviceResult?.isNewBinding) {
+            user.boundDeviceId = deviceResult.deviceData.deviceId
+            user.boundDeviceFingerprint = deviceResult.deviceData.deviceFingerprint
+            user.boundHardwareModelId = deviceResult.deviceData.hardwareModelId
+            user.boundDeviceName = deviceResult.deviceData.deviceName
+            user.boundPhoneModel = deviceResult.deviceData.phoneModel
+          }
+        } catch (deviceErr) {
+          mockSignOut()
+          sessionStorage.removeItem('punch_session_active')
+          setCurrentUser(null)
+          setProfile(null)
+          throw deviceErr
+        }
       }
 
       user.role = isActualAdmin ? 'admin' : 'employee'
@@ -311,6 +359,20 @@ export function AuthProvider({ children }) {
 
         const finalRole = isActualAdmin ? 'admin' : 'employee'
 
+        // --- 1 EMPLOYEE = 1 PHONE UNIQUE DEVICE BINDING (GOOGLE LOGIN) ---
+        let deviceResult = null
+        if (!isActualAdmin) {
+          try {
+            deviceResult = validateAndBindEmployeeDevice(user, snap?.data(), false)
+          } catch (deviceErr) {
+            await firebaseSignOut(auth)
+            sessionStorage.removeItem('punch_session_active')
+            setCurrentUser(null)
+            setProfile(null)
+            throw deviceErr
+          }
+        }
+
         const profileData = {
           name: snap?.data()?.name || user.displayName || user.email.split('@')[0] || (isActualAdmin ? 'Admin' : 'Employee'),
           email: user.email,
@@ -318,6 +380,15 @@ export function AuthProvider({ children }) {
           isAdmin: isActualAdmin,
           status: 'active',
           updatedAt: serverTimestamp()
+        }
+
+        if (deviceResult?.deviceData && deviceResult?.isNewBinding) {
+          profileData.boundDeviceId = deviceResult.deviceData.deviceId
+          profileData.boundDeviceFingerprint = deviceResult.deviceData.deviceFingerprint
+          profileData.boundHardwareModelId = deviceResult.deviceData.hardwareModelId
+          profileData.boundDeviceName = deviceResult.deviceData.deviceName
+          profileData.boundPhoneModel = deviceResult.deviceData.phoneModel
+          profileData.boundAt = serverTimestamp()
         }
 
         if (!snap || !snap.exists()) {
@@ -354,6 +425,26 @@ export function AuthProvider({ children }) {
         setCurrentUser(null)
         setProfile(null)
         throw new Error('Access Denied: Yeh Google account Administrator hai aur Employee portal access nahi kar sakta.')
+      }
+
+      // --- 1 EMPLOYEE = 1 PHONE UNIQUE DEVICE BINDING (GOOGLE DEMO) ---
+      if (!isActualAdmin) {
+        try {
+          const deviceResult = validateAndBindEmployeeDevice(user, user, false)
+          if (deviceResult?.deviceData && deviceResult?.isNewBinding) {
+            user.boundDeviceId = deviceResult.deviceData.deviceId
+            user.boundDeviceFingerprint = deviceResult.deviceData.deviceFingerprint
+            user.boundHardwareModelId = deviceResult.deviceData.hardwareModelId
+            user.boundDeviceName = deviceResult.deviceData.deviceName
+            user.boundPhoneModel = deviceResult.deviceData.phoneModel
+          }
+        } catch (deviceErr) {
+          mockSignOut()
+          sessionStorage.removeItem('punch_session_active')
+          setCurrentUser(null)
+          setProfile(null)
+          throw deviceErr
+        }
       }
 
       user.role = isActualAdmin ? 'admin' : 'employee'
@@ -492,6 +583,33 @@ export function AuthProvider({ children }) {
     return false
   }
 
+  async function resetEmployeeDeviceBinding(targetUid) {
+    if (!targetUid) return
+    if (isFirebaseConfigured && db) {
+      const targetRef = doc(db, 'users', targetUid)
+      await updateDoc(targetRef, {
+        boundDeviceId: null,
+        boundDeviceFingerprint: null,
+        boundHardwareModelId: null,
+        boundDeviceName: null,
+        boundPhoneModel: null,
+        boundAt: null
+      })
+    } else {
+      const users = getStoredUsers()
+      const u = users.find(x => x.uid === targetUid)
+      if (u) {
+        u.boundDeviceId = null
+        u.boundDeviceFingerprint = null
+        u.boundHardwareModelId = null
+        u.boundDeviceName = null
+        u.boundPhoneModel = null
+        u.boundAt = null
+      }
+    }
+    clearLocalDeviceBinding()
+  }
+
   // Admin Evaluation: checks verified Firestore profile role, isAdmin flag, or designated admin email
   const isUserAdmin = Boolean(
     profile?.role?.toLowerCase() === 'admin' ||
@@ -514,6 +632,8 @@ export function AuthProvider({ children }) {
     resetPassword,
     changePassword,
     resetData,
+    resetEmployeeDeviceBinding,
+    currentDevice: getDeviceDetails(),
     isDemoMode: !isFirebaseConfigured
   }
 
