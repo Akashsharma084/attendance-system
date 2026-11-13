@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   collection,
@@ -1836,41 +1836,44 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
     return () => unsub()
   }, [user?.uid, todayKey])
 
-  // 2. Start Camera Feed
-  useEffect(() => {
-    let mounted = true
-    async function startCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+  // 2. Start Camera Feed (reusable for initial mount & instant retake)
+  const startCamera = useCallback(async () => {
+    try {
+      const currentStream = streamRef.current
+      const isTrackActive = currentStream && currentStream.getVideoTracks().some(t => t.readyState === 'live')
+      let stream = currentStream
+
+      if (!isTrackActive) {
+        stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 480 } },
           audio: false
         })
-        if (!mounted) {
-          stream.getTracks().forEach(t => t.stop())
-          return
-        }
         streamRef.current = stream
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          videoRef.current.play().catch(() => {})
-        }
-        setCameraActive(true)
-      } catch (err) {
-        console.warn('Camera stream warning:', err)
-        // Fallback default avatar snapshot
-        setPhotoUrl(DEFAULT_AVATARS.rahul)
       }
-    }
 
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        try {
+          await videoRef.current.play()
+        } catch (_) {}
+      }
+      setCameraActive(true)
+    } catch (err) {
+      console.warn('Camera stream warning:', err)
+      // Fallback default avatar snapshot
+      setPhotoUrl(DEFAULT_AVATARS.rahul)
+    }
+  }, [])
+
+  useEffect(() => {
     startCamera()
 
     return () => {
-      mounted = false
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop())
       }
     }
-  }, [])
+  }, [startCamera])
 
   // 2b. REAL Face Detection loop - only detects when an actual human face is present
   useEffect(() => {
@@ -2035,6 +2038,19 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
     setAutoCaptured(false)
     setFaceDetected(false)
     setCountdown(null)
+    if (videoRef.current) {
+      if (streamRef.current && streamRef.current.getVideoTracks().some(t => t.readyState === 'live')) {
+        if (videoRef.current.srcObject !== streamRef.current) {
+          videoRef.current.srcObject = streamRef.current
+        }
+        videoRef.current.play().catch(() => {})
+        setCameraActive(true)
+      } else {
+        startCamera()
+      }
+    } else {
+      startCamera()
+    }
   }
 
   // Confirm Punch Action
@@ -2252,19 +2268,24 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
                 transition: 'border-color 0.3s ease, box-shadow 0.3s ease'
               }}
             >
-              {photoUrl ? (
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="swl-camera-photo"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  borderRadius: '50%',
+                  display: photoUrl ? 'none' : 'block'
+                }}
+              />
+              {photoUrl && (
                 <img
                   src={photoUrl}
                   alt="Captured Selfie"
-                  className="swl-camera-photo"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
-                />
-              ) : (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
                   className="swl-camera-photo"
                   style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
                 />
