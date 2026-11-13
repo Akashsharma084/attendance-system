@@ -3208,9 +3208,11 @@ function LiveLeaveAppScreen({ onNavigate }) {
   async function handleDeleteLeave(leaveId) {
     if (!window.confirm('Delete this leave record permanently from your history?')) return
     try {
+      setMyLeaves((prev) => prev.filter((l) => l.id !== leaveId))
       await deleteLeaveRequest({ leaveId, uid: user.uid })
     } catch (err) {
-      alert('Could not delete leave record: ' + err.message)
+      console.error('Delete leave error:', err)
+      alert('Could not delete leave record: ' + (err.message || 'Error'))
     }
   }
 
@@ -3219,10 +3221,13 @@ function LiveLeaveAppScreen({ onNavigate }) {
     if (!window.confirm(`Are you sure you want to clear all ${myLeaves.length} leave records from your history? This action cannot be undone.`)) {
       return
     }
+    const idsToClear = myLeaves.map((l) => l.id)
     try {
-      await clearLeaveRecords({ uid: user.uid, leaveIds: myLeaves.map((l) => l.id) })
+      setMyLeaves([])
+      await clearLeaveRecords({ uid: user.uid, leaveIds: idsToClear })
     } catch (err) {
-      alert('Could not clear leave history: ' + err.message)
+      console.error('Clear leaves error:', err)
+      alert('Could not clear leave history: ' + (err.message || 'Error'))
     }
   }
 
@@ -5632,6 +5637,7 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
   async function handleDeleteLeave(leaveId, userName) {
     if (!window.confirm(`Delete this leave record permanently ${userName ? `for ${userName}` : ''}?`)) return
     try {
+      setLeaves((prev) => prev.filter((l) => l.id !== leaveId))
       await deleteLeaveRequest({ leaveId })
     } catch (err) {
       alert('Could not delete leave record: ' + err.message)
@@ -5643,8 +5649,10 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
     if (!window.confirm(`Are you sure you want to clear all ${currentList.length} ${tab.toLowerCase()} leave records? This action cannot be undone.`)) {
       return
     }
+    const idsToClear = currentList.map((l) => l.id)
     try {
-      await clearLeaveRecords({ leaveIds: currentList.map(l => l.id) })
+      setLeaves((prev) => prev.filter((l) => !idsToClear.includes(l.id)))
+      await clearLeaveRecords({ leaveIds: idsToClear })
     } catch (err) {
       alert('Could not clear records: ' + err.message)
     }

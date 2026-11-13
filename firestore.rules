@@ -62,7 +62,8 @@ service cloud.firestore {
       allow update: if isSignedIn()
                     && (isAdmin() || (resource.data.uid == request.auth.uid && request.resource.data.status == 'cancelled'));
 
-      allow delete: if isAdmin();
+      // Allow admin or the employee who owns the leave to delete their leave record
+      allow delete: if isSignedIn() && (isAdmin() || resource.data.uid == request.auth.uid);
     }
 
     match /settings/{docId} {
