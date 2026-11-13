@@ -15,11 +15,26 @@ import {
 import { initializeApp, getApps } from 'firebase/app'
 import { getAuth, createUserWithEmailAndPassword, signOut as secondarySignOut, updatePassword, updateProfile } from 'firebase/auth'
 import { db, auth, isFirebaseConfigured, firebaseConfig } from '../firebase'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, checkIsAdminEmail } from '../context/AuthContext'
 import { getOrCreateDeviceId, detectDeviceName, getDeviceDetails, getHardwareModelId, detectPhoneModel } from '../services/deviceService'
 import { useNotifications } from '../context/NotificationContext'
 import { Icons as BaseIcons } from './SWLDesignShowcase'
 import './SWLDesignShowcase.css'
+
+export function isUserAdmin(u) {
+  if (!u) return false
+  const role = (u.role || '').toLowerCase().trim()
+  const email = (u.email || '').toLowerCase().trim()
+  return (
+    role === 'admin' ||
+    u.isAdmin === true ||
+    checkIsAdminEmail(email) ||
+    email.startsWith('admin@') ||
+    email === 'admin@softwindlabs.com' ||
+    email === 'jai.chaturvedi@softwindlabs.com' ||
+    email === 'jai@softwindlabs.com'
+  )
+}
 
 const Icons = {
   ...BaseIcons,
@@ -2558,7 +2573,7 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie }) {
     const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
       const list = snap.docs
         .map(d => ({ uid: d.id, ...d.data() }))
-        .filter(u => (u.role || '').toLowerCase() !== 'admin')
+        .filter(u => !isUserAdmin(u))
       setTeamUsers(list)
     })
 
@@ -4179,15 +4194,20 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
     if (!isFirebaseConfigured || !db) return
 
     const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
-      setTotalEmployees(snap.docs.length || 0)
+      const allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }))
+      // Exclude Admin: Admin is a manager, not a worker whose attendance is tracked
+      const workersOnly = allUsers.filter(u => !isUserAdmin(u))
+      setTotalEmployees(workersOnly.length)
     })
 
     const qAtt = query(collection(db, 'attendance'), where('date', '==', todayKey))
     const unsubAtt = onSnapshot(qAtt, (snap) => {
       const records = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      setTodayPunches(records)
-      setPresentEmployees(records.length)
-      setLateEmployees(records.filter(r => r.isLate).length)
+      // Only include worker attendance records
+      const workerRecords = records.filter(r => !isUserAdmin(r))
+      setTodayPunches(workerRecords)
+      setPresentEmployees(workerRecords.length)
+      setLateEmployees(workerRecords.filter(r => r.isLate).length)
     })
 
     const qLeaves = query(collection(db, 'leaves'), where('status', '==', 'pending'))
@@ -4481,16 +4501,20 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee }) {
   // Combine user info with account status and today's attendance status
   const employeesWithStatus = useMemo(() => {
     return users.map((u, i) => {
+      const isAdminAccount = isUserAdmin(u)
       const att = todayAtt.find(a => a.uid === u.uid)
       let attStatus = 'Absent'
-      if (att) {
+      if (isAdminAccount) {
+        attStatus = 'Admin' // Admin is NEVER 'Absent' or 'Present'
+      } else if (att) {
         attStatus = att.isLate ? 'Late' : 'Present'
       }
       const isAccountDisabled = u.status === 'disabled' || Boolean(u.disabled)
       return {
         ...u,
-        name: u.name || u.email?.split('@')[0] || 'Employee',
-        role: u.role || 'Staff Member',
+        name: u.name || u.email?.split('@')[0] || (isAdminAccount ? 'Admin' : 'Employee'),
+        role: isAdminAccount ? 'Administrator' : (u.role || 'Staff Member'),
+        isAdmin: isAdminAccount,
         attStatus,
         status: attStatus,
         isAccountDisabled,
@@ -4505,9 +4529,9 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee }) {
     let matchesFilter = true
     if (filter === 'Active') matchesFilter = !emp.isAccountDisabled
     else if (filter === 'Disabled') matchesFilter = emp.isAccountDisabled
-    else if (filter === 'Present') matchesFilter = emp.attStatus === 'Present'
-    else if (filter === 'Absent') matchesFilter = emp.attStatus === 'Absent'
-    else if (filter === 'Late') matchesFilter = emp.attStatus === 'Late'
+    else if (filter === 'Present') matchesFilter = !emp.isAdmin && emp.attStatus === 'Present'
+    else if (filter === 'Absent') matchesFilter = !emp.isAdmin && emp.attStatus === 'Absent'
+    else if (filter === 'Late') matchesFilter = !emp.isAdmin && emp.attStatus === 'Late'
 
     const matchesSearch = emp.name.toLowerCase().includes(search.toLowerCase()) ||
                           (emp.email && emp.email.toLowerCase().includes(search.toLowerCase()))
@@ -4599,9 +4623,9 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee }) {
             let count = employeesWithStatus.length
             if (f === 'Active') count = employeesWithStatus.filter(e => !e.isAccountDisabled).length
             else if (f === 'Disabled') count = employeesWithStatus.filter(e => e.isAccountDisabled).length
-            else if (f === 'Present') count = employeesWithStatus.filter(e => e.attStatus === 'Present').length
-            else if (f === 'Absent') count = employeesWithStatus.filter(e => e.attStatus === 'Absent').length
-            else if (f === 'Late') count = employeesWithStatus.filter(e => e.attStatus === 'Late').length
+            else if (f === 'Present') count = employeesWithStatus.filter(e => !e.isAdmin && e.attStatus === 'Present').length
+            else if (f === 'Absent') count = employeesWithStatus.filter(e => !e.isAdmin && e.attStatus === 'Absent').length
+            else if (f === 'Late') count = employeesWithStatus.filter(e => !e.isAdmin && e.attStatus === 'Late').length
 
             return (
               <button
@@ -4661,49 +4685,59 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee }) {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} onClick={(e) => e.stopPropagation()}>
-                    <span className={`swl-badge-pill ${emp.status === 'Present' ? 'green' : (emp.status === 'Late' ? 'yellow' : 'red')}`} style={{ fontSize: '0.62rem' }}>
-                      {emp.status}
-                    </span>
+                    {emp.isAdmin ? (
+                      <span className="swl-badge-pill" style={{ background: '#EEF4FF', color: '#1E5AE6', fontSize: '0.62rem', fontWeight: 800 }}>
+                        👑 Administrator
+                      </span>
+                    ) : (
+                      <span className={`swl-badge-pill ${emp.status === 'Present' ? 'green' : (emp.status === 'Late' ? 'yellow' : 'red')}`} style={{ fontSize: '0.62rem' }}>
+                        {emp.status}
+                      </span>
+                    )}
 
-                    {/* Quick Disable / Enable Toggle Button */}
-                    <button
-                      type="button"
-                      onClick={(e) => handleToggleStatus(e, emp)}
-                      title={isAccDisabled ? 'Click to Enable Account' : 'Click to Disable Account'}
-                      style={{
-                        background: isAccDisabled ? '#ECFDF5' : '#FFF1F2',
-                        color: isAccDisabled ? '#059669' : '#E11D48',
-                        border: isAccDisabled ? '1px solid #A7F3D0' : '1px solid #FECDD3',
-                        borderRadius: 6,
-                        padding: '3px 7px',
-                        fontSize: '0.62rem',
-                        fontWeight: 800,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {isAccDisabled ? 'Enable' : 'Disable'}
-                    </button>
+                    {!emp.isAdmin && (
+                      <>
+                        {/* Quick Disable / Enable Toggle Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleStatus(e, emp)}
+                          title={isAccDisabled ? 'Click to Enable Account' : 'Click to Disable Account'}
+                          style={{
+                            background: isAccDisabled ? '#ECFDF5' : '#FFF1F2',
+                            color: isAccDisabled ? '#059669' : '#E11D48',
+                            border: isAccDisabled ? '1px solid #A7F3D0' : '1px solid #FECDD3',
+                            borderRadius: 6,
+                            padding: '3px 7px',
+                            fontSize: '0.62rem',
+                            fontWeight: 800,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {isAccDisabled ? 'Enable' : 'Disable'}
+                        </button>
 
-                    {/* Quick Delete Button */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setEmpToDelete(emp)
-                      }}
-                      title={`Permanently delete profile for ${emp.name}`}
-                      style={{
-                        background: '#F8FAFC',
-                        color: '#64748B',
-                        border: '1px solid #E2E8F0',
-                        borderRadius: 6,
-                        padding: '3px 6px',
-                        fontSize: '0.68rem',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      🗑️
-                    </button>
+                        {/* Quick Delete Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEmpToDelete(emp)
+                          }}
+                          title={`Permanently delete profile for ${emp.name}`}
+                          style={{
+                            background: '#F8FAFC',
+                            color: '#64748B',
+                            border: '1px solid #E2E8F0',
+                            borderRadius: 6,
+                            padding: '3px 6px',
+                            fontSize: '0.68rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               )
@@ -5565,11 +5599,12 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee }) {
     setCurrentDate(d)
   }
 
-  // Subscribe to live users
+  // Subscribe to live users (exclude admin - admin is not a worker)
   useEffect(() => {
     if (!isFirebaseConfigured || !db) return
     const unsub = onSnapshot(collection(db, 'users'), (snap) => {
-      setUsers(snap.docs.map(d => ({ uid: d.id, ...d.data() })))
+      const allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }))
+      setUsers(allUsers.filter(u => !isUserAdmin(u)))
     })
     return () => unsub()
   }, [])
@@ -5584,14 +5619,15 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee }) {
     return () => unsub()
   }, [curMonth])
 
-  const presentCount = records.length
-  const lateCount = records.filter(r => r.isLate).length
+  const workerRecords = useMemo(() => records.filter(r => !isUserAdmin(r)), [records])
+  const presentCount = workerRecords.length
+  const lateCount = workerRecords.filter(r => r.isLate).length
   const absentCount = Math.max(0, (users.length * 24) - presentCount)
 
-  // Per-employee analytics
+  // Per-employee analytics (employees only)
   const employeeSummaries = useMemo(() => {
     return users.map((u, i) => {
-      const uRecords = records.filter(r => r.uid === u.uid || r.email === u.email)
+      const uRecords = workerRecords.filter(r => r.uid === u.uid || r.email === u.email)
       const uPresent = uRecords.length
       const uLate = uRecords.filter(r => r.isLate).length
       const workingDaysTarget = 24
@@ -5626,7 +5662,7 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee }) {
         totalHours
       }
     })
-  }, [users, records])
+  }, [users, workerRecords])
 
   // Filtered punch logs
   const filteredLogs = useMemo(() => {

@@ -4,7 +4,7 @@ import { getAuth, createUserWithEmailAndPassword, signOut, sendPasswordResetEmai
 import { getFunctions, httpsCallable } from 'firebase/functions'
 import { collection, doc, onSnapshot, query, setDoc, updateDoc, deleteDoc, where, serverTimestamp } from 'firebase/firestore'
 import { db, app, auth, firebaseConfig, isFirebaseConfigured } from '../firebase'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, checkIsAdminEmail } from '../context/AuthContext'
 import { getStoredUsers, mockCreateUser, mockToggleUserStatus, mockGetAttendanceList } from '../mockService'
 import { monthKey, buildEmployeeSchedule } from '../utils/dateHelpers'
 import NavBar from '../components/NavBar'
@@ -74,13 +74,28 @@ export default function AdminUsers() {
   }, [])
 
   function getUserMonthlyStats(uid) {
+    const userObj = users.find((u) => u.id === uid || u.uid === uid)
+    const role = (userObj?.role || '').toLowerCase().trim()
+    const email = (userObj?.email || '').toLowerCase().trim()
+    const isAdmin =
+      role === 'admin' ||
+      userObj?.isAdmin === true ||
+      checkIsAdminEmail(email) ||
+      email.startsWith('admin@') ||
+      email === 'admin@softwindlabs.com' ||
+      email === 'jai.chaturvedi@softwindlabs.com' ||
+      email === 'jai@softwindlabs.com'
+
+    if (isAdmin) {
+      return { presentCount: '—', absentCount: '—', rate: '—', isAdmin: true }
+    }
+
     const userRecords = attendanceRecords.filter((r) => r.uid === uid)
     const curMonth = monthKey()
-    const userObj = users.find((u) => u.id === uid || u.uid === uid)
     const empStartDate = userObj?.joinDate || userObj?.startDate || null
     const { presentCount, absentCount, effectiveWorkingDays } = buildEmployeeSchedule(userRecords, curMonth, { uid, startDate: empStartDate })
     const rate = effectiveWorkingDays > 0 ? Math.round((presentCount / effectiveWorkingDays) * 100) : (presentCount > 0 ? 100 : 0)
-    return { presentCount, absentCount, rate }
+    return { presentCount, absentCount, rate, isAdmin: false }
   }
 
   // Auto-generate a secure random temporary password
@@ -425,14 +440,14 @@ export default function AdminUsers() {
                       </span>
                     </td>
                     <td data-label="Present Days" style={{ textAlign: 'center' }}>
-                      <span className="status-pill-p-count">{stats.presentCount} P</span>
+                      <span className="status-pill-p-count">{stats.isAdmin ? '—' : `${stats.presentCount} P`}</span>
                     </td>
                     <td data-label="Absent Days" style={{ textAlign: 'center' }}>
-                      <span className="status-pill-a-count">{stats.absentCount} A</span>
+                      <span className="status-pill-a-count">{stats.isAdmin ? '—' : `${stats.absentCount} A`}</span>
                     </td>
                     <td data-label="Monthly Rate" style={{ textAlign: 'center' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: stats.rate >= 80 ? '#10b981' : stats.rate >= 60 ? '#f59e0b' : '#ef4444' }}>
-                        {stats.rate}%
+                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: stats.isAdmin ? '#94a3b8' : stats.rate >= 80 ? '#10b981' : stats.rate >= 60 ? '#f59e0b' : '#ef4444' }}>
+                        {stats.isAdmin ? 'Exempt' : `${stats.rate}%`}
                       </span>
                     </td>
                     <td data-label="Status">

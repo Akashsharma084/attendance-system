@@ -18,7 +18,7 @@ import {
 } from '../utils/dateHelpers'
 import { mockGetAttendanceList, getStoredUsers } from '../mockService'
 import { subscribeLeaves } from '../services/leaveService'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, checkIsAdminEmail } from '../context/AuthContext'
 import OfficeNetworkModal from '../components/OfficeNetworkModal'
 import NavBar from '../components/NavBar'
 import DocumentUploadBox from '../components/DocumentUploadBox'
@@ -169,13 +169,31 @@ export default function AdminDashboard() {
     }
   }, [selectedMonth])
 
-  // Extract all distinct employees
+  // Extract all distinct employees (strictly excluding admin users)
   const employees = useMemo(() => {
+    const isEmpAdmin = (u) => {
+      if (!u) return false
+      const role = (u.role || '').toLowerCase().trim()
+      const email = (u.email || '').toLowerCase().trim()
+      return (
+        role === 'admin' ||
+        u.isAdmin === true ||
+        checkIsAdminEmail(email) ||
+        email.startsWith('admin@') ||
+        email === 'admin@softwindlabs.com' ||
+        email === 'jai.chaturvedi@softwindlabs.com' ||
+        email === 'jai@softwindlabs.com'
+      )
+    }
     const map = new Map()
-    usersList.forEach((u) => map.set(u.uid, u.name || u.email?.split('@')[0] || 'Employee'))
-    records.forEach((r) => {
-      if (r.uid && (r.name || r.email)) map.set(r.uid, r.name || r.email)
-    })
+    usersList
+      .filter((u) => !isEmpAdmin(u))
+      .forEach((u) => map.set(u.uid, u.name || u.email?.split('@')[0] || 'Employee'))
+    records
+      .filter((r) => !isEmpAdmin(r))
+      .forEach((r) => {
+        if (r.uid && (r.name || r.email)) map.set(r.uid, r.name || r.email)
+      })
     return Array.from(map, ([uid, name]) => ({ uid, name }))
   }, [records, usersList])
 
