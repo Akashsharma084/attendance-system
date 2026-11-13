@@ -2023,15 +2023,24 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
     // STRICT 1 PHONE = 1 EMPLOYEE DEVICE BINDING CHECK
     // Checks both Device UUID and immutable Hardware Model ID (which survives Chrome data clears!)
     const curDev = getDeviceDetails()
+    const currentDeviceId = curDev.deviceId
+    const currentDeviceName = curDev.deviceName
+    const currentHardwareId = curDev.hardwareModelId
+
     const isBound = Boolean(profile?.boundDeviceId || profile?.boundHardwareModelId || profile?.boundDeviceFingerprint)
     if (isBound) {
-      const matchUuid = Boolean(profile?.boundDeviceId && profile.boundDeviceId === curDev.deviceId)
+      const matchUuid = Boolean(profile?.boundDeviceId && profile.boundDeviceId === currentDeviceId)
       const matchHardware = Boolean(
-        (profile?.boundHardwareModelId && profile.boundHardwareModelId === curDev.hardwareModelId) ||
-        (profile?.boundDeviceFingerprint && profile.boundDeviceFingerprint === curDev.hardwareModelId)
+        (profile?.boundHardwareModelId && profile.boundHardwareModelId === currentHardwareId) ||
+        (profile?.boundDeviceFingerprint && profile.boundDeviceFingerprint === currentHardwareId)
+      )
+      const matchBrandModel = Boolean(
+        !profile?.boundHardwareModelId &&
+        profile?.boundDeviceName &&
+        profile.boundDeviceName === currentDeviceName
       )
 
-      if (!matchUuid && !matchHardware) {
+      if (!matchUuid && !matchHardware && !matchBrandModel) {
         alert(`🚫 Shared Device Blocked: Aapka account [${profile.boundDeviceName || profile.boundPhoneModel || 'Registered Phone'}] ke liye lock hai. Kisi doosre phone ya laptop se attendance punch allow nahi hai.`)
         return
       }
@@ -2064,7 +2073,6 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
 
     try {
       const isCheckOut = Boolean(todayDoc?.checkInTime && !todayDoc?.checkOutTime)
-      const currentDeviceName = detectDeviceName()
 
       if (isFirebaseConfigured && db && user?.uid) {
         if (todayDoc) {
@@ -2099,6 +2107,26 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
             status: 'present',
             createdAt: serverTimestamp()
           })
+        }
+
+        // Auto-heal device binding on punch: if not bound yet or needs hardware ID
+        if (!isBound && user?.uid) {
+          updateDoc(doc(db, 'users', user.uid), {
+            boundDeviceId: currentDeviceId,
+            boundHardwareModelId: currentHardwareId,
+            boundDeviceFingerprint: currentHardwareId,
+            boundDeviceName: currentDeviceName,
+            boundPhoneModel: curDev.phoneModel,
+            boundAt: serverTimestamp()
+          }).catch(() => {})
+        } else if ((!profile?.boundHardwareModelId || profile.boundDeviceId !== currentDeviceId) && user?.uid) {
+          updateDoc(doc(db, 'users', user.uid), {
+            boundDeviceId: currentDeviceId,
+            boundHardwareModelId: currentHardwareId,
+            boundDeviceFingerprint: currentHardwareId,
+            boundDeviceName: currentDeviceName,
+            boundPhoneModel: curDev.phoneModel
+          }).catch(() => {})
         }
       }
 

@@ -10,18 +10,26 @@ const STORAGE_BOUND_UID = 'swl_bound_user_uid'
 const STORAGE_BOUND_EMAIL = 'swl_bound_user_email'
 const STORAGE_BOUND_NAME = 'swl_bound_user_name'
 
+let cachedGpuRenderer = null
+
 /**
  * Extracts GPU WebGL Renderer hardware info
  */
 function getGpuRenderer() {
+  if (cachedGpuRenderer) return cachedGpuRenderer
   if (typeof window === 'undefined' || typeof document === 'undefined') return 'generic_gpu'
   try {
     const canvas = document.createElement('canvas')
     const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
-    if (!gl) return 'no_webgl'
-    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info')
-    if (debugInfo) {
-      return gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || 'generic_gpu'
+    if (gl) {
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info')
+      if (debugInfo) {
+        const val = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
+        if (val) {
+          cachedGpuRenderer = val
+          return val
+        }
+      }
     }
   } catch {}
   return 'generic_gpu'
@@ -93,16 +101,23 @@ export function detectDeviceName() {
   return detectPhoneModel().modelName
 }
 
+let cachedHardwareModelId = null
+
 /**
  * Generates physical Hardware Model ID that survives Chrome data clearing.
- * Uses immutable hardware signatures: Screen Resolution, Pixel Ratio, GPU Renderer, CPU Cores, Timezone.
+ * Uses immutable hardware signatures: Screen Resolution (orientation independent), Pixel Ratio, GPU Renderer, CPU Cores, Timezone.
  */
 export function getHardwareModelId() {
+  if (cachedHardwareModelId) return cachedHardwareModelId
   if (typeof window === 'undefined') return 'hw_server'
 
   const phone = detectPhoneModel()
   const gpu = getGpuRenderer()
-  const screenSpec = `${window.screen?.width || 0}x${window.screen?.height || 0}@${window.devicePixelRatio || 1}`
+  const w = window.screen?.width || 0
+  const h = window.screen?.height || 0
+  const minDim = Math.min(w, h)
+  const maxDim = Math.max(w, h)
+  const screenSpec = `${minDim}x${maxDim}@${window.devicePixelRatio || 1}`
   const cores = navigator.hardwareConcurrency || 1
   const tz = Intl?.DateTimeFormat()?.resolvedOptions()?.timeZone || 'UTC'
 
@@ -114,7 +129,8 @@ export function getHardwareModelId() {
     hash = ((hash << 5) - hash) + char
     hash |= 0
   }
-  return 'hw_' + Math.abs(hash).toString(36)
+  cachedHardwareModelId = 'hw_' + Math.abs(hash).toString(36)
+  return cachedHardwareModelId
 }
 
 /**
@@ -200,17 +216,20 @@ export function validateAndBindEmployeeDevice(user, profileDoc, isAdmin = false)
   if (existingDeviceId || existingHardwareId) {
     const isSameUuid = Boolean(existingDeviceId && existingDeviceId === currentDevice.deviceId)
     const isSameHardware = Boolean(existingHardwareId && existingHardwareId === currentDevice.hardwareModelId)
+    // Fallback: If hardware ID was never saved yet in old database record, compare phone model brand
+    const isSameBrandModel = Boolean(!existingHardwareId && existingDeviceName && currentDevice.deviceName && existingDeviceName === currentDevice.deviceName)
 
-    // If both UUID and Hardware ID mismatch -> COMPLETELY DIFFERENT DEVICE!
-    if (!isSameUuid && !isSameHardware) {
+    const isMatch = isSameUuid || isSameHardware || isSameBrandModel
+
+    // If completely mismatched -> DIFFERENT DEVICE!
+    if (!isMatch) {
       throw new Error(
         `❌ Device Mismatch: Aapka account [${existingDeviceName}] ke saath locked hai. Kisi doosre phone ya laptop se attendance allow nahi hai. Agar phone change hua hai toh Admin ko request karein.`
       )
     }
 
-    // If Hardware matches but local UUID was wiped -> User cleared Chrome data!
-    // Auto-heal and restore binding smoothly without bothering Admin!
-    const isRestoredAfterClear = !isSameUuid && isSameHardware
+    // Auto-heal on Chrome clear or missing hardware ID:
+    const needsUpdate = !isSameUuid || !existingHardwareId
 
     try {
       localStorage.setItem(STORAGE_BOUND_UID, currentUid)
@@ -220,9 +239,9 @@ export function validateAndBindEmployeeDevice(user, profileDoc, isAdmin = false)
 
     return {
       isAllowed: true,
-      isNewBinding: isRestoredAfterClear,
+      isNewBinding: needsUpdate,
       deviceData: currentDevice,
-      recoveredFromDataClear: isRestoredAfterClear
+      recoveredFromDataClear: needsUpdate
     }
   }
 
