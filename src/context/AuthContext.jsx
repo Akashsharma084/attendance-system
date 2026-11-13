@@ -31,11 +31,15 @@ import {
 export function checkIsAdminEmail(email) {
   if (!email) return false
   const lower = email.toLowerCase().trim()
+  // Employee Jai
+  if (lower === 'jai@softwindlabs.com') return false
+  // Admin Jai Chaturvedi
   return (
+    lower === 'admin@softwindlabs.com' ||
+    lower === 'jai.chaturvedi@softwindlabs.com' ||
     lower.startsWith('admin@') ||
     lower.includes('admin') ||
-    lower === 'admin@company.com' ||
-    lower === 'admin@softwindlabs.com'
+    lower === 'admin@company.com'
   )
 }
 

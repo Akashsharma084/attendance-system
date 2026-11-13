@@ -24,27 +24,20 @@ import './SWLDesignShowcase.css'
 export function isUserAdmin(u) {
   if (!u) return false
   const email = (u.email || '').toLowerCase().trim()
-  const name = (u.name || '').toLowerCase().trim()
-  const role = (u.role || '').toLowerCase().trim()
 
-  // STRICT RULE: "Jai" (email: jai@softwindlabs.com or name "Jai") is an EMPLOYEE / Worker, NOT Admin!
+  // Compare by Email:
+  // Employee Jai: jai@softwindlabs.com -> Employee
   if (email === 'jai@softwindlabs.com') return false
-  if (name === 'jai' && !name.includes('chaturvedi') && role !== 'admin') return false
 
-  // "Jai Chaturvedi" / admin@softwindlabs.com / role: 'admin' is the Administrator
-  if (
+  // Admin Jai Chaturvedi: admin@softwindlabs.com / jai.chaturvedi@softwindlabs.com -> Admin
+  return (
     email === 'admin@softwindlabs.com' ||
     email === 'jai.chaturvedi@softwindlabs.com' ||
-    name.includes('chaturvedi') ||
-    role === 'admin' ||
-    u.isAdmin === true ||
+    email.startsWith('admin@') ||
     checkIsAdminEmail(email) ||
-    email.startsWith('admin@')
-  ) {
-    return true
-  }
-
-  return false
+    (u.role || '').toLowerCase().trim() === 'admin' ||
+    u.isAdmin === true
+  )
 }
 
 const Icons = {

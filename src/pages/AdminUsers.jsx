@@ -76,21 +76,16 @@ export default function AdminUsers() {
   function getUserMonthlyStats(uid) {
     const userObj = users.find((u) => u.id === uid || u.uid === uid)
     const email = (userObj?.email || '').toLowerCase().trim()
-    const name = (userObj?.name || '').toLowerCase().trim()
-    const role = (userObj?.role || '').toLowerCase().trim()
 
-    // Employee "Jai" (jai@softwindlabs.com or name "Jai") is strictly an employee
-    const isEmployeeJai = email === 'jai@softwindlabs.com' || (name === 'jai' && !name.includes('chaturvedi') && role !== 'admin')
-
+    // Compare by Email:
     const isAdmin =
-      !isEmployeeJai &&
-      (role === 'admin' ||
-        userObj?.isAdmin === true ||
-        name.includes('chaturvedi') ||
-        checkIsAdminEmail(email) ||
+      email !== 'jai@softwindlabs.com' &&
+      (email === 'admin@softwindlabs.com' ||
+        email === 'jai.chaturvedi@softwindlabs.com' ||
         email.startsWith('admin@') ||
-        email === 'admin@softwindlabs.com' ||
-        email === 'jai.chaturvedi@softwindlabs.com')
+        checkIsAdminEmail(email) ||
+        (userObj?.role || '').toLowerCase().trim() === 'admin' ||
+        userObj?.isAdmin === true)
 
     if (isAdmin) {
       return { presentCount: '—', absentCount: '—', rate: '—', isAdmin: true }
