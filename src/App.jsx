@@ -69,7 +69,6 @@ export default function App() {
         <NotificationProvider>
           <BrowserRouter>
             <ScrollToTop />
-            <InAppArrivalToast />
             <Routes>
               {/* Primary Live Application (Pristine Showcase UI) */}
               <Route path="/" element={<SWLLiveMasterApp />} />

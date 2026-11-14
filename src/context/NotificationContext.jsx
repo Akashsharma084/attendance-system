@@ -83,6 +83,18 @@ export function NotificationProvider({ children }) {
       try {
         const res = await Notification.requestPermission()
         setPushPermission(res)
+        if (res === 'granted') {
+          // Immediately trigger a test arrival alert so user gets instant confirmation on screen!
+          setTimeout(() => {
+            triggerArrivalAlert({
+              type: 'in',
+              name: 'Pop-up Alerts Active',
+              time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+              docId: 'welcome-active',
+              isSelf: true
+            })
+          }, 300)
+        }
         return res
       } catch (err) {
         console.warn('Push permission request error:', err)
@@ -91,18 +103,41 @@ export function NotificationProvider({ children }) {
     return 'unsupported'
   }
 
-  function triggerPushNotification({ title, body, icon }) {
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+  async function triggerPushNotification({ title, body, icon }) {
+    if (typeof window === 'undefined' || !('Notification' in window)) return
+    if (Notification.permission !== 'granted') return
+
+    // 1. Android & Mobile Chrome: Use Service Worker showNotification (prevents illegal constructor error)
+    if ('serviceWorker' in navigator) {
       try {
-        new Notification(title, {
-          body,
-          icon: icon || '/favicon.ico',
-          badge: '/favicon.ico',
-          tag: `punch-${Date.now()}`
-        })
-      } catch (e) {
-        console.warn('Could not launch system notification:', e)
+        const registration = await navigator.serviceWorker.ready
+        if (registration && typeof registration.showNotification === 'function') {
+          await registration.showNotification(title, {
+            body,
+            icon: icon || '/favicon-64.png',
+            badge: '/favicon-32.png',
+            vibrate: [200, 100, 200],
+            tag: `punch-${Date.now()}`,
+            renotify: true,
+            data: { url: '/' }
+          })
+          return
+        }
+      } catch (swErr) {
+        console.warn('ServiceWorker showNotification error, falling back:', swErr)
       }
+    }
+
+    // 2. Desktop Fallback (Chrome, Edge, Safari, Firefox desktop)
+    try {
+      new Notification(title, {
+        body,
+        icon: icon || '/favicon-64.png',
+        badge: '/favicon-32.png',
+        tag: `punch-${Date.now()}`
+      })
+    } catch (e) {
+      console.warn('Could not launch system notification:', e)
     }
   }
 

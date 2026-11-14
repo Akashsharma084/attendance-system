@@ -18,6 +18,7 @@ import { db, auth, isFirebaseConfigured, firebaseConfig } from '../firebase'
 import { useAuth, checkIsAdminEmail } from '../context/AuthContext'
 import { getOrCreateDeviceId, detectDeviceName, getDeviceDetails, getHardwareModelId, detectPhoneModel } from '../services/deviceService'
 import { useNotifications } from '../context/NotificationContext'
+import InAppArrivalToast from './InAppArrivalToast'
 import { Icons as BaseIcons } from './SWLDesignShowcase'
 import './SWLDesignShowcase.css'
 
@@ -349,13 +350,15 @@ function LocationBtn() {
 
 /* Live Team Arrivals Modal (Bell Notification Feed) */
 function LiveArrivalsModal({ onClose, onViewSelfie }) {
+  const { user, profile } = useAuth()
   const {
     notifications,
     unreadCount,
     markAllAsRead,
     clearAllNotifications,
     pushPermission,
-    requestPushPermission
+    requestPushPermission,
+    triggerArrivalAlert
   } = useNotifications()
 
   useEffect(() => {
@@ -442,19 +445,63 @@ function LiveArrivalsModal({ onClose, onViewSelfie }) {
           </div>
         </div>
 
-        {pushPermission !== 'granted' && typeof window !== 'undefined' && 'Notification' in window && (
-          <div style={{ background: '#EEF4FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: '8px 10px', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: '0.7rem', color: '#1E40AF' }}>
-              🔊 Get instant sound & web push alerts
-            </div>
+        {/* Quick Pop-up Alert Actions */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          {pushPermission !== 'granted' && typeof window !== 'undefined' && 'Notification' in window && (
             <button
+              type="button"
               onClick={requestPushPermission}
-              style={{ background: '#1E5AE6', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer' }}
+              style={{
+                flex: 1,
+                background: '#1E5AE6',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 10,
+                padding: '9px 10px',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5
+              }}
             >
-              Enable
+              🔔 Allow Pop-up Alerts
             </button>
-          </div>
-        )}
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              if (triggerArrivalAlert) {
+                triggerArrivalAlert({
+                  type: 'in',
+                  name: profile?.name || user?.displayName || 'Rahul Sharma',
+                  time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+                  docId: `test-${Date.now()}`,
+                  isSelf: false
+                })
+              }
+            }}
+            style={{
+              flex: 1,
+              background: '#EEF4FF',
+              color: '#1E5AE6',
+              border: '1.5px solid #BFDBFE',
+              borderRadius: 10,
+              padding: '9px 10px',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 5
+            }}
+          >
+            ⚡ Test Pop-up Alert
+          </button>
+        </div>
 
         <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {notifications.length === 0 ? (
@@ -713,29 +760,130 @@ export default function SWLLiveMasterApp() {
     }
   }, [])
 
-  // Strictly role-isolated navigation handler
-  const handleNavigate = (targetScreen) => {
+  const SCREEN_PATH_MAP = {
+    emp_home: '/',
+    emp_checkin: '/checkin',
+    emp_history: '/history',
+    emp_leave: '/leaves',
+    emp_profile: '/profile',
+    adm_dashboard: '/admin',
+    adm_employees: '/admin/employees',
+    adm_details: '/admin/employees',
+    adm_approvals: '/admin/leaves',
+    adm_reports: '/admin/reports',
+    adm_profile: '/admin/profile'
+  }
+
+  // Strictly role-isolated navigation handler with browser history tracking
+  const handleNavigate = (targetScreen, pushHistory = true) => {
     if (!user) {
       setActiveScreen('login')
       return
     }
+    let validScreen = targetScreen
     if (isAdmin) {
       // Administrator is strictly restricted to administrator screens
       if (targetScreen.startsWith('emp_')) {
         console.warn('Admin account cannot access employee screens:', targetScreen)
-        setActiveScreen('adm_dashboard')
-        return
+        validScreen = 'adm_dashboard'
       }
     } else {
       // Employee is strictly restricted to employee screens
       if (targetScreen.startsWith('adm_')) {
         console.warn('Employee account cannot access admin screens:', targetScreen)
-        setActiveScreen('emp_home')
-        return
+        validScreen = 'emp_home'
       }
     }
-    setActiveScreen(targetScreen)
+
+    setActiveScreen(validScreen)
+
+    if (pushHistory && typeof window !== 'undefined') {
+      try {
+        const path = SCREEN_PATH_MAP[validScreen] || '/'
+        window.history.pushState({ app: 'swl', screen: validScreen, time: Date.now() }, '', path)
+      } catch (_) {}
+    }
   }
+
+  // Intercept Browser & Hardware Back Button so the app NEVER disappears or exits
+  useEffect(() => {
+    if (authLoading || !user) return
+
+    // 1. Ensure initial history state is anchored to SWL App
+    try {
+      if (!window.history.state || window.history.state?.app !== 'swl') {
+        const curPath = SCREEN_PATH_MAP[activeScreen] || location.pathname || '/'
+        window.history.replaceState({ app: 'swl', screen: activeScreen, root: true }, '', curPath)
+      }
+    } catch (_) {}
+
+    const onPopState = (event) => {
+      // Priority 1: If any full-screen Modal is open, close the modal and stay on screen!
+      if (selectedSelfieModal) {
+        setSelectedSelfieModal(null)
+        try {
+          window.history.pushState({ app: 'swl', screen: activeScreen }, '', SCREEN_PATH_MAP[activeScreen] || '/')
+        } catch (_) {}
+        return
+      }
+      if (showGeofenceModal) {
+        setShowGeofenceModal(false)
+        try {
+          window.history.pushState({ app: 'swl', screen: activeScreen }, '', SCREEN_PATH_MAP[activeScreen] || '/')
+        } catch (_) {}
+        return
+      }
+      if (showTimingModal) {
+        setShowTimingModal(false)
+        try {
+          window.history.pushState({ app: 'swl', screen: activeScreen }, '', SCREEN_PATH_MAP[activeScreen] || '/')
+        } catch (_) {}
+        return
+      }
+
+      // Priority 2: If on Admin Employee Details view, go back to Employees list
+      if (activeScreen === 'adm_details') {
+        const backTarget = empDetailOrigin || 'adm_employees'
+        setActiveScreen(backTarget)
+        setSelectedEmp(null)
+        try {
+          window.history.pushState({ app: 'swl', screen: backTarget }, '', SCREEN_PATH_MAP[backTarget] || '/admin/employees')
+        } catch (_) {}
+        return
+      }
+
+      // Priority 3: If on any sub-screen (Check-In, Leave, History, Profile, Reports), go back to Home / Dashboard
+      const homeScreen = isAdmin ? 'adm_dashboard' : 'emp_home'
+      const homePath = isAdmin ? '/admin' : '/'
+
+      if (activeScreen !== homeScreen) {
+        setActiveScreen(homeScreen)
+        try {
+          window.history.pushState({ app: 'swl', screen: homeScreen }, '', homePath)
+        } catch (_) {}
+        return
+      }
+
+      // Priority 4: If ALREADY on Home / Dashboard, prevent exiting the app!
+      // Trap the back button gracefully so the app stays open and mounted.
+      try {
+        window.history.pushState({ app: 'swl', screen: homeScreen, root: true }, '', homePath)
+      } catch (_) {}
+    }
+
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [
+    authLoading,
+    user,
+    isAdmin,
+    activeScreen,
+    selectedSelfieModal,
+    showGeofenceModal,
+    showTimingModal,
+    empDetailOrigin,
+    location.pathname
+  ])
 
   // Sync screen with URL and enforce strict role boundaries
   useEffect(() => {
@@ -764,7 +912,7 @@ export default function SWLLiveMasterApp() {
       else if (activeScreen.startsWith('adm_')) setActiveScreen('emp_home')
       else if (!activeScreen.startsWith('emp_')) setActiveScreen('emp_home')
     }
-  }, [user, isAdmin, authLoading, location.pathname, activeScreen])
+  }, [user, isAdmin, authLoading, location.pathname])
 
   if (authLoading) {
     return (
@@ -788,7 +936,8 @@ export default function SWLLiveMasterApp() {
     return (
       <div className="swl-live-chassis-wrap">
         <div className="swl-phone-chassis">
-          <div className="swl-phone-viewport" style={{ borderRadius: 36 }}>
+          <div className="swl-phone-viewport" style={{ borderRadius: 36, position: 'relative' }}>
+          <InAppArrivalToast />
             <LiveLoginScreen
               onSuccess={(role) => {
                 setActiveScreen(role === 'admin' ? 'adm_dashboard' : 'emp_home')
@@ -804,7 +953,8 @@ export default function SWLLiveMasterApp() {
   return (
     <div className="swl-live-chassis-wrap">
       <div className="swl-phone-chassis">
-        <div className="swl-phone-viewport" style={{ borderRadius: 36 }}>
+        <div className="swl-phone-viewport" style={{ borderRadius: 36, position: 'relative' }}>
+          <InAppArrivalToast />
           {/* Employee Screens (Only rendered when user is Employee) */}
           {!isAdmin && activeScreen === 'emp_home' && (
             <LiveHomeScreen
@@ -1427,7 +1577,7 @@ function LiveLoginScreen({ onSuccess }) {
    ========================================================================= */
 function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }) {
   const { user, profile } = useAuth()
-  const { unreadCount } = useNotifications()
+  const { unreadCount, pushPermission, requestPushPermission } = useNotifications()
   const [showNotifModal, setShowNotifModal] = useState(false)
   const todayKey = todayDateKey()
   const curMonth = monthKey()
@@ -1592,6 +1742,53 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
             )}
           </div>
         </div>
+
+        {/* Pop-up Notification Permission Card */}
+        {pushPermission !== 'granted' && pushPermission !== 'unsupported' && typeof window !== 'undefined' && 'Notification' in window && (
+          <div
+            style={{
+              margin: '0 16px 10px 16px',
+              background: 'linear-gradient(135deg, #EEF4FF 0%, #E0E7FF 100%)',
+              border: '1.5px solid #BFDBFE',
+              borderRadius: 14,
+              padding: '10px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              boxShadow: '0 2px 8px rgba(30, 90, 230, 0.08)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: '1.25rem' }}>🔔</span>
+              <div>
+                <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#1E293B' }}>
+                  Enable Pop-up Alerts
+                </div>
+                <div style={{ fontSize: '0.62rem', color: '#64748B' }}>
+                  Get real-time alerts when staff punches in
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={requestPushPermission}
+              style={{
+                background: '#1E5AE6',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: 999,
+                padding: '6px 12px',
+                fontSize: '0.7rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Allow
+            </button>
+          </div>
+        )}
 
         {/* Hero Attendance Card */}
         <div className="swl-status-hero-card">
@@ -3663,6 +3860,20 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
   const [subview, setSubview] = useState('menu') // 'menu' | 'personal_info' | 'contact_admin' | 'change_password' | 'settings'
   const [todayRecord, setTodayRecord] = useState(null)
 
+  // Handle back navigation for profile subviews so app never closes
+  useEffect(() => {
+    if (subview === 'menu') return
+    try {
+      window.history.pushState({ app: 'swl', profileSubview: subview }, '')
+    } catch (_) {}
+
+    const onPop = () => {
+      setSubview('menu')
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [subview])
+
   // Personal Info Form State
   const [editName, setEditName] = useState(profile?.name || user?.displayName || 'Rahul Sharma')
   const [editPhone, setEditPhone] = useState(profile?.phone || '+91 98765 43210')
@@ -4473,6 +4684,7 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
    ========================================================================= */
 function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, onViewSelfie, officeTiming }) {
   const { user, profile } = useAuth()
+  const { pushPermission, requestPushPermission } = useNotifications()
   const todayKey = todayDateKey()
   const [totalEmployees, setTotalEmployees] = useState(0)
   const [presentEmployees, setPresentEmployees] = useState(0)
@@ -4561,6 +4773,53 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
             </div>
           </div>
         </div>
+
+        {/* Pop-up Notification Permission Card */}
+        {pushPermission !== 'granted' && pushPermission !== 'unsupported' && typeof window !== 'undefined' && 'Notification' in window && (
+          <div
+            style={{
+              margin: '0 16px 10px 16px',
+              background: 'linear-gradient(135deg, #EEF4FF 0%, #E0E7FF 100%)',
+              border: '1.5px solid #BFDBFE',
+              borderRadius: 14,
+              padding: '10px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              boxShadow: '0 2px 8px rgba(30, 90, 230, 0.08)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: '1.25rem' }}>🔔</span>
+              <div>
+                <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#1E293B' }}>
+                  Enable Pop-up Alerts
+                </div>
+                <div style={{ fontSize: '0.62rem', color: '#64748B' }}>
+                  Get real-time alerts on your phone when staff punches in
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={requestPushPermission}
+              style={{
+                background: '#1E5AE6',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: 999,
+                padding: '6px 12px',
+                fontSize: '0.7rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Allow
+            </button>
+          </div>
+        )}
 
         {/* 4 Stats in 2x2 Grid */}
         <div className="swl-admin-stats-2x2">
@@ -6372,6 +6631,20 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee }) {
 function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTiming, onViewSelfie, officeConfig, officeTiming }) {
   const { user, profile } = useAuth()
   const [subView, setSubView] = useState(null) // null | 'personal_info' | 'contact_desk' | 'password' | 'rules'
+
+  // Handle back navigation for admin profile subviews so app never closes
+  useEffect(() => {
+    if (!subView) return
+    try {
+      window.history.pushState({ app: 'swl', adminProfileSubview: subView }, '')
+    } catch (_) {}
+
+    const onPop = () => {
+      setSubView(null)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [subView])
   
   // Profile edit state
   const [adminName, setAdminName] = useState(profile?.name || user?.displayName || 'Administrator')

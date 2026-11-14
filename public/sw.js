@@ -120,3 +120,43 @@ self.addEventListener('fetch', (event) => {
     })
   )
 })
+
+// 5. Native Pop-up Push Notification Support for Android & Mobile Web
+self.addEventListener('push', (event) => {
+  let data = { title: 'SWL Attendance Alert', body: 'New attendance event recorded.' }
+  try {
+    if (event.data) {
+      data = event.data.json()
+    }
+  } catch (_) {
+    data.body = event.data ? event.data.text() : data.body
+  }
+
+  const options = {
+    body: data.body || 'Staff attendance update',
+    icon: data.icon || '/favicon-64.png',
+    badge: '/favicon-32.png',
+    vibrate: [200, 100, 200],
+    tag: data.tag || `punch-${Date.now()}`,
+    renotify: true,
+    data: { url: data.url || '/' }
+  }
+
+  event.waitUntil(self.registration.showNotification(data.title || '🟢 Attendance Alert', options))
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          return client.focus()
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(event.notification.data?.url || '/')
+      }
+    })
+  )
+})
