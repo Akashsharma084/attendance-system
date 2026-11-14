@@ -916,7 +916,7 @@ export default function SWLLiveMasterApp() {
 
   if (authLoading) {
     return (
-      <div className="swl-live-chassis-wrap">
+      <div className={`swl-live-chassis-wrap ${isAdmin ? 'admin-mode' : 'employee-mode'}`}>
         <div className="swl-phone-chassis">
           <div className="swl-splash-screen">
             <div className="swl-splash-logo-circle">
@@ -934,9 +934,9 @@ export default function SWLLiveMasterApp() {
   // Not logged in -> Render pristine showcase Login Screen
   if (!user || activeScreen === 'login') {
     return (
-      <div className="swl-live-chassis-wrap">
+      <div className={`swl-live-chassis-wrap ${isAdmin ? 'admin-mode' : 'employee-mode'}`}>
         <div className="swl-phone-chassis">
-          <div className="swl-phone-viewport" style={{ borderRadius: 36, position: 'relative' }}>
+          <div className="swl-phone-viewport" style={{ position: 'relative' }}>
           <InAppArrivalToast />
             <LiveLoginScreen
               onSuccess={(role) => {
@@ -949,11 +949,11 @@ export default function SWLLiveMasterApp() {
     )
   }
 
-  // Logged In Shell: Renders active screen within the identical showcase phone frame
+  // Logged In Shell: Renders active screen within the clean app container
   return (
-    <div className="swl-live-chassis-wrap">
+    <div className={`swl-live-chassis-wrap ${isAdmin ? 'admin-mode' : 'employee-mode'}`}>
       <div className="swl-phone-chassis">
-        <div className="swl-phone-viewport" style={{ borderRadius: 36, position: 'relative' }}>
+        <div className="swl-phone-viewport" style={{ position: 'relative' }}>
           <InAppArrivalToast />
           {/* Employee Screens (Only rendered when user is Employee) */}
           {!isAdmin && activeScreen === 'emp_home' && (

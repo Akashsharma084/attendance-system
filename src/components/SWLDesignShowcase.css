@@ -239,50 +239,105 @@
   flex-direction: column;
 }
 
-/* Master Live App Chassis Container */
+/* Master Live App Chassis Container (No Phone Simulator Framing on Live App) */
 .swl-live-chassis-wrap {
-  min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
-  background-color: var(--swl-board-bg, #F4F6FC);
-  background-image: 
-    radial-gradient(circle at 50% 0%, rgba(30, 90, 230, 0.05) 0%, transparent 60%),
-    linear-gradient(rgba(226, 232, 240, 0.5) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(226, 232, 240, 0.5) 1px, transparent 1px);
-  background-size: 100% 100%, 32px 32px, 32px 32px;
+  background: #F8FAFC;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  padding: 24px 16px;
+  padding: 0;
+  margin: 0;
   box-sizing: border-box;
+  position: relative;
 }
 
+/* Default / Mobile / Tablet: 100% Full-screen edge-to-edge native app feel */
 .swl-live-chassis-wrap .swl-phone-chassis {
-  width: 380px;
+  width: 100vw;
   max-width: 100%;
-  height: min(780px, 96vh);
-  max-height: 96vh;
+  height: 100dvh;
+  min-height: 100dvh;
+  max-height: 100dvh;
+  background: #FFFFFF;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  outline: none !important;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
 }
 
-@media (max-width: 520px) {
+.swl-live-chassis-wrap .swl-phone-viewport {
+  width: 100% !important;
+  height: 100% !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-radius: 0 !important;
+  background: #F8FAFC !important;
+  overflow-y: auto !important;
+  position: relative !important;
+}
+
+/* Desktop Screens with mouse pointer: Clean, modern card container (NEVER a phone simulator bezel) */
+@media (min-width: 821px) and (hover: hover) {
   .swl-live-chassis-wrap {
-    padding: 0;
-    background: #FFFFFF;
-    align-items: stretch;
-    height: 100dvh;
-    min-height: 100dvh;
-    overflow: hidden;
-    position: fixed;
-    inset: 0;
+    min-height: 100vh;
+    background-color: #F1F5F9;
+    background-image: radial-gradient(circle at 50% 0%, rgba(30, 90, 230, 0.04) 0%, transparent 60%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
   }
+
   .swl-live-chassis-wrap .swl-phone-chassis {
-    width: 100vw;
-    height: 100dvh;
-    min-height: 100dvh;
-    max-height: 100dvh;
-    border-radius: 0;
-    box-shadow: none;
-    border: none;
+    width: 100%;
+    max-width: 480px;
+    height: min(880px, calc(100vh - 48px));
+    min-height: min(880px, calc(100vh - 48px));
+    max-height: calc(100vh - 48px);
+    border-radius: 20px !important;
+    box-shadow: 0 16px 36px -8px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(226, 232, 240, 0.8) !important;
+    border: none !important;
+    outline: none !important;
+    background: #FFFFFF;
     overflow: hidden;
+  }
+
+  .swl-live-chassis-wrap.admin-mode .swl-phone-chassis {
+    max-width: 1100px;
+    height: min(920px, calc(100vh - 40px));
+    min-height: min(920px, calc(100vh - 40px));
+    max-height: calc(100vh - 40px);
+  }
+}
+
+/* Touch devices (Mobile phones, Android Chrome, tablets): ALWAYS 100% edge-to-edge */
+@media (hover: none) and (pointer: coarse) {
+  .swl-live-chassis-wrap {
+    padding: 0 !important;
+    background: #FFFFFF !important;
+    align-items: stretch !important;
+    min-height: 100dvh !important;
+    height: 100dvh !important;
+  }
+
+  .swl-live-chassis-wrap .swl-phone-chassis {
+    width: 100vw !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
   }
 }
 
@@ -378,13 +433,16 @@
 
 /* Phone Bottom Nav Bar */
 .swl-mobile-nav {
-  height: 54px;
+  min-height: 54px;
+  height: calc(54px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   background: #FFFFFF;
   border-top: 1px solid #E2E8F0;
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 0 8px;
+  padding-left: 8px;
+  padding-right: 8px;
   flex-shrink: 0;
   z-index: 10;
 }
