@@ -445,9 +445,9 @@ function LiveArrivalsModal({ onClose, onViewSelfie }) {
           </div>
         </div>
 
-        {/* Quick Pop-up Alert Actions */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          {pushPermission !== 'granted' && typeof window !== 'undefined' && 'Notification' in window && (
+        {/* Quick Pop-up Alert Action */}
+        {pushPermission !== 'granted' && typeof window !== 'undefined' && 'Notification' in window && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
             <button
               type="button"
               onClick={requestPushPermission}
@@ -458,50 +458,19 @@ function LiveArrivalsModal({ onClose, onViewSelfie }) {
                 border: 'none',
                 borderRadius: 10,
                 padding: '9px 10px',
-                fontSize: '0.72rem',
+                fontSize: '0.74rem',
                 fontWeight: 700,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 5
+                gap: 6
               }}
             >
               🔔 Allow Pop-up Alerts
             </button>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              if (triggerArrivalAlert) {
-                triggerArrivalAlert({
-                  type: 'in',
-                  name: profile?.name || user?.displayName || 'Rahul Sharma',
-                  time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-                  docId: `test-${Date.now()}`,
-                  isSelf: false
-                })
-              }
-            }}
-            style={{
-              flex: 1,
-              background: '#EEF4FF',
-              color: '#1E5AE6',
-              border: '1.5px solid #BFDBFE',
-              borderRadius: 10,
-              padding: '9px 10px',
-              fontSize: '0.72rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 5
-            }}
-          >
-            ⚡ Test Pop-up Alert
-          </button>
-        </div>
+          </div>
+        )}
 
         <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {notifications.length === 0 ? (
@@ -936,7 +905,19 @@ export default function SWLLiveMasterApp() {
     return (
       <div className={`swl-live-chassis-wrap ${isAdmin ? 'admin-mode' : 'employee-mode'}`}>
         <div className="swl-phone-chassis">
-          <div className="swl-phone-viewport" style={{ position: 'relative' }}>
+          <div
+            className="swl-phone-viewport"
+            style={{
+              position: 'relative',
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              flex: 1,
+              minHeight: 0,
+              overflow: 'hidden'
+            }}
+          >
           <InAppArrivalToast />
             <LiveLoginScreen
               onSuccess={(role) => {
@@ -953,7 +934,19 @@ export default function SWLLiveMasterApp() {
   return (
     <div className={`swl-live-chassis-wrap ${isAdmin ? 'admin-mode' : 'employee-mode'}`}>
       <div className="swl-phone-chassis">
-        <div className="swl-phone-viewport" style={{ position: 'relative' }}>
+        <div
+          className="swl-phone-viewport"
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1,
+            minHeight: 0,
+            overflow: 'hidden'
+          }}
+        >
           <InAppArrivalToast />
           {/* Employee Screens (Only rendered when user is Employee) */}
           {!isAdmin && activeScreen === 'emp_home' && (
