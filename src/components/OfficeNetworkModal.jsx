@@ -175,7 +175,7 @@ export default function OfficeNetworkModal({ isOpen, onClose, onSaved, adminName
               </div>
             )}
             <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '6px', lineHeight: 1.35 }}>
-              💡 Office building ke andar baith kar <strong>"Set Current Location"</strong> par tap karein. Isse office ka live GPS lock ho jayega.
+              💡 Tap <strong>"Set Current Location"</strong> while located inside the office building to lock the live GPS coordinates.
             </div>
           </div>
 
@@ -217,7 +217,7 @@ export default function OfficeNetworkModal({ isOpen, onClose, onSaved, adminName
               style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
             />
             <span style={{ fontSize: '0.73rem', color: '#64748b', display: 'block', marginTop: '3px' }}>
-              Is radius se bahar hone par employee ki attendance <strong>block</strong> ho jayegi aur punch nahi hoga.
+              Employees located outside this radius will be <strong>blocked</strong> from marking attendance.
             </span>
           </div>
 

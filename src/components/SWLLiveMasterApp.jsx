@@ -2367,7 +2367,7 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
       )
 
       if (!matchUuid && !matchHardware && !matchBrandModel) {
-        alert(`🚫 Shared Device Blocked: Aapka account [${profile.boundDeviceName || profile.boundPhoneModel || 'Registered Phone'}] ke liye lock hai. Kisi doosre phone ya laptop se attendance punch allow nahi hai.`)
+        alert(`🚫 Device Restricted: Your account is locked to your registered mobile phone [${profile.boundDeviceName || profile.boundPhoneModel || 'Registered Phone'}]. Punching from an unauthorized phone or computer is strictly blocked.`)
         return
       }
     }
@@ -2768,8 +2768,8 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
           }}>
             <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>🚫</span>
             <div style={{ fontSize: '0.72rem', lineHeight: 1.4 }}>
-              <strong style={{ display: 'block', fontSize: '0.76rem', color: '#7F1D1D' }}>Punch Blocked (Outside Premise)</strong>
-              Aap office se <strong>{geofence?.distanceMeters ?? 0}m</strong> door hain. Punch sirf office premise ({geofence?.allowedRadius ?? 100}m) ke andar allowed hai.
+              <strong style={{ display: 'block', fontSize: '0.76rem', color: '#7F1D1D' }}>Punch Blocked (Outside Office Premise)</strong>
+              You are currently <strong>{geofence?.distanceMeters ?? 0}m</strong> away from the office. Attendance punch is strictly permitted within the <strong>{geofence?.allowedRadius ?? 100}m</strong> office premise radius.
             </div>
           </div>
         )}
@@ -5667,7 +5667,7 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin 
   async function handleResetDevice() {
     if (!userDoc?.uid || deviceResetting) return
     const confirmReset = window.confirm(
-      `Kya aap ${name} ka device link reset karna chahte hain?\n\nReset ke baad yeh employee kisi naye phone se login kar sakega aur purana phone unlock ho jayega.`
+      `Are you sure you want to reset the registered device for ${name}?\n\nAfter reset, this employee can bind a new phone upon their next login and the previous device lock will be removed.`
     )
     if (!confirmReset) return
 
@@ -6472,7 +6472,7 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
             </div>
 
             <p style={{ margin: '8px 0 10px 0', fontSize: '0.74rem', color: '#475569', lineHeight: 1.4 }}>
-              Kripya leave reject karne ka reason likhein. Yeh reason employee ko profile mein visible hoga:
+              Please state the reason for rejecting this leave request. This will be visible to the employee:
             </p>
 
             <textarea
