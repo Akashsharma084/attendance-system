@@ -777,3 +777,51 @@
   z-index: 40 !important;
   flex-shrink: 0 !important;
 }
+
+/* Floating Real-Time Arrival Toast Styles & Animation */
+@keyframes swlToastSlideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+.sw-arrival-toast-wrapper {
+  position: fixed !important;
+  top: 14px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 999999 !important;
+  width: calc(100% - 24px) !important;
+  max-width: 420px !important;
+  pointer-events: auto !important;
+  animation: swlToastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Button Visibility Guarantees - Buttons Never Disappear */
+.swl-btn-login,
+.swl-btn-google,
+.sw-submit-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 48px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  flex-shrink: 0 !important;
+}
+
+.swl-checkin-btn-wrap {
+  margin: 16px !important;
+  padding-bottom: 28px !important;
+  flex-shrink: 0 !important;
+}
+
+.swl-checkin-btn-wrap .swl-btn-login {
+  min-height: 52px !important;
+  width: 100% !important;
+}

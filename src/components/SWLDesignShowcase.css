@@ -259,8 +259,8 @@
 .swl-live-chassis-wrap .swl-phone-chassis {
   width: 380px;
   max-width: 100%;
-  height: 740px;
-  max-height: 90vh;
+  height: min(780px, 96vh);
+  max-height: 96vh;
 }
 
 @media (max-width: 520px) {
@@ -486,7 +486,7 @@
 .swl-login-viewport {
   flex: 1;
   background: #FFFFFF;
-  padding: 22px 20px 16px 20px;
+  padding: 14px 18px 24px 18px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -494,7 +494,7 @@
   min-height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  overscroll-behavior: none;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -518,10 +518,10 @@
 }
 
 .swl-login-bottom-section {
-  margin-top: auto;
+  margin-top: 14px;
   text-align: center;
-  padding-top: 16px;
-  padding-bottom: 8px;
+  padding-top: 8px;
+  padding-bottom: 12px;
   width: 100%;
   max-width: 360px;
   flex-shrink: 0;

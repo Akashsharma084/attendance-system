@@ -546,9 +546,8 @@ function mapAuthError(code) {
     case 'auth/user-not-found':
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
-      return 'Incorrect email or password. Please verify your credentials.'
     case 'auth/too-many-requests':
-      return 'Too many sign-in attempts. Please wait a moment and try again.'
+      return 'Incorrect email or password. Please verify your credentials.'
     case 'auth/user-disabled':
       return 'This account has been deactivated. Please contact your Softwind administrator.'
     default:

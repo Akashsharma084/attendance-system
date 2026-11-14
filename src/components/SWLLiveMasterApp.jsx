@@ -986,10 +986,13 @@ function LiveLoginScreen({ onSuccess }) {
     } catch (err) {
       console.error('Login error:', err)
       let msg = err.message || 'Invalid email or password.'
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
-        msg = 'Incorrect email or password.'
-      } else if (err.code === 'auth/too-many-requests') {
-        msg = 'Too many attempts. Please try again in a few moments.'
+      if (
+        err.code === 'auth/invalid-credential' ||
+        err.code === 'auth/user-not-found' ||
+        err.code === 'auth/wrong-password' ||
+        err.code === 'auth/too-many-requests'
+      ) {
+        msg = 'Incorrect email or password. Please try again.'
       }
       setErrorMsg(msg)
     } finally {
@@ -1001,8 +1004,8 @@ function LiveLoginScreen({ onSuccess }) {
     setSubmitting(true)
     setErrorMsg('')
     try {
-      await loginWithGoogle('admin')
-      onSuccess('admin')
+      await loginWithGoogle(profileRole)
+      onSuccess(profileRole)
     } catch (err) {
       console.error('Google login error:', err)
       setErrorMsg(err.message || 'Google sign-in was not completed.')
@@ -1046,9 +1049,12 @@ function LiveLoginScreen({ onSuccess }) {
             <div
               onClick={() => {
                 setProfileRole('employee')
-                setEmail('')
-                setPassword('')
                 setErrorMsg('')
+                if (typeof window !== 'undefined' && !email) {
+                  try {
+                    setEmail(localStorage.getItem('swl_last_employee_email') || '')
+                  } catch {}
+                }
               }}
               style={{
                 background: profileRole === 'employee' ? '#EEF4FF' : '#FFFFFF',
@@ -1350,21 +1356,19 @@ function LiveLoginScreen({ onSuccess }) {
           </button>
         </form>
 
-        {profileRole === 'admin' && (
-          <div style={{ marginTop: 14 }}>
-            <div className="swl-divider" style={{ margin: '14px 0' }}>or continue with</div>
-            <button
-              type="button"
-              className="swl-btn-google"
-              onClick={handleGoogleLogin}
-              disabled={submitting}
-              style={{ padding: '12px', borderRadius: 12 }}
-            >
-              <Icons.Google />
-              <span>Sign in with Google</span>
-            </button>
-          </div>
-        )}
+        <div style={{ marginTop: 12 }}>
+          <div className="swl-divider" style={{ margin: '12px 0' }}>or continue with</div>
+          <button
+            type="button"
+            className="swl-btn-google"
+            onClick={handleGoogleLogin}
+            disabled={submitting}
+            style={{ padding: '12px', borderRadius: 12, minHeight: 46 }}
+          >
+            <Icons.Google />
+            <span>{profileRole === 'admin' ? 'Sign in with Google (Admin)' : 'Sign in with Google (Employee)'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Bottom Footer Section */}
@@ -1828,6 +1832,7 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
    ========================================================================= */
 function LiveCheckInScreen({ onNavigate, officeConfig }) {
   const { user, profile } = useAuth()
+  const { triggerArrivalAlert } = useNotifications()
   const todayKey = todayDateKey()
 
   const videoRef = useRef(null)
@@ -2223,6 +2228,19 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
       playPunchChime()
       setSuccessMsg(isCheckOut ? '✓ Check-Out Confirmed!' : '✓ Check-In Confirmed!')
 
+      try {
+        if (triggerArrivalAlert) {
+          triggerArrivalAlert({
+            type: isCheckOut ? 'out' : 'in',
+            name: profile?.name || user?.displayName || user?.email?.split('@')[0] || 'Employee',
+            time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+            photoUrl: finalPhoto,
+            docId: todayDoc?.id || 'live-punch',
+            isSelf: true
+          })
+        }
+      } catch (_) {}
+
       setTimeout(() => {
         onNavigate('emp_home')
       }, 1200)
@@ -2535,7 +2553,7 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
         )}
 
         {/* Confirm Check In/Out button */}
-        <div className="swl-checkin-btn-wrap">
+        <div className="swl-checkin-btn-wrap" style={{ margin: '16px', paddingBottom: 28, flexShrink: 0 }}>
           <button
             type="button"
             className="swl-btn-login"
