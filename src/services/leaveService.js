@@ -128,15 +128,19 @@ export async function reviewLeaveRequest({
   status, // 'approved' | 'rejected'
   reviewedBy,
   reviewedByName,
-  adminNote = ''
+  adminNote = '',
+  rejectionReason = ''
 }) {
+  const finalNote = (adminNote || rejectionReason || '').trim()
+  const finalRejectionReason = (rejectionReason || (status === 'rejected' ? adminNote : '')).trim()
+
   if (!isFirebaseConfigured || !db) {
     return mockUpdateLeaveStatus({
       leaveId,
       status,
       reviewedBy,
       reviewedByName,
-      adminNote
+      adminNote: finalNote
     })
   }
 
@@ -146,7 +150,8 @@ export async function reviewLeaveRequest({
     reviewedBy: reviewedBy || 'admin',
     reviewedByName: reviewedByName || 'Administrator',
     reviewedAt: serverTimestamp(),
-    adminNote: adminNote.trim()
+    adminNote: finalNote,
+    rejectionReason: finalRejectionReason
   })
 
   return { id: leaveId, status }

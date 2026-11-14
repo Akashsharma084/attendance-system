@@ -13,7 +13,16 @@ import {
   serverTimestamp
 } from 'firebase/firestore'
 import { initializeApp, getApps } from 'firebase/app'
-import { getAuth, createUserWithEmailAndPassword, signOut as secondarySignOut, updatePassword, updateProfile } from 'firebase/auth'
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signOut as secondarySignOut,
+  updatePassword,
+  updateProfile,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  sendPasswordResetEmail
+} from 'firebase/auth'
 import { db, auth, isFirebaseConfigured, firebaseConfig } from '../firebase'
 import { useAuth, checkIsAdminEmail } from '../context/AuthContext'
 import { getOrCreateDeviceId, detectDeviceName, getDeviceDetails, getHardwareModelId, detectPhoneModel } from '../services/deviceService'
@@ -43,6 +52,18 @@ export function isUserAdmin(u) {
 
 const Icons = {
   ...BaseIcons,
+  Eye: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  ),
+  EyeOff: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+      <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+  ),
   Mail: BaseIcons.Mail || (() => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
@@ -1473,32 +1494,39 @@ function LiveLoginScreen({ onSuccess }) {
                 Forgot Password?
               </a>
             </div>
-            <div className="swl-input-box" style={{ padding: '12px 14px' }}>
+            <div className="swl-input-box" style={{ padding: '12px 14px', position: 'relative' }}>
               <Icons.Lock />
               <input
-                type="text"
+                type={showPassword ? 'text' : 'password'}
                 name="auth_key"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck="false"
-                data-lpignore="true"
-                data-form-type="other"
+                autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
-                style={{
-                  WebkitTextSecurity: showPassword ? 'none' : 'disc',
-                  textSecurity: showPassword ? 'none' : 'disc'
-                }}
+                style={{ flex: 1, paddingRight: 32 }}
               />
-              <span
-                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              <button
+                type="button"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
                 onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  padding: 4,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: showPassword ? '#1E5AE6' : '#94A3B8'
+                }}
               >
-                <Icons.Eye />
-              </span>
+                {showPassword ? <Icons.EyeOff /> : <Icons.Eye />}
+              </button>
             </div>
           </div>
 
@@ -3770,6 +3798,26 @@ function LiveLeaveAppScreen({ onNavigate }) {
                     </div>
                   )}
 
+                  {/* Rejection Reason display if rejected by Admin */}
+                  {l.status === 'rejected' && (l.rejectionReason || l.adminNote) && (
+                    <div style={{
+                      background: '#FEF2F2',
+                      border: '1px solid #FCA5A5',
+                      borderRadius: 8,
+                      padding: '8px 10px',
+                      margin: '6px 0',
+                      fontSize: '0.72rem',
+                      color: '#991B1B'
+                    }}>
+                      <div style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                        <span>⚠️ Rejection Reason from Admin:</span>
+                      </div>
+                      <div style={{ color: '#7F1D1D' }}>
+                        {l.rejectionReason || l.adminNote}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Doctor Proof Slip if attached */}
                   {l.proofPhotoUrl && (
                     <div style={{ margin: '6px 0' }}>
@@ -3902,10 +3950,15 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
   const [photoMsg, setPhotoMsg] = useState('')
 
   // Change Password State
+  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showCurrentPwd, setShowCurrentPwd] = useState(false)
+  const [showNewPwd, setShowNewPwd] = useState(false)
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false)
   const [pwdSaving, setPwdSaving] = useState(false)
   const [pwdMsg, setPwdMsg] = useState('')
+  const [resetSending, setResetSending] = useState(false)
 
   // Contact Admin Query State
   const [querySubject, setQuerySubject] = useState('')
@@ -3998,30 +4051,63 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
   async function handleChangePassword(e) {
     e.preventDefault()
     setPwdMsg('')
+    if (!currentPassword) {
+      setPwdMsg('Please enter your current password.')
+      return
+    }
     if (!newPassword || newPassword.length < 6) {
-      setPwdMsg('Password must be at least 6 characters.')
+      setPwdMsg('New password must be at least 6 characters.')
       return
     }
     if (newPassword !== confirmPassword) {
-      setPwdMsg('Passwords do not match.')
+      setPwdMsg('New passwords do not match.')
       return
     }
     setPwdSaving(true)
     try {
-      if (user) {
+      if (user && user.email) {
+        // Re-authenticate user to avoid auth/requires-recent-login error
+        const credential = EmailAuthProvider.credential(user.email, currentPassword)
+        await reauthenticateWithCredential(user, credential)
         await updatePassword(user, newPassword)
         setPwdMsg('✓ Password updated successfully!')
         setTimeout(() => {
           setPwdMsg('')
+          setCurrentPassword('')
           setNewPassword('')
           setConfirmPassword('')
           setSubview('menu')
-        }, 1200)
+        }, 1400)
+      } else {
+        throw new Error('User session not found. Please log in again.')
       }
     } catch (err) {
-      setPwdMsg(err.message || 'Failed to update password. You may need to re-login.')
+      console.error('Password change error:', err)
+      let msg = err.message || 'Failed to update password.'
+      if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        msg = 'Current password is incorrect. Please check or use the reset link below.'
+      } else if (err.code === 'auth/requires-recent-login') {
+        msg = 'Session expired. Please log out and sign back in to change password.'
+      } else if (err.code === 'auth/weak-password') {
+        msg = 'Password is too weak. Please use at least 6 characters.'
+      }
+      setPwdMsg(msg)
     } finally {
       setPwdSaving(false)
+    }
+  }
+
+  async function handleSendResetEmail() {
+    if (!user?.email) return
+    setResetSending(true)
+    setPwdMsg('')
+    try {
+      await sendPasswordResetEmail(auth, user.email)
+      setPwdMsg(`✓ Password reset email sent to ${user.email}. Check your inbox!`)
+    } catch (err) {
+      setPwdMsg(err.message || 'Failed to send reset link.')
+    } finally {
+      setResetSending(false)
     }
   }
 
@@ -4175,30 +4261,10 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
                 </div>
               </div>
               <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: '10px 8px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-                <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Phone Lock</div>
+                <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Account Status</div>
                 <div style={{ fontSize: '0.76rem', fontWeight: 800, color: '#10B981', marginTop: 3 }}>
-                  1 Phone Active
+                  Active ✓
                 </div>
-              </div>
-            </div>
-
-            {/* REGISTERED DEVICE STATUS CARD */}
-            <div style={{ margin: '0 16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 14, padding: '12px 14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: '1rem' }}>📱</span>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0F172A' }}>Registered Device</span>
-                </div>
-                <span style={{ background: '#ECFDF5', color: '#065F46', fontSize: '0.62rem', fontWeight: 800, padding: '2px 8px', borderRadius: 999 }}>
-                  1 Phone Locked ✓
-                </span>
-              </div>
-              <div style={{ fontSize: '0.7rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div><strong>Phone Model:</strong> {profile?.boundDeviceName || profile?.boundPhoneModel || currentDevice?.deviceName || detectPhoneModel().modelName}</div>
-                <div><strong>Model ID (Hardware):</strong> <code style={{ fontSize: '0.66rem', background: '#E2E8F0', padding: '1px 5px', borderRadius: 4, color: '#1E293B' }}>{profile?.boundHardwareModelId || profile?.boundDeviceFingerprint || getHardwareModelId()}</code></div>
-              </div>
-              <div style={{ marginTop: 6, fontSize: '0.62rem', color: '#059669' }}>
-                🔒 Single-Device Policy Active: Chrome clear karne par bhi hardware id se aapka phone verified rahega. Doosre phones se punch blocked hai.
               </div>
             </div>
 
@@ -4577,45 +4643,140 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
             </div>
 
             <form onSubmit={handleChangePassword} className="swl-subview-wrap">
-              <div className="swl-card-white" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className="swl-card-white" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Current Password Field with Eye Toggle */}
                 <div>
-                  <label className="swl-input-label">New Password</label>
-                  <input
-                    type="text"
-                    name="user_new_token"
-                    autoComplete="off"
-                    autoCorrect="off"
-                    autoCapitalize="off"
-                    spellCheck="false"
-                    data-lpignore="true"
-                    data-form-type="other"
-                    required
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="swl-input-field"
-                    placeholder="Minimum 6 characters"
-                    style={{ WebkitTextSecurity: 'disc', textSecurity: 'disc' }}
-                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <label className="swl-input-label" style={{ margin: 0 }}>Current Password</label>
+                    <button
+                      type="button"
+                      disabled={resetSending}
+                      onClick={handleSendResetEmail}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#1E5AE6',
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        padding: 0
+                      }}
+                    >
+                      {resetSending ? 'Sending link…' : 'Forgot password?'}
+                    </button>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showCurrentPwd ? 'text' : 'password'}
+                      name="user_current_token"
+                      autoComplete="current-password"
+                      required
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="swl-input-field"
+                      placeholder="Enter your current password"
+                      style={{ paddingRight: 36 }}
+                    />
+                    <button
+                      type="button"
+                      aria-label={showCurrentPwd ? 'Hide password' : 'Show password'}
+                      onClick={() => setShowCurrentPwd(!showCurrentPwd)}
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        padding: 4,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: showCurrentPwd ? '#1E5AE6' : '#94A3B8'
+                      }}
+                    >
+                      {showCurrentPwd ? <Icons.EyeOff /> : <Icons.Eye />}
+                    </button>
+                  </div>
                 </div>
 
+                {/* New Password Field with Eye Toggle */}
+                <div>
+                  <label className="swl-input-label">New Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showNewPwd ? 'text' : 'password'}
+                      name="user_new_token"
+                      autoComplete="new-password"
+                      required
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="swl-input-field"
+                      placeholder="Minimum 6 characters"
+                      style={{ paddingRight: 36 }}
+                    />
+                    <button
+                      type="button"
+                      aria-label={showNewPwd ? 'Hide password' : 'Show password'}
+                      onClick={() => setShowNewPwd(!showNewPwd)}
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        padding: 4,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: showNewPwd ? '#1E5AE6' : '#94A3B8'
+                      }}
+                    >
+                      {showNewPwd ? <Icons.EyeOff /> : <Icons.Eye />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm New Password Field with Eye Toggle */}
                 <div>
                   <label className="swl-input-label">Confirm New Password</label>
-                  <input
-                    type="text"
-                    name="user_confirm_token"
-                    autoComplete="off"
-                    autoCorrect="off"
-                    autoCapitalize="off"
-                    spellCheck="false"
-                    data-lpignore="true"
-                    data-form-type="other"
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="swl-input-field"
-                    placeholder="Re-type new password"
-                    style={{ WebkitTextSecurity: 'disc', textSecurity: 'disc' }}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showConfirmPwd ? 'text' : 'password'}
+                      name="user_confirm_token"
+                      autoComplete="new-password"
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="swl-input-field"
+                      placeholder="Re-type new password"
+                      style={{ paddingRight: 36 }}
+                    />
+                    <button
+                      type="button"
+                      aria-label={showConfirmPwd ? 'Hide password' : 'Show password'}
+                      onClick={() => setShowConfirmPwd(!showConfirmPwd)}
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        padding: 4,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: showConfirmPwd ? '#1E5AE6' : '#94A3B8'
+                      }}
+                    >
+                      {showConfirmPwd ? <Icons.EyeOff /> : <Icons.Eye />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -5970,6 +6131,9 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
   const [tab, setTab] = useState('Pending')
   const [leaves, setLeaves] = useState([])
   const [selectedProofModal, setSelectedProofModal] = useState(null)
+  const [rejectingLeave, setRejectingLeave] = useState(null)
+  const [rejectionReasonInput, setRejectionReasonInput] = useState('')
+  const [rejectSubmitting, setRejectSubmitting] = useState(false)
 
   useEffect(() => {
     const unsub = subscribeLeaves({
@@ -6128,6 +6292,21 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
                   </div>
                 )}
 
+                {/* Rejection Reason display if rejected */}
+                {item.status === 'rejected' && (item.rejectionReason || item.adminNote) && (
+                  <div style={{
+                    background: '#FEF2F2',
+                    border: '1px solid #FCA5A5',
+                    borderRadius: 8,
+                    padding: '6px 10px',
+                    margin: '4px 0 8px 2px',
+                    fontSize: '0.7rem',
+                    color: '#991B1B'
+                  }}>
+                    <strong style={{ color: '#B91C1C' }}>⚠️ Rejection Reason:</strong> {item.rejectionReason || item.adminNote}
+                  </div>
+                )}
+
                 {item.proofPhotoUrl && (
                   <button
                     type="button"
@@ -6156,7 +6335,13 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
                         <button className="swl-btn-approve" onClick={() => handleAction(item.id, 'approved')}>
                           Approve
                         </button>
-                        <button className="swl-btn-reject" onClick={() => handleAction(item.id, 'rejected')}>
+                        <button
+                          className="swl-btn-reject"
+                          onClick={() => {
+                            setRejectingLeave(item)
+                            setRejectionReasonInput('')
+                          }}
+                        >
                           Reject
                         </button>
                       </div>
@@ -6243,6 +6428,134 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Leave Rejection Reason Modal */}
+      {rejectingLeave && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.7)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16
+          }}
+          onClick={() => !rejectSubmitting && setRejectingLeave(null)}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 20,
+              padding: '20px 22px',
+              maxWidth: 380,
+              width: '100%',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.25)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: '1.4rem' }}>✍️</span>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: '#0F172A' }}>
+                  Reject Leave Request
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.7rem', color: '#64748B' }}>
+                  Employee: <strong>{rejectingLeave.userName || rejectingLeave.userEmail}</strong>
+                </p>
+              </div>
+            </div>
+
+            <p style={{ margin: '8px 0 10px 0', fontSize: '0.74rem', color: '#475569', lineHeight: 1.4 }}>
+              Kripya leave reject karne ka reason likhein. Yeh reason employee ko profile mein visible hoga:
+            </p>
+
+            <textarea
+              rows={3}
+              required
+              value={rejectionReasonInput}
+              onChange={(e) => setRejectionReasonInput(e.target.value)}
+              placeholder="e.g. Project deliverable deadline / Staff unavailability..."
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 10,
+                border: '1.5px solid #CBD5E1',
+                fontSize: '0.8rem',
+                outline: 'none',
+                resize: 'none',
+                boxSizing: 'border-box',
+                fontFamily: 'inherit',
+                color: '#0F172A'
+              }}
+              autoFocus
+            />
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+              <button
+                type="button"
+                disabled={rejectSubmitting}
+                onClick={() => setRejectingLeave(null)}
+                style={{
+                  flex: 1,
+                  padding: '9px',
+                  background: '#F1F5F9',
+                  color: '#475569',
+                  border: 'none',
+                  borderRadius: 10,
+                  fontSize: '0.76rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={rejectSubmitting}
+                onClick={async () => {
+                  const reason = rejectionReasonInput.trim()
+                  if (!reason) {
+                    alert('Please enter a rejection reason.')
+                    return
+                  }
+                  setRejectSubmitting(true)
+                  try {
+                    await reviewLeaveRequest({
+                      leaveId: rejectingLeave.id,
+                      status: 'rejected',
+                      reviewedBy: user.uid,
+                      reviewedByName: profile?.name || 'Admin',
+                      adminNote: reason,
+                      rejectionReason: reason
+                    })
+                    setRejectingLeave(null)
+                  } catch (err) {
+                    alert('Error rejecting leave: ' + err.message)
+                  } finally {
+                    setRejectSubmitting(false)
+                  }
+                }}
+                style={{
+                  flex: 2,
+                  padding: '9px',
+                  background: '#EF4444',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: 10,
+                  fontSize: '0.76rem',
+                  fontWeight: 800,
+                  cursor: 'pointer'
+                }}
+              >
+                {rejectSubmitting ? 'Rejecting…' : 'Confirm Rejection'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -6674,10 +6987,15 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
   const [photoMsg, setPhotoMsg] = useState('')
 
   // Password change state
+  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showCurrentPwd, setShowCurrentPwd] = useState(false)
+  const [showNewPwd, setShowNewPwd] = useState(false)
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false)
   const [passMsg, setPassMsg] = useState('')
   const [passUpdating, setPassUpdating] = useState(false)
+  const [resetSending, setResetSending] = useState(false)
 
   const name = profile?.name || user?.displayName || user?.email?.split('@')[0] || 'Administrator'
   const email = user?.email || 'admin@softwindlabs.com'
@@ -6748,6 +7066,11 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
 
   async function handlePasswordChange(e) {
     e.preventDefault()
+    setPassMsg('')
+    if (!currentPassword) {
+      setPassMsg('Please enter your current password.')
+      return
+    }
     if (!newPassword || newPassword.length < 6) {
       setPassMsg('Password must be at least 6 characters.')
       return
@@ -6757,22 +7080,50 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
       return
     }
     setPassUpdating(true)
-    setPassMsg('')
     try {
-      if (user) {
+      if (user && user.email) {
+        // Re-authenticate admin to prevent auth/requires-recent-login error
+        const cred = EmailAuthProvider.credential(user.email, currentPassword)
+        await reauthenticateWithCredential(user, cred)
         await updatePassword(user, newPassword)
         setPassMsg('✓ Password updated successfully!')
         setTimeout(() => {
           setSubView(null)
           setPassMsg('')
+          setCurrentPassword('')
           setNewPassword('')
           setConfirmPassword('')
-        }, 1200)
+        }, 1400)
+      } else {
+        throw new Error('User session not found. Please log in again.')
       }
     } catch (err) {
-      setPassMsg(err.message || 'Error updating password.')
+      console.error('Admin password change error:', err)
+      let msg = err.message || 'Error updating password.'
+      if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        msg = 'Current password is incorrect. Please check or use the reset link.'
+      } else if (err.code === 'auth/requires-recent-login') {
+        msg = 'Session expired. Please log out and sign back in to change password.'
+      } else if (err.code === 'auth/weak-password') {
+        msg = 'Password is too weak. Please use at least 6 characters.'
+      }
+      setPassMsg(msg)
     } finally {
       setPassUpdating(false)
+    }
+  }
+
+  async function handleSendAdminResetEmail() {
+    if (!user?.email) return
+    setResetSending(true)
+    setPassMsg('')
+    try {
+      await sendPasswordResetEmail(auth, user.email)
+      setPassMsg(`✓ Password reset email sent to ${user.email}. Check your inbox!`)
+    } catch (err) {
+      setPassMsg(err.message || 'Failed to send reset link.')
+    } finally {
+      setResetSending(false)
     }
   }
 
@@ -6987,46 +7338,140 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
                 Update Admin Password
               </h4>
               <p style={{ margin: '0 0 14px 0', fontSize: '0.72rem', color: '#64748B' }}>
-                Enter your new security password for {email}
+                Enter your current and new security password for {email}
               </p>
 
               <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Current Password Field with Eye Toggle */}
                 <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155' }}>New Password</label>
-                  <input
-                    type="text"
-                    name="admin_new_token"
-                    autoComplete="off"
-                    autoCorrect="off"
-                    autoCapitalize="off"
-                    spellCheck="false"
-                    data-lpignore="true"
-                    data-form-type="other"
-                    required
-                    placeholder="Min 6 characters"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: '0.8rem', marginTop: 4, outline: 'none', WebkitTextSecurity: 'disc', textSecurity: 'disc' }}
-                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155' }}>Current Password</label>
+                    <button
+                      type="button"
+                      disabled={resetSending}
+                      onClick={handleSendAdminResetEmail}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#1E5AE6',
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        padding: 0
+                      }}
+                    >
+                      {resetSending ? 'Sending reset…' : 'Forgot password?'}
+                    </button>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showCurrentPwd ? 'text' : 'password'}
+                      name="admin_current_token"
+                      autoComplete="current-password"
+                      required
+                      placeholder="Enter current password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      style={{ width: '100%', padding: '8px 36px 8px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: '0.8rem', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                    <button
+                      type="button"
+                      aria-label={showCurrentPwd ? 'Hide password' : 'Show password'}
+                      onClick={() => setShowCurrentPwd(!showCurrentPwd)}
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        padding: 4,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: showCurrentPwd ? '#1E5AE6' : '#94A3B8'
+                      }}
+                    >
+                      {showCurrentPwd ? <Icons.EyeOff /> : <Icons.Eye />}
+                    </button>
+                  </div>
                 </div>
 
+                {/* New Password Field with Eye Toggle */}
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155' }}>New Password</label>
+                  <div style={{ position: 'relative', marginTop: 4 }}>
+                    <input
+                      type={showNewPwd ? 'text' : 'password'}
+                      name="admin_new_token"
+                      autoComplete="new-password"
+                      required
+                      placeholder="Min 6 characters"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      style={{ width: '100%', padding: '8px 36px 8px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: '0.8rem', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                    <button
+                      type="button"
+                      aria-label={showNewPwd ? 'Hide password' : 'Show password'}
+                      onClick={() => setShowNewPwd(!showNewPwd)}
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        padding: 4,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: showNewPwd ? '#1E5AE6' : '#94A3B8'
+                      }}
+                    >
+                      {showNewPwd ? <Icons.EyeOff /> : <Icons.Eye />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm New Password Field with Eye Toggle */}
                 <div>
                   <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155' }}>Confirm New Password</label>
-                  <input
-                    type="text"
-                    name="admin_confirm_token"
-                    autoComplete="off"
-                    autoCorrect="off"
-                    autoCapitalize="off"
-                    spellCheck="false"
-                    data-lpignore="true"
-                    data-form-type="other"
-                    required
-                    placeholder="Repeat new password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: '0.8rem', marginTop: 4, outline: 'none', WebkitTextSecurity: 'disc', textSecurity: 'disc' }}
-                  />
+                  <div style={{ position: 'relative', marginTop: 4 }}>
+                    <input
+                      type={showConfirmPwd ? 'text' : 'password'}
+                      name="admin_confirm_token"
+                      autoComplete="new-password"
+                      required
+                      placeholder="Repeat new password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      style={{ width: '100%', padding: '8px 36px 8px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: '0.8rem', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                    <button
+                      type="button"
+                      aria-label={showConfirmPwd ? 'Hide password' : 'Show password'}
+                      onClick={() => setShowConfirmPwd(!showConfirmPwd)}
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        padding: 4,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: showConfirmPwd ? '#1E5AE6' : '#94A3B8'
+                      }}
+                    >
+                      {showConfirmPwd ? <Icons.EyeOff /> : <Icons.Eye />}
+                    </button>
+                  </div>
                 </div>
 
                 {passMsg && (
@@ -7384,6 +7829,7 @@ function LiveAddEmployeeModal({ onClose }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(true)
   const [role, setRole] = useState('employee')
   const [submitting, setSubmitting] = useState(false)
   const [successInfo, setSuccessInfo] = useState(null)
@@ -7514,22 +7960,55 @@ function LiveAddEmployeeModal({ onClose }) {
             <div style={{ marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155' }}>Password</label>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{ border: 'none', background: 'transparent', color: '#64748B', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
+                  >
+                    {showPassword ? <Icons.EyeOff /> : <Icons.Eye />}
+                    <span>{showPassword ? 'Hide' : 'Show'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={generatePassword}
+                    style={{ border: 'none', background: 'transparent', color: '#1E5AE6', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    ⚡ Generate
+                  </button>
+                </div>
+              </div>
+              <div style={{ position: 'relative', marginTop: 3 }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password"
+                  style={{ width: '100%', padding: '8px 36px 8px 10px', borderRadius: 10, border: '1px solid #E2E8F0', outline: 'none', fontSize: '0.8rem', boxSizing: 'border-box' }}
+                />
                 <button
                   type="button"
-                  onClick={generatePassword}
-                  style={{ border: 'none', background: 'transparent', color: '#1E5AE6', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer' }}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    padding: 4,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: showPassword ? '#1E5AE6' : '#94A3B8'
+                  }}
                 >
-                  ⚡ Generate
+                  {showPassword ? <Icons.EyeOff /> : <Icons.Eye />}
                 </button>
               </div>
-              <input
-                type="text"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
-                style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1px solid #E2E8F0', outline: 'none', fontSize: '0.8rem', marginTop: 3 }}
-              />
             </div>
 
             <div style={{ marginBottom: 14 }}>
