@@ -1,4 +1,4 @@
-const CACHE_NAME = 'swl-attendance-v10'
+const CACHE_NAME = 'swl-attendance-v11'
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -134,15 +134,16 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body || 'Staff attendance update',
-    icon: data.icon || '/favicon-64.png',
-    badge: '/favicon-32.png',
+    icon: '/softwind-logo.png',
+    badge: '/softwind-logo.png',
+    image: data.photoUrl || undefined,
     vibrate: [200, 100, 200],
     tag: data.tag || `punch-${Date.now()}`,
     renotify: true,
     data: { url: data.url || '/' }
   }
 
-  event.waitUntil(self.registration.showNotification(data.title || '🟢 Attendance Alert', options))
+  event.waitUntil(self.registration.showNotification(data.title || 'Softwind Labs — Attendance Alert', options))
 })
 
 self.addEventListener('notificationclick', (event) => {

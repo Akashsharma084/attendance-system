@@ -103,19 +103,22 @@ export function NotificationProvider({ children }) {
     return 'unsupported'
   }
 
-  async function triggerPushNotification({ title, body, icon }) {
+  async function triggerPushNotification({ title, body, photoUrl }) {
     if (typeof window === 'undefined' || !('Notification' in window)) return
     if (Notification.permission !== 'granted') return
 
-    // 1. Android & Mobile Chrome: Use Service Worker showNotification (prevents illegal constructor error)
+    const companyLogo = '/softwind-logo.png'
+
+    // 1. Android & Mobile Chrome: Use Service Worker showNotification
     if ('serviceWorker' in navigator) {
       try {
         const registration = await navigator.serviceWorker.ready
         if (registration && typeof registration.showNotification === 'function') {
           await registration.showNotification(title, {
             body,
-            icon: icon || '/favicon-64.png',
-            badge: '/favicon-32.png',
+            icon: companyLogo,
+            badge: companyLogo,
+            image: photoUrl || undefined,
             vibrate: [200, 100, 200],
             tag: `punch-${Date.now()}`,
             renotify: true,
@@ -132,8 +135,8 @@ export function NotificationProvider({ children }) {
     try {
       new Notification(title, {
         body,
-        icon: icon || '/favicon-64.png',
-        badge: '/favicon-32.png',
+        icon: companyLogo,
+        badge: companyLogo,
         tag: `punch-${Date.now()}`
       })
     } catch (e) {
@@ -144,20 +147,20 @@ export function NotificationProvider({ children }) {
   function triggerArrivalAlert({ type, name, time, photoUrl, docId, isSelf = false }) {
     const isCheckIn = type === 'in'
     const title = isSelf
-      ? (isCheckIn ? '🟢 Attendance Punched!' : '🏁 Check-Out Recorded!')
-      : (isCheckIn ? '🟢 Staff Arrival!' : '🏁 Staff Departure')
+      ? (isCheckIn ? '🟢 Attendance Recorded — Softwind Labs' : '🏁 Check-Out Recorded — Softwind Labs')
+      : (isCheckIn ? `🟢 Staff Arrival — Softwind Labs` : `🏁 Staff Departure — Softwind Labs`)
     const message = isSelf
-      ? (isCheckIn ? `Aapka check-in punch record ho gaya (${time})` : `Aapka checkout record ho gaya (${time})`)
-      : (isCheckIn ? `${name} aa gaya hai! Checked in at ${time}` : `${name} has checked out (${time})`)
+      ? (isCheckIn ? `Your check-in punch has been recorded at ${time}.` : `Your check-out punch has been recorded at ${time}.`)
+      : (isCheckIn ? `${name} has arrived and checked in at ${time}.` : `${name} has departed and checked out at ${time}.`)
 
     // 1. Play synthesized bell chime
     playChimeSound()
 
-    // 2. Launch system web push notification
+    // 2. Launch system web push notification with company logo
     triggerPushNotification({
       title,
       body: message,
-      icon: photoUrl
+      photoUrl
     })
 
     // 3. Show In-App Floating Toast
@@ -245,7 +248,7 @@ export function NotificationProvider({ children }) {
               const formattedTime = formatTime(data.checkInTime)
               triggerArrivalAlert({
                 type: 'in',
-                name: isCurrentUser ? `${empName} (Aap)` : empName,
+                name: isCurrentUser ? `${empName} (You)` : empName,
                 time: formattedTime,
                 photoUrl: photo,
                 docId,
@@ -268,7 +271,7 @@ export function NotificationProvider({ children }) {
               const formattedTime = formatTime(data.checkInTime)
               triggerArrivalAlert({
                 type: 'in',
-                name: isCurrentUser ? `${empName} (Aap)` : empName,
+                name: isCurrentUser ? `${empName} (You)` : empName,
                 time: formattedTime,
                 photoUrl: photo,
                 docId,
@@ -281,7 +284,7 @@ export function NotificationProvider({ children }) {
               const formattedTime = formatTime(data.checkOutTime)
               triggerArrivalAlert({
                 type: 'out',
-                name: isCurrentUser ? `${empName} (Aap)` : empName,
+                name: isCurrentUser ? `${empName} (You)` : empName,
                 time: formattedTime,
                 photoUrl: data.checkOutSelfieUrl || data.checkOutPhotoUrl || photo,
                 docId,

@@ -398,11 +398,24 @@ function LiveArrivalsModal({ onClose, onViewSelfie }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, borderBottom: '1px solid #E2E8F0', paddingBottom: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: '1.25rem' }}>🔔</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            <img
+              src="/softwind-logo.png"
+              alt="Softwind Labs Logo"
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 6,
+                objectFit: 'contain',
+                background: '#FFFFFF',
+                padding: '2px',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+              }}
+            />
             <div>
               <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 800, color: '#0F172A' }}>
-                Team Arrivals Feed
+                Softwind Labs • Live Activity Feed
               </h4>
               <p style={{ margin: 0, fontSize: '0.68rem', color: '#64748B' }}>
                 {notifications.length} live update{notifications.length === 1 ? '' : 's'} recorded today
@@ -1752,14 +1765,26 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
               boxShadow: '0 2px 8px rgba(30, 90, 230, 0.08)'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: '1.25rem' }}>🔔</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+              <img
+                src="/softwind-logo.png"
+                alt="Softwind Labs Logo"
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 6,
+                  objectFit: 'contain',
+                  background: '#FFFFFF',
+                  padding: '2px',
+                  border: '1px solid #BFDBFE'
+                }}
+              />
               <div>
                 <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#1E293B' }}>
                   Enable Pop-up Alerts
                 </div>
                 <div style={{ fontSize: '0.62rem', color: '#64748B' }}>
-                  Get real-time alerts when staff punches in
+                  Get real-time arrival alerts for Softwind Labs staff
                 </div>
               </div>
             </div>

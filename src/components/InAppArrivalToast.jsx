@@ -59,7 +59,7 @@ export default function InAppArrivalToast() {
           boxSizing: 'border-box'
         }}
       >
-        {/* Avatar Box */}
+        {/* Avatar Box with Company Logo Pip */}
         <div
           className="sw-toast-avatar-box"
           style={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}
@@ -99,17 +99,21 @@ export default function InAppArrivalToast() {
               {activeToast.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
           )}
-          <span
-            className={`sw-toast-status-pip ${isCheckIn ? 'online' : 'offline'}`}
+          <img
+            src="/softwind-logo.png"
+            alt="Softwind Labs"
             style={{
               position: 'absolute',
-              bottom: -1,
-              right: -1,
-              width: 12,
-              height: 12,
+              bottom: -2,
+              right: -2,
+              width: 16,
+              height: 16,
               borderRadius: '50%',
-              background: isCheckIn ? '#10B981' : '#F59E0B',
-              border: '2px solid #FFFFFF'
+              background: '#FFFFFF',
+              border: '1.5px solid #1E5AE6',
+              padding: '1px',
+              objectFit: 'contain',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.12)'
             }}
           />
         </div>
@@ -118,24 +122,51 @@ export default function InAppArrivalToast() {
         <div className="sw-toast-content" style={{ flex: 1, minWidth: 0 }}>
           <div
             className="sw-toast-header-row"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 2 }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 3 }}
           >
-            <span
-              className="sw-toast-badge"
-              style={{
-                fontSize: '0.66rem',
-                fontWeight: 800,
-                color: isCheckIn ? '#065F46' : '#92400E',
-                background: isCheckIn ? '#D1FAE5' : '#FEF3C7',
-                padding: '1px 8px',
-                borderRadius: 999,
-                letterSpacing: '0.02em'
-              }}
-            >
-              {activeToast.isSelf
-                ? (isCheckIn ? '🟢 Attendance Punched' : '🏁 Check-Out Recorded')
-                : (isCheckIn ? '🟢 Staff Arrived' : '🏁 Staff Departure')}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <img
+                src="/softwind-logo.png"
+                alt="Softwind Labs Logo"
+                style={{
+                  width: 16,
+                  height: 16,
+                  borderRadius: 4,
+                  objectFit: 'contain',
+                  background: '#FFFFFF',
+                  padding: '1px',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                  flexShrink: 0
+                }}
+              />
+              <span
+                style={{
+                  fontSize: '0.68rem',
+                  fontWeight: 800,
+                  color: '#0F172A',
+                  letterSpacing: '-0.01em'
+                }}
+              >
+                Softwind Labs
+              </span>
+              <span
+                className="sw-toast-badge"
+                style={{
+                  fontSize: '0.62rem',
+                  fontWeight: 800,
+                  color: isCheckIn ? '#065F46' : '#92400E',
+                  background: isCheckIn ? '#D1FAE5' : '#FEF3C7',
+                  padding: '1px 7px',
+                  borderRadius: 999,
+                  letterSpacing: '0.02em'
+                }}
+              >
+                {activeToast.isSelf
+                  ? (isCheckIn ? '🟢 Attendance Recorded' : '🏁 Check-Out Recorded')
+                  : (isCheckIn ? '🟢 Staff Arrived' : '🏁 Staff Departed')}
+              </span>
+            </div>
             <span className="sw-toast-time" style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748B' }}>
               {activeToast.time}
             </span>
@@ -147,20 +178,24 @@ export default function InAppArrivalToast() {
               fontSize: '0.82rem',
               fontWeight: 700,
               color: '#0F172A',
-              lineHeight: 1.3,
+              lineHeight: 1.35,
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis'
             }}
           >
-            <strong>{activeToast.name}</strong> {isCheckIn ? 'just punched in!' : 'punched out.'}
+            {activeToast.isSelf ? (
+              isCheckIn ? 'Your check-in has been successfully recorded.' : 'Your check-out has been successfully recorded.'
+            ) : (
+              <span><strong>{activeToast.name}</strong> {isCheckIn ? 'has arrived and checked in!' : 'has checked out.'}</span>
+            )}
           </div>
 
           <div
             className="sw-toast-sub"
             style={{ fontSize: '0.65rem', color: '#64748B', marginTop: 1 }}
           >
-            Tap to view live attendance ›
+            Softwind Labs • Tap to view live attendance ›
           </div>
         </div>
 
