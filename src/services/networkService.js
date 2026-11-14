@@ -70,11 +70,13 @@ export function getLocalOfficeNetwork() {
     const raw = localStorage.getItem(STORAGE_KEY_OFFICE_GEOFENCE)
     if (raw) {
       const parsed = JSON.parse(raw)
+      const isConfigured = parsed.latitude != null && parsed.longitude != null
       return {
         latitude: parsed.latitude != null ? Number(parsed.latitude) : null,
         longitude: parsed.longitude != null ? Number(parsed.longitude) : null,
         radiusMeters: parsed.radiusMeters ? Number(parsed.radiusMeters) : 100,
         officeAddress: parsed.officeAddress || '',
+        isConfigured,
         updatedAt: parsed.updatedAt || null,
         updatedBy: parsed.updatedBy || null
       }
@@ -82,7 +84,7 @@ export function getLocalOfficeNetwork() {
   } catch {
     // ignore
   }
-  return { ...DEFAULT_OFFICE_GEOFENCE }
+  return { ...DEFAULT_OFFICE_GEOFENCE, isConfigured: false }
 }
 
 /**
@@ -102,11 +104,13 @@ export function subscribeOfficeNetworkConfig(callback) {
     (snap) => {
       if (snap.exists()) {
         const data = snap.data()
+        const isConfigured = data.latitude != null && data.longitude != null
         const config = {
           latitude: data.latitude != null ? Number(data.latitude) : null,
           longitude: data.longitude != null ? Number(data.longitude) : null,
           radiusMeters: data.radiusMeters ? Number(data.radiusMeters) : 100,
           officeAddress: data.officeAddress || '',
+          isConfigured,
           updatedAt: data.updatedAt || null,
           updatedBy: data.updatedBy || null
         }
@@ -133,11 +137,13 @@ export function subscribeOfficeNetworkConfig(callback) {
  * Save office geofence configuration (Admin only)
  */
 export async function saveOfficeNetworkConfig({ latitude, longitude, radiusMeters, officeAddress, updatedBy }) {
+  const isConfigured = latitude != null && longitude != null
   const payload = {
     latitude: latitude != null ? Number(latitude) : null,
     longitude: longitude != null ? Number(longitude) : null,
     radiusMeters: radiusMeters ? Number(radiusMeters) : 100,
     officeAddress: (officeAddress || '').trim(),
+    isConfigured,
     updatedAt: new Date().toISOString(),
     updatedBy: updatedBy || 'Admin'
   }

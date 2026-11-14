@@ -1837,6 +1837,7 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
   const [todayDoc, setTodayDoc] = useState(null)
   const [gpsLocation, setGpsLocation] = useState(null)
   const [gpsLocked, setGpsLocked] = useState(false)
+  const [gpsError, setGpsError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
 
@@ -2027,12 +2028,12 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
       .then((coords) => {
         setGpsLocation(coords)
         setGpsLocked(true)
+        setGpsError('')
       })
       .catch((err) => {
         console.warn('GPS location note:', err)
-        // Fallback Delhi default coords
-        setGpsLocation({ latitude: 28.6129, longitude: 77.2090, accuracy: 25 })
-        setGpsLocked(true)
+        setGpsLocked(false)
+        setGpsError('GPS location unavailable. Please grant location access.')
       })
   }, [])
 
@@ -2041,7 +2042,17 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
     return checkGeofence(gpsLocation, officeConfig)
   }, [gpsLocation, officeConfig])
 
-  const isOutsideGeofence = Boolean(officeConfig?.isConfigured && geofence && !geofence.isAllowed)
+  // Office Geofence is active if latitude/longitude is configured
+  const isOfficeGeofenceConfigured = Boolean(
+    (officeConfig?.latitude != null && officeConfig?.longitude != null) ||
+    officeConfig?.isConfigured ||
+    geofence?.isConfigured
+  )
+
+  // Strictly block when office geofence is active and location is outside allowed radius
+  const isOutsideGeofence = Boolean(
+    isOfficeGeofenceConfigured && geofence && !geofence.isAllowed
+  )
 
   // Capture Photo
   function handleSnapPhoto() {
@@ -2114,8 +2125,20 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
     }
 
     // STRICT GEOFENCE ENFORCEMENT: Block punch if outside office radius!
-    if (isOutsideGeofence) {
-      alert(`🚫 Attendance Blocked: You are ${geofence?.distanceMeters ?? 'unknown'}m away from the office premise. Punch is strictly restricted to within ${geofence?.allowedRadius ?? 100}m of the office location.`)
+    if (!gpsLocation || !gpsLocked) {
+      alert('🚫 Location Required: Please enable your device GPS location to verify office proximity before punching.')
+      return
+    }
+
+    const liveGeofence = checkGeofence(gpsLocation, officeConfig)
+    const isLiveBlocked = Boolean(
+      isOfficeGeofenceConfigured && liveGeofence && !liveGeofence.isAllowed
+    )
+
+    if (isLiveBlocked || isOutsideGeofence) {
+      const dist = liveGeofence?.distanceMeters ?? geofence?.distanceMeters ?? 'unknown'
+      const rad = liveGeofence?.allowedRadius ?? geofence?.allowedRadius ?? 100
+      alert(`🚫 Attendance Blocked: You are currently ${dist}m away from the office premise. Punch is strictly restricted to within ${rad}m of the office location.`)
       return
     }
 
@@ -2469,29 +2492,76 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
           </div>
         </div>
 
+        {/* Outside Geofence Warning Box */}
+        {isOutsideGeofence && (
+          <div style={{
+            background: '#FEF2F2',
+            border: '1.5px solid #FCA5A5',
+            borderRadius: 10,
+            padding: '10px 12px',
+            margin: '10px 16px 0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            color: '#991B1B'
+          }}>
+            <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>🚫</span>
+            <div style={{ fontSize: '0.72rem', lineHeight: 1.4 }}>
+              <strong style={{ display: 'block', fontSize: '0.76rem', color: '#7F1D1D' }}>Punch Blocked (Outside Premise)</strong>
+              Aap office se <strong>{geofence?.distanceMeters ?? 0}m</strong> door hain. Punch sirf office premise ({geofence?.allowedRadius ?? 100}m) ke andar allowed hai.
+            </div>
+          </div>
+        )}
+
+        {/* GPS Error Warning Box */}
+        {!gpsLocked && gpsError && (
+          <div style={{
+            background: '#FFFBEB',
+            border: '1.5px solid #FCD34D',
+            borderRadius: 10,
+            padding: '10px 12px',
+            margin: '10px 16px 0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            color: '#92400E'
+          }}>
+            <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>⚠️</span>
+            <div style={{ fontSize: '0.72rem', lineHeight: 1.4 }}>
+              <strong style={{ display: 'block', fontSize: '0.76rem', color: '#78350F' }}>Location Permission Needed</strong>
+              {gpsError}
+            </div>
+          </div>
+        )}
+
         {/* Confirm Check In/Out button */}
         <div className="swl-checkin-btn-wrap">
           <button
+            type="button"
             className="swl-btn-login"
             style={{
               background: isShiftDone
                 ? '#94A3B8'
                 : (isOutsideGeofence
                     ? '#EF4444'
-                    : (successMsg ? '#10B981' : (isCheckOut ? '#F59E0B' : '#1E5AE6')))
+                    : (successMsg ? '#10B981' : (isCheckOut ? '#F59E0B' : '#1E5AE6'))),
+              cursor: (submitting || Boolean(successMsg) || isShiftDone || isOutsideGeofence || !gpsLocked) ? 'not-allowed' : 'pointer',
+              opacity: (submitting || isShiftDone || isOutsideGeofence || !gpsLocked) ? 0.85 : 1
             }}
-            disabled={submitting || Boolean(successMsg) || isShiftDone || isOutsideGeofence}
+            disabled={submitting || Boolean(successMsg) || isShiftDone || isOutsideGeofence || !gpsLocked}
             onClick={handleConfirmPunch}
           >
             {isShiftDone
               ? 'Shift Complete for Today'
               : (isOutsideGeofence
-                  ? `🚫 Outside Office (${geofence?.distanceMeters}m > ${geofence?.allowedRadius}m)`
-                  : (successMsg
-                      ? successMsg
-                      : (submitting
-                          ? 'Verifying & Saving…'
-                          : (isCheckOut ? 'Confirm Check Out' : 'Confirm Check In'))))}
+                  ? `🚫 Outside Office (${geofence?.distanceMeters ?? 0}m > ${geofence?.allowedRadius ?? 100}m)`
+                  : (!gpsLocked
+                      ? (gpsError ? '⚠️ Location Required' : 'Acquiring GPS Location…')
+                      : (successMsg
+                          ? successMsg
+                          : (submitting
+                              ? 'Verifying & Saving…'
+                              : (isCheckOut ? 'Confirm Check Out' : 'Confirm Check In')))))}
           </button>
         </div>
       </div>
