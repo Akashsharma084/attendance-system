@@ -276,12 +276,16 @@ export function getLocalOfficeTiming() {
   return { ...DEFAULT_OFFICE_TIMING }
 }
 
+let liveOfficeTiming = getLocalOfficeTiming()
+
 /**
  * Subscribe to office timing settings in Firestore (with localStorage fallback)
  */
 export function subscribeOfficeTimingConfig(callback) {
   // Emit local cache immediately
-  callback(getLocalOfficeTiming())
+  const cached = getLocalOfficeTiming()
+  liveOfficeTiming = cached
+  callback(cached)
 
   if (!isFirebaseConfigured || !db) {
     return () => {}
@@ -301,6 +305,7 @@ export function subscribeOfficeTimingConfig(callback) {
           updatedAt: data.updatedAt || null,
           updatedBy: data.updatedBy || null
         }
+        liveOfficeTiming = config
         try {
           localStorage.setItem(STORAGE_KEY_OFFICE_TIMING, JSON.stringify(config))
         } catch {}
@@ -331,6 +336,8 @@ export async function saveOfficeTimingConfig({ startTime, endTime, graceMinutes,
     updatedBy: updatedBy || 'Admin'
   }
 
+  liveOfficeTiming = payload
+
   try {
     localStorage.setItem(STORAGE_KEY_OFFICE_TIMING, JSON.stringify(payload))
   } catch {}
@@ -350,9 +357,9 @@ export async function saveOfficeTimingConfig({ startTime, endTime, graceMinutes,
 }
 
 /**
- * Calculate if a check-in time is late based on office timing (startTime + graceMinutes)
+ * Calculate if a check-in time is late strictly based on the Admin-configured office timing (startTime + graceMinutes)
  * @param {Date|string|number|object} checkInTime - JS Date, ISO string, or Firestore Timestamp
- * @param {object} [officeTiming] - { startTime, graceMinutes }
+ * @param {object} [officeTiming] - { startTime, graceMinutes } set by Admin
  * @returns {{ isLate: boolean, lateMinutes: number, lateText: string }}
  */
 export function checkIsPunchLate(checkInTime, officeTiming) {
@@ -371,7 +378,8 @@ export function checkIsPunchLate(checkInTime, officeTiming) {
 
   if (!inDate || isNaN(inDate.getTime())) return { isLate: false, lateMinutes: 0, lateText: '' }
 
-  const timing = officeTiming || getLocalOfficeTiming() || DEFAULT_OFFICE_TIMING
+  // Use Admin's configured timing (passed prop, live cache, localStorage, or fallback)
+  const timing = officeTiming || liveOfficeTiming || getLocalOfficeTiming() || DEFAULT_OFFICE_TIMING
   const startTimeStr = timing?.startTime || DEFAULT_OFFICE_TIMING.startTime || '09:00'
   const parts = String(startTimeStr).split(':')
   const startH = parseInt(parts[0], 10)
@@ -393,16 +401,24 @@ export function checkIsPunchLate(checkInTime, officeTiming) {
 }
 
 /**
- * Evaluates whether an attendance record should be marked as Late.
- * Checks stored record.isLate / record.lateMinutes, and dynamically falls back to checkInTime vs officeTiming.
+ * Evaluates whether an attendance record is marked Late strictly according to the Admin's configured office timings.
+ * Whenever checkInTime is present, it ALWAYS calculates dynamically against Admin's timing (startTime + graceMinutes),
+ * so that any shift timing changes made by Admin immediately update all statuses across the app.
  * @param {object} rec - Attendance record document
- * @param {object} [officeTiming] - Optional office timing settings
+ * @param {object} [officeTiming] - Admin's office timing settings
  * @returns {{ isLate: boolean, lateMinutes: number, lateText: string }}
  */
 export function getAttendanceLateInfo(rec, officeTiming) {
   if (!rec) return { isLate: false, lateMinutes: 0, lateText: '' }
 
-  // 1. If explicitly stored as late
+  const timing = officeTiming || liveOfficeTiming || getLocalOfficeTiming() || DEFAULT_OFFICE_TIMING
+
+  // 1. Primary: If checkInTime is available, evaluate strictly against Admin's configured timing!
+  if (rec.checkInTime) {
+    return checkIsPunchLate(rec.checkInTime, timing)
+  }
+
+  // 2. Fallback if checkInTime is missing but explicit late info was stored
   if (rec.isLate === true || rec.status === 'late') {
     const mins = Number(rec.lateMinutes) || 0
     if (mins > 0) {
@@ -410,16 +426,7 @@ export function getAttendanceLateInfo(rec, officeTiming) {
       const m = mins % 60
       return { isLate: true, lateMinutes: mins, lateText: h > 0 ? `${h}h ${m}m` : `${m}m` }
     }
-    if (rec.checkInTime) {
-      const calc = checkIsPunchLate(rec.checkInTime, officeTiming)
-      return { isLate: true, lateMinutes: calc.lateMinutes || 1, lateText: calc.lateText || 'Late' }
-    }
     return { isLate: true, lateMinutes: 0, lateText: 'Late' }
-  }
-
-  // 2. Dynamic evaluation from check-in timestamp
-  if (rec.checkInTime) {
-    return checkIsPunchLate(rec.checkInTime, officeTiming)
   }
 
   return { isLate: false, lateMinutes: 0, lateText: '' }

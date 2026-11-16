@@ -99,7 +99,8 @@ import {
   formatTime24to12,
   DEFAULT_OFFICE_TIMING,
   checkIsPunchLate,
-  getAttendanceLateInfo
+  getAttendanceLateInfo,
+  getLocalOfficeTiming
 } from '../services/networkService'
 
 const DEFAULT_AVATARS = {
@@ -747,7 +748,7 @@ export default function SWLLiveMasterApp() {
 
   // Office Geofence & Timing Configuration
   const [officeConfig, setOfficeConfig] = useState(null)
-  const [officeTiming, setOfficeTiming] = useState(null)
+  const [officeTiming, setOfficeTiming] = useState(() => getLocalOfficeTiming())
   const [showGeofenceModal, setShowGeofenceModal] = useState(false)
   const [showTimingModal, setShowTimingModal] = useState(false)
 
@@ -1883,10 +1884,15 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
             )}
           </div>
 
-          <div className="swl-hero-hours">
-            {isPresentToday
-              ? `Working Hours: ${formatTime(todayRecord.checkInTime)} - ${isCheckedOutToday ? formatTime(todayRecord.checkOutTime) : 'Ongoing'}`
-              : `Working Hours: ${formatTime24to12(officeTiming?.startTime || '09:00')} - ${formatTime24to12(officeTiming?.endTime || '18:00')}`}
+          <div className="swl-hero-hours" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <div>
+              {isPresentToday
+                ? `Punch Time: In ${formatTime(todayRecord.checkInTime)}${isCheckedOutToday ? ` • Out ${formatTime(todayRecord.checkOutTime)}` : ' (Ongoing)'}`
+                : `Working Hours: ${formatTime24to12(officeTiming?.startTime || '09:00')} - ${formatTime24to12(officeTiming?.endTime || '18:00')}`}
+            </div>
+            <div style={{ fontSize: '0.66rem', color: '#1E5AE6', fontWeight: 700 }}>
+              ⏰ Office Shift: {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '18:00')} • Late after {officeCutoffStr}
+            </div>
           </div>
 
           {/* Today's In/Out Verified Selfies */}
@@ -4943,6 +4949,18 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
     return todayPunches.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
   }, [todayPunches, officeTiming])
 
+  const cutoffDisplay = useMemo(() => {
+    try {
+      const [h, m] = (officeTiming?.startTime || '09:00').split(':').map(Number)
+      const totalM = h * 60 + m + Number(officeTiming?.graceMinutes != null ? officeTiming.graceMinutes : 30)
+      const cutoffH = Math.floor(totalM / 60) % 24
+      const cutoffM = totalM % 60
+      return formatTime24to12(`${String(cutoffH).padStart(2, '0')}:${String(cutoffM).padStart(2, '0')}`)
+    } catch {
+      return '09:30 AM'
+    }
+  }, [officeTiming])
+
   // Listen to live users and today attendance
   useEffect(() => {
     if (!isFirebaseConfigured || !db) return
@@ -5097,11 +5115,12 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
             </div>
           </div>
 
-          <div className="swl-admin-stat-card">
+          <div className="swl-admin-stat-card" onClick={onOpenTiming} style={{ cursor: 'pointer' }} title="Click to view/change Office Timings">
             <div className="swl-admin-stat-icon orange">🕒</div>
             <div>
               <div style={{ fontSize: '0.65rem', color: '#64748B' }}>Late</div>
               <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#F59E0B' }}>{lateEmployees}</div>
+              <div style={{ fontSize: '0.58rem', color: '#D97706', fontWeight: 700, marginTop: 1 }}>After {cutoffDisplay}</div>
             </div>
           </div>
         </div>
@@ -5163,9 +5182,12 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
             <span>Office Geofence</span>
           </div>
 
-          <div className="swl-action-btn-card" onClick={onOpenTiming}>
+          <div className="swl-action-btn-card" onClick={onOpenTiming} title="Set office shift hours and late grace period">
             <div style={{ fontSize: '1.25rem', lineHeight: 1 }}>⏰</div>
             <span>Office Timings</span>
+            <span style={{ fontSize: '0.58rem', color: '#1E5AE6', fontWeight: 700 }}>
+              {formatTime24to12(officeTiming?.startTime || '09:00')} (+{officeTiming?.graceMinutes != null ? officeTiming.graceMinutes : 30}m)
+            </span>
           </div>
         </div>
 
@@ -7629,7 +7651,17 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
               <ul style={{ margin: 0, paddingLeft: 18, fontSize: '0.75rem', color: '#475569', lineHeight: 1.6 }}>
                 <li><strong>Check-In Geofence:</strong> Punches must be recorded within the verified office radius.</li>
                 <li><strong>Selfie Verification:</strong> Live camera capture required for both In and Out punches.</li>
-                <li><strong>Late Arrival:</strong> Shifts started after 09:30 AM are automatically flagged as Late.</li>
+                <li><strong>Late Arrival:</strong> Shifts started after {(() => {
+                  try {
+                    const [h, m] = (officeTiming?.startTime || '09:00').split(':').map(Number)
+                    const totalM = h * 60 + m + Number(officeTiming?.graceMinutes != null ? officeTiming.graceMinutes : 30)
+                    const cutoffH = Math.floor(totalM / 60) % 24
+                    const cutoffM = totalM % 60
+                    return formatTime24to12(`${String(cutoffH).padStart(2, '0')}:${String(cutoffM).padStart(2, '0')}`)
+                  } catch {
+                    return '09:30 AM'
+                  }
+                })()} are automatically flagged as Late (configured by Admin).</li>
                 <li><strong>Team Arrival Feed:</strong> Colleague check-ins send real-time bell notifications.</li>
                 <li><strong>Leave Applications:</strong> Planned leaves require admin review and approval.</li>
               </ul>

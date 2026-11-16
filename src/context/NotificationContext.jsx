@@ -3,7 +3,7 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../firebase'
 import { useAuth } from './AuthContext'
 import { formatTime, todayDateKey } from '../utils/dateHelpers'
-import { getAttendanceLateInfo } from '../services/networkService'
+import { getAttendanceLateInfo, subscribeOfficeTimingConfig, getLocalOfficeTiming } from '../services/networkService'
 
 const NotificationContext = createContext(null)
 
@@ -49,6 +49,17 @@ function playChimeSound() {
 
 export function NotificationProvider({ children }) {
   const { user } = useAuth()
+  const [officeTiming, setOfficeTiming] = useState(() => getLocalOfficeTiming())
+
+  useEffect(() => {
+    const unsub = subscribeOfficeTimingConfig((cfg) => {
+      setOfficeTiming(cfg)
+    })
+    return () => {
+      if (unsub) unsub()
+    }
+  }, [])
+
   const [notifications, setNotifications] = useState(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
@@ -262,7 +273,7 @@ export function NotificationProvider({ children }) {
 
             if (data.checkInTime) {
               const formattedTime = formatTime(data.checkInTime)
-              const lateInfo = getAttendanceLateInfo(data)
+              const lateInfo = getAttendanceLateInfo(data, officeTiming)
               triggerArrivalAlert({
                 type: 'in',
                 name: isCurrentUser ? `${empName} (You)` : empName,
@@ -289,7 +300,7 @@ export function NotificationProvider({ children }) {
             // Check if check-in just occurred
             if (!hadIn && nowHasIn) {
               const formattedTime = formatTime(data.checkInTime)
-              const lateInfo = getAttendanceLateInfo(data)
+              const lateInfo = getAttendanceLateInfo(data, officeTiming)
               triggerArrivalAlert({
                 type: 'in',
                 name: isCurrentUser ? `${empName} (You)` : empName,
