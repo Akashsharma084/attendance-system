@@ -49,6 +49,11 @@
             window.addEventListener('focus', () => {
               reg.update()
             })
+
+            // Periodic check every 15 minutes for new updates
+            setInterval(() => {
+              reg.update()
+            }, 15 * 60 * 1000)
           }).catch((err) => {
             console.warn('ServiceWorker note:', err)
           })

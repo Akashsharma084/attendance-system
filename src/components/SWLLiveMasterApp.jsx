@@ -157,6 +157,69 @@ function processImageFile(file, maxWidth = 350, maxHeight = 350, quality = 0.82)
   })
 }
 
+/**
+ * Triggers an immediate purge of Service Worker caches and reloads the app.
+ */
+export async function triggerAppUpdateReload() {
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys()
+      await Promise.all(keys.map((k) => caches.delete(k)))
+    }
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations()
+      for (const r of regs) {
+        await r.update().catch(() => {})
+        if (r.waiting) {
+          r.waiting.postMessage({ type: 'SKIP_WAITING' })
+        }
+      }
+    }
+    setTimeout(() => {
+      window.location.reload(true)
+    }, 200)
+  } catch (_) {
+    window.location.reload()
+  }
+}
+
+function AppUpdateSyncButton({ label = 'Check for Updates & Reload App', style = {} }) {
+  const [syncing, setSyncing] = useState(false)
+
+  const handleSync = async () => {
+    setSyncing(true)
+    await triggerAppUpdateReload()
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleSync}
+      disabled={syncing}
+      style={{
+        background: '#EEF4FF',
+        color: '#1E5AE6',
+        border: '1px solid #BFDBFE',
+        borderRadius: 8,
+        padding: '7px 14px',
+        fontSize: '0.72rem',
+        fontWeight: 700,
+        cursor: syncing ? 'wait' : 'pointer',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        transition: 'all 0.15s ease',
+        ...style
+      }}
+      title="Check for newest server updates, clear cache and reload application"
+    >
+      <span>{syncing ? '⏳' : '🔄'}</span>
+      <span>{syncing ? 'Updating App...' : label}</span>
+    </button>
+  )
+}
+
 /* Reusable Universal User Avatar (Shows Photo if uploaded, otherwise First Letter of Name) */
 function UserAvatar({
   name = 'User',
@@ -1571,40 +1634,10 @@ function LiveLoginScreen({ onSuccess }) {
           <span>📍 GPS Geofenced</span>
         </div>
         <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center' }}>
-          <button
-            type="button"
-            onClick={async () => {
-              try {
-                if ('serviceWorker' in navigator) {
-                  const regs = await navigator.serviceWorker.getRegistrations()
-                  for (const r of regs) await r.update()
-                }
-                if ('caches' in window) {
-                  const keys = await caches.keys()
-                  await Promise.all(keys.map((k) => caches.delete(k)))
-                }
-                window.location.reload()
-              } catch (_) {
-                window.location.reload()
-              }
-            }}
-            style={{
-              background: '#EEF4FF',
-              color: '#1E5AE6',
-              border: '1px solid #BFDBFE',
-              borderRadius: 999,
-              padding: '4px 12px',
-              fontSize: '0.64rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5
-            }}
-            title="Purge cached files and load latest version"
-          >
-            🔄 Sync Latest App Version (v2.4)
-          </button>
+          <AppUpdateSyncButton
+            label="Sync Latest App Version (v2.4)"
+            style={{ borderRadius: 999, padding: '4px 12px', fontSize: '0.64rem', fontWeight: 800 }}
+          />
         </div>
         <div className="swl-login-footer" style={{ margin: '6px 0 0 0', fontSize: '0.7rem' }}>
           Softwind Labs Attendance · <span>Corporate Workspace</span>
@@ -4450,9 +4483,10 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
                 <span style={{ fontSize: '0.82rem' }}>🛡️</span>
                 <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#334155' }}>Softwind Labs Enterprise Portal</span>
               </div>
-              <p style={{ margin: '4px 0 0 0', fontSize: '0.64rem', color: '#64748B', lineHeight: 1.4 }}>
+              <p style={{ margin: '4px 0 8px 0', fontSize: '0.64rem', color: '#64748B', lineHeight: 1.4 }}>
                 Protected with strict GPS geofencing &amp; facial selfie verification • v2.4
               </p>
+              <AppUpdateSyncButton />
             </div>
           </div>
         )}
@@ -7931,9 +7965,10 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
                 <span style={{ fontSize: '0.82rem' }}>🛡️</span>
                 <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#0F172A' }}>Softwind Labs Administration Console</span>
               </div>
-              <p style={{ margin: '4px 0 0 0', fontSize: '0.64rem', color: '#64748B', lineHeight: 1.4 }}>
+              <p style={{ margin: '4px 0 8px 0', fontSize: '0.64rem', color: '#64748B', lineHeight: 1.4 }}>
                 Real-time Firebase Cloud • Strict GPS Enforced • Softwind Labs Portal v2.4
               </p>
+              <AppUpdateSyncButton />
             </div>
           </div>
         )}
