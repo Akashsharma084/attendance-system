@@ -3,6 +3,7 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../firebase'
 import { useAuth } from './AuthContext'
 import { formatTime, todayDateKey } from '../utils/dateHelpers'
+import { getAttendanceLateInfo } from '../services/networkService'
 
 const NotificationContext = createContext(null)
 
@@ -144,14 +145,27 @@ export function NotificationProvider({ children }) {
     }
   }
 
-  function triggerArrivalAlert({ type, name, time, photoUrl, docId, isSelf = false }) {
+  function triggerArrivalAlert({ type, name, time, photoUrl, docId, isSelf = false, isLate = false, lateMinutes = 0, lateText = '' }) {
     const isCheckIn = type === 'in'
-    const title = isSelf
-      ? (isCheckIn ? '🟢 Attendance Recorded — Softwind Labs' : '🏁 Check-Out Recorded — Softwind Labs')
-      : (isCheckIn ? `🟢 Staff Arrival — Softwind Labs` : `🏁 Staff Departure — Softwind Labs`)
-    const message = isSelf
-      ? (isCheckIn ? `Your check-in punch has been recorded at ${time}.` : `Your check-out punch has been recorded at ${time}.`)
-      : (isCheckIn ? `${name} has arrived and checked in at ${time}.` : `${name} has departed and checked out at ${time}.`)
+    let title = ''
+    let message = ''
+
+    if (isCheckIn && isLate) {
+      const lateSuffix = lateText ? ` (+${lateText})` : (lateMinutes > 0 ? ` (+${lateMinutes}m)` : '')
+      title = isSelf
+        ? '🟡 Late Check-In — Softwind Labs'
+        : `🟡 Staff Late Arrival — Softwind Labs`
+      message = isSelf
+        ? `Your check-in punch has been recorded at ${time}${lateSuffix} as Late Arrival.`
+        : `${name} has arrived and checked in late at ${time}${lateSuffix}.`
+    } else {
+      title = isSelf
+        ? (isCheckIn ? '🟢 Attendance Recorded — Softwind Labs' : '🏁 Check-Out Recorded — Softwind Labs')
+        : (isCheckIn ? `🟢 Staff Arrival — Softwind Labs` : `🏁 Staff Departure — Softwind Labs`)
+      message = isSelf
+        ? (isCheckIn ? `Your check-in punch has been recorded at ${time}.` : `Your check-out punch has been recorded at ${time}.`)
+        : (isCheckIn ? `${name} has arrived and checked in at ${time}.` : `${name} has departed and checked out at ${time}.`)
+    }
 
     // 1. Play synthesized bell chime
     playChimeSound()
@@ -167,13 +181,14 @@ export function NotificationProvider({ children }) {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
     setActiveToast({
       id: `${docId || 'toast'}-${type}-${Date.now()}`,
-      type,
+      type: isCheckIn && isLate ? 'late' : type,
       title,
       name,
       time,
       photoUrl,
       message,
-      isSelf
+      isSelf,
+      isLate
     })
 
     toastTimeoutRef.current = setTimeout(() => {
@@ -184,11 +199,12 @@ export function NotificationProvider({ children }) {
     const newNotice = {
       id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       docId: docId || '',
-      type,
+      type: isCheckIn && isLate ? 'late' : type,
       name,
       time,
       photoUrl: photoUrl || null,
       message,
+      isLate,
       read: false,
       timestamp: Date.now()
     }
@@ -246,13 +262,17 @@ export function NotificationProvider({ children }) {
 
             if (data.checkInTime) {
               const formattedTime = formatTime(data.checkInTime)
+              const lateInfo = getAttendanceLateInfo(data)
               triggerArrivalAlert({
                 type: 'in',
                 name: isCurrentUser ? `${empName} (You)` : empName,
                 time: formattedTime,
                 photoUrl: photo,
                 docId,
-                isSelf: isCurrentUser
+                isSelf: isCurrentUser,
+                isLate: lateInfo.isLate,
+                lateMinutes: lateInfo.lateMinutes,
+                lateText: lateInfo.lateText
               })
             }
           } else if (change.type === 'modified') {
@@ -269,13 +289,17 @@ export function NotificationProvider({ children }) {
             // Check if check-in just occurred
             if (!hadIn && nowHasIn) {
               const formattedTime = formatTime(data.checkInTime)
+              const lateInfo = getAttendanceLateInfo(data)
               triggerArrivalAlert({
                 type: 'in',
                 name: isCurrentUser ? `${empName} (You)` : empName,
                 time: formattedTime,
                 photoUrl: photo,
                 docId,
-                isSelf: isCurrentUser
+                isSelf: isCurrentUser,
+                isLate: lateInfo.isLate,
+                lateMinutes: lateInfo.lateMinutes,
+                lateText: lateInfo.lateText
               })
             }
 

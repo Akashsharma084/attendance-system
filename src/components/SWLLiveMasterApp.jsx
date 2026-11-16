@@ -97,7 +97,9 @@ import {
   subscribeOfficeTimingConfig,
   saveOfficeTimingConfig,
   formatTime24to12,
-  DEFAULT_OFFICE_TIMING
+  DEFAULT_OFFICE_TIMING,
+  checkIsPunchLate,
+  getAttendanceLateInfo
 } from '../services/networkService'
 
 const DEFAULT_AVATARS = {
@@ -996,6 +998,7 @@ export default function SWLLiveMasterApp() {
             <LiveCheckInScreen
               onNavigate={handleNavigate}
               officeConfig={officeConfig}
+              officeTiming={officeTiming}
             />
           )}
 
@@ -1003,6 +1006,7 @@ export default function SWLLiveMasterApp() {
             <LiveAttendanceHistoryScreen
               onNavigate={handleNavigate}
               onViewSelfie={setSelectedSelfieModal}
+              officeTiming={officeTiming}
             />
           )}
 
@@ -1036,6 +1040,7 @@ export default function SWLLiveMasterApp() {
           {isAdmin && activeScreen === 'adm_employees' && (
             <LiveAdminEmployeesScreen
               onNavigate={handleNavigate}
+              officeTiming={officeTiming}
               onSelectEmployee={(emp) => {
                 setSelectedEmp(emp)
                 setEmpDetailOrigin('adm_employees')
@@ -1050,6 +1055,7 @@ export default function SWLLiveMasterApp() {
               origin={empDetailOrigin}
               onNavigate={handleNavigate}
               onViewSelfie={setSelectedSelfieModal}
+              officeTiming={officeTiming}
             />
           )}
 
@@ -1062,6 +1068,7 @@ export default function SWLLiveMasterApp() {
           {isAdmin && activeScreen === 'adm_reports' && (
             <LiveReportsScreen
               onNavigate={handleNavigate}
+              officeTiming={officeTiming}
               onViewSelfie={setSelectedSelfieModal}
               onSelectEmployee={(emp) => {
                 setSelectedEmp(emp)
@@ -1694,12 +1701,15 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
   }, [officeTiming])
 
   const lateCount = useMemo(() => {
-    return monthlyRecords.filter(r => r.isLate || (r.checkInTime && formatTime(r.checkInTime) > officeCutoffStr)).length
-  }, [monthlyRecords, officeCutoffStr])
+    return monthlyRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+  }, [monthlyRecords, officeTiming])
 
   const attendanceRate = effectiveWorkingDays > 0 ? Math.round((presentCount / effectiveWorkingDays) * 100) : 0
   const isPresentToday = Boolean(todayRecord?.checkInTime)
   const isCheckedOutToday = Boolean(todayRecord?.checkOutTime)
+  const todayLate = useMemo(() => {
+    return getAttendanceLateInfo(todayRecord, officeTiming)
+  }, [todayRecord, officeTiming])
 
   // Greeting based on hour
   const greeting = useMemo(() => {
@@ -1849,9 +1859,20 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
           <div className="swl-status-hero-badge-row">
             {isPresentToday ? (
               <>
-                <div className="swl-green-check-circle">✓</div>
-                <span className="swl-hero-status-text">
-                  {isCheckedOutToday ? 'Shift Completed' : 'You are Present'}
+                <div
+                  className="swl-green-check-circle"
+                  style={{
+                    background: todayLate.isLate ? '#FEF3C7' : '#ECFDF5',
+                    color: todayLate.isLate ? '#D97706' : '#10B981',
+                    border: todayLate.isLate ? '1.5px solid #FDE68A' : '1.5px solid #A7F3D0'
+                  }}
+                >
+                  {todayLate.isLate ? '⏱️' : '✓'}
+                </div>
+                <span className="swl-hero-status-text" style={{ color: todayLate.isLate ? '#B45309' : '#0F172A' }}>
+                  {isCheckedOutToday
+                    ? (todayLate.isLate ? `Shift Completed (Late${todayLate.lateText ? ' +' + todayLate.lateText : ''})` : 'Shift Completed')
+                    : (todayLate.isLate ? `You are Present (Late${todayLate.lateText ? ' +' + todayLate.lateText : ''})` : 'You are Present')}
                 </span>
               </>
             ) : (
@@ -1904,8 +1925,8 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
               </svg>
             </div>
             <div className="swl-punch-title">Check In</div>
-            <div className={`swl-punch-sub ${isPresentToday ? 'done' : 'pending'}`}>
-              {isPresentToday ? `${formatTime(todayRecord.checkInTime)} Done` : 'Tap to Punch In'}
+            <div className={`swl-punch-sub ${isPresentToday ? (todayLate.isLate ? 'late' : 'done') : 'pending'}`}>
+              {isPresentToday ? `${formatTime(todayRecord.checkInTime)} (${todayLate.isLate ? `Late +${todayLate.lateText}` : 'Done'})` : 'Tap to Punch In'}
             </div>
           </div>
 
@@ -2028,9 +2049,16 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                    <span className={`swl-badge-pill ${member.isLate ? 'yellow' : 'green'}`}>
-                      {member.checkOutTime ? 'Out' : (member.isLate ? 'Late' : 'Present')}
-                    </span>
+                    {(() => {
+                      const memberLate = getAttendanceLateInfo(member, officeTiming)
+                      return (
+                        <span className={`swl-badge-pill ${memberLate.isLate ? 'yellow' : 'green'}`}>
+                          {memberLate.isLate
+                            ? (member.checkOutTime ? 'Out (Late)' : `Late${memberLate.lateText ? ' (+' + memberLate.lateText + ')' : ''}`)
+                            : (member.checkOutTime ? 'Out' : 'Present')}
+                        </span>
+                      )
+                    })()}
                     <LocationBtn location={loc} />
                   </div>
                 </div>
@@ -2074,7 +2102,7 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
 /* =========================================================================
    3. LIVE CHECK-IN SCREEN (SCREEN 4) - CAMERA, GPS & GEOFENCE PUNCH
    ========================================================================= */
-function LiveCheckInScreen({ onNavigate, officeConfig }) {
+function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming }) {
   const { user, profile } = useAuth()
   const { triggerArrivalAlert } = useNotifications()
   const todayKey = todayDateKey()
@@ -2419,6 +2447,8 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
 
     try {
       const isCheckOut = Boolean(todayDoc?.checkInTime && !todayDoc?.checkOutTime)
+      const punchNow = new Date()
+      const lateCalc = isCheckOut ? { isLate: false, lateMinutes: 0, lateText: '' } : checkIsPunchLate(punchNow, officeTiming)
 
       if (isFirebaseConfigured && db && user?.uid) {
         if (todayDoc) {
@@ -2433,7 +2463,7 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
             status: 'completed'
           })
         } else {
-          // Check-In: record with checkInPhotoUrl, checkInSelfieUrl, and selfieUrl
+          // Check-In: record with checkInPhotoUrl, checkInSelfieUrl, selfieUrl, and late status
           await addDoc(collection(db, 'attendance'), {
             uid: user.uid,
             name: profile?.name || user.displayName || user.email?.split('@')[0] || 'Employee',
@@ -2450,7 +2480,9 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
             checkOutTime: null,
             checkOutPhotoUrl: null,
             checkOutSelfieUrl: null,
-            status: 'present',
+            isLate: lateCalc.isLate,
+            lateMinutes: lateCalc.lateMinutes,
+            status: lateCalc.isLate ? 'late' : 'present',
             createdAt: serverTimestamp()
           })
         }
@@ -2477,7 +2509,13 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
       }
 
       playPunchChime()
-      setSuccessMsg(isCheckOut ? '✓ Check-Out Confirmed!' : '✓ Check-In Confirmed!')
+      if (isCheckOut) {
+        setSuccessMsg('✓ Check-Out Confirmed!')
+      } else if (lateCalc.isLate) {
+        setSuccessMsg(`✓ Check-In Confirmed! (Marked Late: +${lateCalc.lateText})`)
+      } else {
+        setSuccessMsg('✓ Check-In Confirmed! (On Time)')
+      }
 
       try {
         if (triggerArrivalAlert) {
@@ -2487,7 +2525,10 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
             time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
             photoUrl: finalPhoto,
             docId: todayDoc?.id || 'live-punch',
-            isSelf: true
+            isSelf: true,
+            isLate: lateCalc.isLate,
+            lateMinutes: lateCalc.lateMinutes,
+            lateText: lateCalc.lateText
           })
         }
       } catch (_) {}
@@ -2861,7 +2902,7 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
 /* =========================================================================
    4. LIVE ATTENDANCE HISTORY SCREEN (SCREEN 5) - CALENDAR & DAILY RECORDS
    ========================================================================= */
-function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie }) {
+function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming }) {
   const { user } = useAuth()
   const todayKey = todayDateKey()
 
@@ -2952,8 +2993,9 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie }) {
 
       let type = 'empty'
       if (rec) {
-        if (rec.isLate) type = 'l'
-        else if (rec.status === 'present') type = 'p'
+        const lateInfo = getAttendanceLateInfo(rec, officeTiming)
+        if (lateInfo.isLate) type = 'l'
+        else if (rec.status === 'present' || rec.checkInTime) type = 'p'
         else if (rec.status === 'absent') type = 'a'
         else type = 'p'
       } else {
@@ -2968,10 +3010,10 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie }) {
     }
 
     return cells
-  }, [currentDate, attendanceRecords, todayKey])
+  }, [currentDate, attendanceRecords, todayKey, officeTiming])
 
   const presentCount = attendanceRecords.filter(r => r.status === 'present' || r.checkInTime).length
-  const lateCount = attendanceRecords.filter(r => r.isLate).length
+  const lateCount = attendanceRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
   const absentCount = calendarDays.filter(c => c.type === 'a').length
 
   function changeMonth(delta) {
@@ -3009,6 +3051,7 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie }) {
         }
       }
 
+      const lateInfo = getAttendanceLateInfo(att, officeTiming)
       return {
         uid: u.uid,
         name: u.name || u.email?.split('@')[0] || 'Team Member',
@@ -3020,7 +3063,9 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie }) {
         duration: calcDuration,
         hasIn: Boolean(att?.checkInTime),
         hasOut: Boolean(att?.checkOutTime),
-        isLate: Boolean(att?.isLate),
+        isLate: lateInfo.isLate,
+        lateMinutes: lateInfo.lateMinutes,
+        lateText: lateInfo.lateText,
         inUrl: att?.checkInSelfieUrl || att?.checkInPhotoUrl || att?.selfieUrl || null,
         outUrl: att?.checkOutSelfieUrl || att?.checkOutPhotoUrl || null,
         loc: att?.checkInLocation || att?.location || null
@@ -3040,7 +3085,7 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie }) {
       if (teamFilter === 'not-arrived') return !item.hasIn
       return true
     })
-  }, [teamUsers, teamRecords, selectedTeamDate, todayKey, teamSearch, teamFilter])
+  }, [teamUsers, teamRecords, selectedTeamDate, todayKey, teamSearch, teamFilter, officeTiming])
 
   const todayInSelfie = todayRecord?.checkInSelfieUrl || todayRecord?.checkInPhotoUrl || todayRecord?.selfieUrl
   const todayOutSelfie = todayRecord?.checkOutSelfieUrl || todayRecord?.checkOutPhotoUrl
@@ -3209,9 +3254,16 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie }) {
                         </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                        <span className={`swl-badge-pill ${r.isLate ? 'yellow' : 'green'}`}>
-                          {r.checkOutTime ? 'Done' : (r.isLate ? 'Late' : 'Present')}
-                        </span>
+                        {(() => {
+                          const lateInfo = getAttendanceLateInfo(r, officeTiming)
+                          return (
+                            <span className={`swl-badge-pill ${lateInfo.isLate ? 'yellow' : 'green'}`}>
+                              {lateInfo.isLate
+                                ? (r.checkOutTime ? `Done (Late${lateInfo.lateText ? ' +' + lateInfo.lateText : ''})` : `Late${lateInfo.lateText ? ' (+' + lateInfo.lateText + ')' : ''}`)
+                                : (r.checkOutTime ? 'Done' : 'Present')}
+                            </span>
+                          )
+                        })()}
                         <LocationBtn location={loc} />
                       </div>
                     </div>
@@ -3336,11 +3388,13 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie }) {
                       <span
                         className="swl-badge-pill"
                         style={{
-                          background: member.hasOut ? '#EEF4FF' : (member.hasIn ? '#ECFDF5' : '#F1F5F9'),
-                          color: member.hasOut ? '#1E5AE6' : (member.hasIn ? '#059669' : '#94A3B8')
+                          background: member.isLate ? '#FEF3C7' : (member.hasOut ? '#EEF4FF' : (member.hasIn ? '#ECFDF5' : '#F1F5F9')),
+                          color: member.isLate ? '#D97706' : (member.hasOut ? '#1E5AE6' : (member.hasIn ? '#059669' : '#94A3B8'))
                         }}
                       >
-                        {member.hasOut ? 'Completed' : (member.hasIn ? (member.isLate ? 'Late' : 'Present') : 'Absent')}
+                        {member.isLate
+                          ? (member.hasOut ? `Completed (Late${member.lateText ? ' +' + member.lateText : ''})` : `Late${member.lateText ? ' (+' + member.lateText + ')' : ''}`)
+                          : (member.hasOut ? 'Completed' : (member.hasIn ? 'Present' : 'Absent'))}
                       </span>
                     </div>
                   </div>
@@ -4255,26 +4309,33 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
             </div>
 
             {/* QUICK STATS STRIP */}
-            <div style={{ margin: '0 16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-              <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: '10px 8px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-                <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Today Shift</div>
-                <div style={{ fontSize: '0.76rem', fontWeight: 800, color: todayRecord?.checkInTime ? '#10B981' : '#F59E0B', marginTop: 3 }}>
-                  {todayRecord?.checkOutTime ? 'Completed' : (todayRecord?.checkInTime ? `In ${formatTime(todayRecord.checkInTime)}` : 'Pending')}
+            {(() => {
+              const todayLate = getAttendanceLateInfo(todayRecord, officeTiming)
+              return (
+                <div style={{ margin: '0 16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: '10px 8px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                    <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Today Shift</div>
+                    <div style={{ fontSize: '0.76rem', fontWeight: 800, color: todayLate.isLate ? '#D97706' : (todayRecord?.checkInTime ? '#10B981' : '#F59E0B'), marginTop: 3 }}>
+                      {todayLate.isLate
+                        ? (todayRecord?.checkOutTime ? 'Completed (Late)' : `Late (+${todayLate.lateText})`)
+                        : (todayRecord?.checkOutTime ? 'Completed' : (todayRecord?.checkInTime ? `In ${formatTime(todayRecord.checkInTime)}` : 'Pending'))}
+                    </div>
+                  </div>
+                  <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: '10px 8px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                    <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>GPS Radius</div>
+                    <div style={{ fontSize: '0.76rem', fontWeight: 800, color: '#1E5AE6', marginTop: 3 }}>
+                      {officeConfig?.radiusMeters || 100}m Strict
+                    </div>
+                  </div>
+                  <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: '10px 8px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                    <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Account Status</div>
+                    <div style={{ fontSize: '0.76rem', fontWeight: 800, color: '#10B981', marginTop: 3 }}>
+                      Active ✓
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: '10px 8px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-                <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>GPS Radius</div>
-                <div style={{ fontSize: '0.76rem', fontWeight: 800, color: '#1E5AE6', marginTop: 3 }}>
-                  {officeConfig?.radiusMeters || 100}m Strict
-                </div>
-              </div>
-              <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: '10px 8px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-                <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Account Status</div>
-                <div style={{ fontSize: '0.76rem', fontWeight: 800, color: '#10B981', marginTop: 3 }}>
-                  Active ✓
-                </div>
-              </div>
-            </div>
+              )
+            })()}
 
             {/* SECTION 1: ACCOUNT & SETTINGS */}
             <div style={{ margin: '0 16px' }}>
@@ -4875,9 +4936,12 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
   const todayKey = todayDateKey()
   const [totalEmployees, setTotalEmployees] = useState(0)
   const [presentEmployees, setPresentEmployees] = useState(0)
-  const [lateEmployees, setLateEmployees] = useState(0)
   const [pendingLeavesCount, setPendingLeavesCount] = useState(0)
   const [todayPunches, setTodayPunches] = useState([])
+
+  const lateEmployees = useMemo(() => {
+    return todayPunches.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+  }, [todayPunches, officeTiming])
 
   // Listen to live users and today attendance
   useEffect(() => {
@@ -4897,7 +4961,6 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
       const workerRecords = records.filter(r => !isUserAdmin(r))
       setTodayPunches(workerRecords)
       setPresentEmployees(workerRecords.length)
-      setLateEmployees(workerRecords.filter(r => r.isLate).length)
     })
 
     const qLeaves = query(collection(db, 'leaves'), where('status', '==', 'pending'))
@@ -5164,9 +5227,16 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                    <span className={`swl-badge-pill ${punch.isLate ? 'yellow' : 'green'}`}>
-                      {punch.checkOutTime ? 'Out' : (punch.isLate ? 'Late' : 'Present')}
-                    </span>
+                    {(() => {
+                      const punchLate = getAttendanceLateInfo(punch, officeTiming)
+                      return (
+                        <span className={`swl-badge-pill ${punchLate.isLate ? 'yellow' : 'green'}`}>
+                          {punchLate.isLate
+                            ? (punch.checkOutTime ? 'Out (Late)' : `Late${punchLate.lateText ? ' (+' + punchLate.lateText + ')' : ''}`)
+                            : (punch.checkOutTime ? 'Out' : 'Present')}
+                        </span>
+                      )
+                    })()}
                     <LocationBtn location={loc} />
                   </div>
                 </div>
@@ -5206,7 +5276,7 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
 /* =========================================================================
    8. LIVE ADMIN EMPLOYEES SCREEN (SCREEN 10) - LIST, SEARCH & ADD MEMBER
    ========================================================================= */
-function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee }) {
+function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee, officeTiming }) {
   const todayKey = todayDateKey()
   const [users, setUsers] = useState([])
   const [todayAtt, setTodayAtt] = useState([])
@@ -5242,10 +5312,23 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee }) {
       const isAdminAccount = isUserAdmin(u)
       const att = todayAtt.find(a => a.uid === u.uid)
       let attStatus = 'Absent'
+      let isLate = false
+      let lateText = ''
+      let lateMinutes = 0
       if (isAdminAccount) {
         attStatus = 'Admin' // Admin is NEVER 'Absent' or 'Present'
       } else if (att) {
-        attStatus = att.isLate ? 'Late' : 'Present'
+        const lateInfo = getAttendanceLateInfo(att, officeTiming)
+        isLate = lateInfo.isLate
+        lateText = lateInfo.lateText
+        lateMinutes = lateInfo.lateMinutes
+        if (isLate) {
+          attStatus = att.checkOutTime ? 'Out (Late)' : (lateText ? `Late (+${lateText})` : 'Late')
+        } else if (att.checkOutTime) {
+          attStatus = 'Completed'
+        } else {
+          attStatus = 'Present'
+        }
       }
       const isAccountDisabled = u.status === 'disabled' || Boolean(u.disabled)
       return {
@@ -5255,21 +5338,25 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee }) {
         isAdmin: isAdminAccount,
         attStatus,
         status: attStatus,
+        isLate,
+        lateText,
+        lateMinutes,
+        att,
         isAccountDisabled,
         accountStatus: isAccountDisabled ? 'disabled' : 'active',
         photoURL: u.photoURL || null,
         avatar: u.photoURL || null
       }
     })
-  }, [users, todayAtt])
+  }, [users, todayAtt, officeTiming])
 
   const filtered = employeesWithStatus.filter((emp) => {
     let matchesFilter = true
     if (filter === 'Active') matchesFilter = !emp.isAccountDisabled
     else if (filter === 'Disabled') matchesFilter = emp.isAccountDisabled
-    else if (filter === 'Present') matchesFilter = !emp.isAdmin && emp.attStatus === 'Present'
-    else if (filter === 'Absent') matchesFilter = !emp.isAdmin && emp.attStatus === 'Absent'
-    else if (filter === 'Late') matchesFilter = !emp.isAdmin && emp.attStatus === 'Late'
+    else if (filter === 'Present') matchesFilter = !emp.isAdmin && Boolean(emp.att) && !emp.isLate
+    else if (filter === 'Absent') matchesFilter = !emp.isAdmin && !emp.att
+    else if (filter === 'Late') matchesFilter = !emp.isAdmin && emp.isLate
 
     const matchesSearch = emp.name.toLowerCase().includes(search.toLowerCase()) ||
                           (emp.email && emp.email.toLowerCase().includes(search.toLowerCase()))
@@ -5361,9 +5448,9 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee }) {
             let count = employeesWithStatus.length
             if (f === 'Active') count = employeesWithStatus.filter(e => !e.isAccountDisabled).length
             else if (f === 'Disabled') count = employeesWithStatus.filter(e => e.isAccountDisabled).length
-            else if (f === 'Present') count = employeesWithStatus.filter(e => !e.isAdmin && e.attStatus === 'Present').length
-            else if (f === 'Absent') count = employeesWithStatus.filter(e => !e.isAdmin && e.attStatus === 'Absent').length
-            else if (f === 'Late') count = employeesWithStatus.filter(e => !e.isAdmin && e.attStatus === 'Late').length
+            else if (f === 'Present') count = employeesWithStatus.filter(e => !e.isAdmin && Boolean(e.att) && !e.isLate).length
+            else if (f === 'Absent') count = employeesWithStatus.filter(e => !e.isAdmin && !e.att).length
+            else if (f === 'Late') count = employeesWithStatus.filter(e => !e.isAdmin && e.isLate).length
 
             return (
               <button
@@ -5428,7 +5515,7 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee }) {
                         👑 Administrator
                       </span>
                     ) : (
-                      <span className={`swl-badge-pill ${emp.status === 'Present' ? 'green' : (emp.status === 'Late' ? 'yellow' : 'red')}`} style={{ fontSize: '0.62rem' }}>
+                      <span className={`swl-badge-pill ${emp.isLate ? 'yellow' : (emp.status === 'Absent' ? 'red' : 'green')}`} style={{ fontSize: '0.62rem' }}>
                         {emp.status}
                       </span>
                     )}
@@ -5597,7 +5684,7 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee }) {
 /* =========================================================================
    9. LIVE ADMIN EMPLOYEE DETAILS (SCREEN 11) - PROFILE, ACCESS CONTROL & RECORDS
    ========================================================================= */
-function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin }) {
+function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin, officeTiming }) {
   const { resetEmployeeDeviceBinding } = useAuth()
   const [deviceResetting, setDeviceResetting] = useState(false)
   const [empPhotoUploading, setEmpPhotoUploading] = useState(false)
@@ -6000,9 +6087,16 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin 
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                    <span className={`swl-badge-pill ${r.checkOutTime ? 'green' : (r.isLate ? 'yellow' : 'green')}`}>
-                      {r.checkOutTime ? 'Completed' : (r.isLate ? 'Late' : 'Present')}
-                    </span>
+                    {(() => {
+                      const lateInfo = getAttendanceLateInfo(r, officeTiming)
+                      return (
+                        <span className={`swl-badge-pill ${lateInfo.isLate ? 'yellow' : 'green'}`}>
+                          {lateInfo.isLate
+                            ? (r.checkOutTime ? `Completed (Late${lateInfo.lateText ? ' +' + lateInfo.lateText : ''})` : `Late${lateInfo.lateText ? ' (+' + lateInfo.lateText : ''}`)
+                            : (r.checkOutTime ? 'Completed' : 'Present')}
+                        </span>
+                      )
+                    })()}
                     <LocationBtn location={loc} />
                   </div>
                 </div>
@@ -6575,7 +6669,7 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
 /* =========================================================================
    11. LIVE ADMIN REPORTS & CSV EXPORT SCREEN (SCREEN 13)
    ========================================================================= */
-function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee }) {
+function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeTiming }) {
   const [reportTab, setReportTab] = useState('overview') // 'overview' | 'employees' | 'logs'
   const [timeframe, setTimeframe] = useState('Monthly') // 'Daily' | 'Weekly' | 'Monthly' | 'Yearly'
   const [search, setSearch] = useState('')
@@ -6621,7 +6715,9 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee }) {
 
   const workerRecords = useMemo(() => records.filter(r => !isUserAdmin(r)), [records])
   const presentCount = workerRecords.length
-  const lateCount = workerRecords.filter(r => r.isLate).length
+  const lateCount = useMemo(() => {
+    return workerRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+  }, [workerRecords, officeTiming])
   const absentCount = Math.max(0, (users.length * 24) - presentCount)
 
   // Per-employee analytics (employees only)
@@ -6629,7 +6725,7 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee }) {
     return users.map((u, i) => {
       const uRecords = workerRecords.filter(r => r.uid === u.uid || r.email === u.email)
       const uPresent = uRecords.length
-      const uLate = uRecords.filter(r => r.isLate).length
+      const uLate = uRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
       const workingDaysTarget = 24
       const uAbsent = Math.max(0, workingDaysTarget - uPresent)
       const uRate = workingDaysTarget > 0 ? Math.min(100, Math.round((uPresent / workingDaysTarget) * 100)) : 0
@@ -6662,7 +6758,7 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee }) {
         totalHours
       }
     })
-  }, [users, workerRecords])
+  }, [users, workerRecords, officeTiming])
 
   // Filtered punch logs
   const filteredLogs = useMemo(() => {
@@ -6688,6 +6784,7 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee }) {
       const lng = loc?.longitude ?? loc?.lng ?? ''
       const gpsStr = lat && lng ? `${lat},${lng}` : ''
       const selfie = r.checkInSelfieUrl || r.checkInPhotoUrl || ''
+      const lateInfo = getAttendanceLateInfo(r, officeTiming)
       return [
         r.date || '',
         `"${r.name || 'Employee'}"`,
@@ -6696,7 +6793,7 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee }) {
         r.checkOutTime ? formatTime(r.checkOutTime) : '',
         '8.0',
         r.status || 'present',
-        r.isLate ? 'Yes' : 'No',
+        lateInfo.isLate ? `Yes (+${lateInfo.lateText || lateInfo.lateMinutes + 'm'})` : 'No',
         `"${gpsStr}"`,
         `"${selfie}"`
       ]
@@ -6916,9 +7013,16 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee }) {
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                      <span className={`swl-badge-pill ${r.checkOutTime ? 'green' : (r.isLate ? 'yellow' : 'green')}`}>
-                        {r.checkOutTime ? 'Completed' : (r.isLate ? 'Late' : 'Present')}
-                      </span>
+                      {(() => {
+                        const lateInfo = getAttendanceLateInfo(r, officeTiming)
+                        return (
+                          <span className={`swl-badge-pill ${lateInfo.isLate ? 'yellow' : 'green'}`}>
+                            {lateInfo.isLate
+                              ? (r.checkOutTime ? `Completed (Late${lateInfo.lateText ? ' +' + lateInfo.lateText : ''})` : `Late${lateInfo.lateText ? ' (+' + lateInfo.lateText + ')' : ''}`)
+                              : (r.checkOutTime ? 'Completed' : 'Present')}
+                          </span>
+                        )
+                      })()}
                       <LocationBtn location={loc} />
                     </div>
                   </div>

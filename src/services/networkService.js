@@ -348,3 +348,79 @@ export async function saveOfficeTimingConfig({ startTime, endTime, graceMinutes,
   }
   return payload
 }
+
+/**
+ * Calculate if a check-in time is late based on office timing (startTime + graceMinutes)
+ * @param {Date|string|number|object} checkInTime - JS Date, ISO string, or Firestore Timestamp
+ * @param {object} [officeTiming] - { startTime, graceMinutes }
+ * @returns {{ isLate: boolean, lateMinutes: number, lateText: string }}
+ */
+export function checkIsPunchLate(checkInTime, officeTiming) {
+  if (!checkInTime) return { isLate: false, lateMinutes: 0, lateText: '' }
+
+  let inDate = null
+  if (typeof checkInTime?.toDate === 'function') {
+    inDate = checkInTime.toDate()
+  } else if (checkInTime instanceof Date) {
+    inDate = checkInTime
+  } else if (typeof checkInTime === 'string' || typeof checkInTime === 'number') {
+    inDate = new Date(checkInTime)
+  } else if (checkInTime && typeof checkInTime.seconds === 'number') {
+    inDate = new Date(checkInTime.seconds * 1000)
+  }
+
+  if (!inDate || isNaN(inDate.getTime())) return { isLate: false, lateMinutes: 0, lateText: '' }
+
+  const timing = officeTiming || getLocalOfficeTiming() || DEFAULT_OFFICE_TIMING
+  const startTimeStr = timing?.startTime || DEFAULT_OFFICE_TIMING.startTime || '09:00'
+  const parts = String(startTimeStr).split(':')
+  const startH = parseInt(parts[0], 10)
+  const startM = parseInt(parts[1], 10)
+  const grace = Number(timing?.graceMinutes != null ? timing.graceMinutes : DEFAULT_OFFICE_TIMING.graceMinutes) || 0
+
+  const cutoffTotalMinutes = (isNaN(startH) ? 9 : startH) * 60 + (isNaN(startM) ? 0 : startM) + grace
+  const punchTotalMinutes = inDate.getHours() * 60 + inDate.getMinutes()
+
+  if (punchTotalMinutes > cutoffTotalMinutes) {
+    const lateMinutes = punchTotalMinutes - cutoffTotalMinutes
+    const hours = Math.floor(lateMinutes / 60)
+    const mins = lateMinutes % 60
+    const lateText = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`
+    return { isLate: true, lateMinutes, lateText }
+  }
+
+  return { isLate: false, lateMinutes: 0, lateText: '' }
+}
+
+/**
+ * Evaluates whether an attendance record should be marked as Late.
+ * Checks stored record.isLate / record.lateMinutes, and dynamically falls back to checkInTime vs officeTiming.
+ * @param {object} rec - Attendance record document
+ * @param {object} [officeTiming] - Optional office timing settings
+ * @returns {{ isLate: boolean, lateMinutes: number, lateText: string }}
+ */
+export function getAttendanceLateInfo(rec, officeTiming) {
+  if (!rec) return { isLate: false, lateMinutes: 0, lateText: '' }
+
+  // 1. If explicitly stored as late
+  if (rec.isLate === true || rec.status === 'late') {
+    const mins = Number(rec.lateMinutes) || 0
+    if (mins > 0) {
+      const h = Math.floor(mins / 60)
+      const m = mins % 60
+      return { isLate: true, lateMinutes: mins, lateText: h > 0 ? `${h}h ${m}m` : `${m}m` }
+    }
+    if (rec.checkInTime) {
+      const calc = checkIsPunchLate(rec.checkInTime, officeTiming)
+      return { isLate: true, lateMinutes: calc.lateMinutes || 1, lateText: calc.lateText || 'Late' }
+    }
+    return { isLate: true, lateMinutes: 0, lateText: 'Late' }
+  }
+
+  // 2. Dynamic evaluation from check-in timestamp
+  if (rec.checkInTime) {
+    return checkIsPunchLate(rec.checkInTime, officeTiming)
+  }
+
+  return { isLate: false, lateMinutes: 0, lateText: '' }
+}

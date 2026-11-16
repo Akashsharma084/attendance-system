@@ -137,7 +137,8 @@ export default function NotificationBellMenu() {
               </div>
             ) : (
               notifications.map((item) => {
-                const isIn = item.type === 'in'
+                const isLate = item.type === 'late' || Boolean(item.isLate)
+                const isIn = item.type === 'in' || isLate
                 return (
                   <div
                     key={item.id}
@@ -152,7 +153,7 @@ export default function NotificationBellMenu() {
                       ) : (
                         <span>{item.name?.charAt(0)?.toUpperCase() || 'U'}</span>
                       )}
-                      <span className={`sw-item-pip ${isIn ? 'in' : 'out'}`} />
+                      <span className={`sw-item-pip ${isLate ? 'late' : (isIn ? 'in' : 'out')}`} style={isLate ? { background: '#f59e0b' } : undefined} />
                     </div>
 
                     <div className="sw-bell-item-body">
@@ -161,7 +162,9 @@ export default function NotificationBellMenu() {
                         <span className="sw-bell-item-time">{item.time}</span>
                       </div>
                       <div className="sw-bell-item-msg">
-                        {isIn ? (
+                        {isLate ? (
+                          <span style={{ color: '#d97706', fontWeight: 600 }}>🟡 Checked in (Late)</span>
+                        ) : isIn ? (
                           <span style={{ color: '#10b981' }}>🟢 Arrived &amp; checked in</span>
                         ) : (
                           <span style={{ color: '#f43f5e' }}>🏁 Completed shift &amp; checked out</span>
