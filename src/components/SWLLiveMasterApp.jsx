@@ -2010,10 +2010,11 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
                         size={34}
                       />
                     ) : (
-                      <img
-                        src={DEFAULT_AVATARS.amit}
-                        alt={member.name}
-                        style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }}
+                      <UserAvatar
+                        name={member.name}
+                        photoURL={member.photoURL}
+                        size={34}
+                        fontSize="0.75rem"
                       />
                     )}
                     <div>
@@ -2135,8 +2136,9 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
       setCameraActive(true)
     } catch (err) {
       console.warn('Camera stream warning:', err)
-      // Fallback default avatar snapshot
-      setPhotoUrl(DEFAULT_AVATARS.rahul)
+      if (profile?.photoURL || user?.photoURL) {
+        setPhotoUrl(profile?.photoURL || user?.photoURL)
+      }
     }
   }, [])
 
@@ -2313,7 +2315,9 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
       const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
       setPhotoUrl(dataUrl)
     } else {
-      setPhotoUrl(DEFAULT_AVATARS.rahul)
+      if (profile?.photoURL || user?.photoURL) {
+        setPhotoUrl(profile?.photoURL || user?.photoURL)
+      }
     }
     setCountdown(null)
   }
@@ -2403,9 +2407,13 @@ function LiveCheckInScreen({ onNavigate, officeConfig }) {
         ctx.drawImage(videoRef.current, 0, 0, 400, 400)
         finalPhoto = canvas.toDataURL('image/jpeg', 0.85)
         setPhotoUrl(finalPhoto)
-      } else {
-        finalPhoto = DEFAULT_AVATARS.rahul
+      } else if (profile?.photoURL || user?.photoURL) {
+        finalPhoto = profile?.photoURL || user?.photoURL
         setPhotoUrl(finalPhoto)
+      } else {
+        alert('Live camera selfie is required to punch attendance. Please ensure camera access is enabled.')
+        setSubmitting(false)
+        return
       }
     }
 
@@ -5138,10 +5146,11 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
                         size={34}
                       />
                     ) : (
-                      <img
-                        src={DEFAULT_AVATARS.amit}
-                        alt={punch.name}
-                        style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }}
+                      <UserAvatar
+                        name={punch.name || punch.email}
+                        photoURL={punch.photoURL}
+                        size={34}
+                        fontSize="0.75rem"
                       />
                     )}
                     <div>
