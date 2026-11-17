@@ -49,13 +49,11 @@ html, body {
   height: 100% !important;
   margin: 0 !important;
   padding: 0 !important;
-  overflow: hidden !important;
-  position: fixed !important;
-  inset: 0 !important;
+  overflow-x: hidden !important;
   overscroll-behavior: none !important;
   overscroll-behavior-x: none !important;
   overscroll-behavior-y: none !important;
-  touch-action: none !important;
+  touch-action: pan-y !important;
   -webkit-overflow-scrolling: touch;
   -webkit-text-size-adjust: 100%;
 }
@@ -65,10 +63,8 @@ html, body {
   max-width: 100% !important;
   height: 100% !important;
   min-height: 100dvh !important;
-  overflow: hidden !important;
-  position: fixed !important;
-  inset: 0 !important;
-  touch-action: none !important;
+  overflow-x: hidden !important;
+  position: relative !important;
 }
 
 /* Touch / Mobile phone screen lock: strict edge-to-edge native app feel */
@@ -81,7 +77,7 @@ html, body {
     height: 100dvh !important;
     overflow: hidden !important;
     overscroll-behavior: none !important;
-    touch-action: none !important;
+    touch-action: pan-y !important;
   }
 
   #root {
@@ -91,7 +87,6 @@ html, body {
     height: 100% !important;
     height: 100dvh !important;
     overflow: hidden !important;
-    touch-action: none !important;
   }
 
   /* Prevent iOS Safari auto-zoom on input focus: inputs must be at least 16px */
