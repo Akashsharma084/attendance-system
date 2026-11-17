@@ -163,11 +163,17 @@ export default function NotificationBellMenu() {
                       </div>
                       <div className="sw-bell-item-msg">
                         {isLate ? (
-                          <span style={{ color: '#d97706', fontWeight: 600 }}>🟡 Checked in (Late)</span>
+                          <span style={{ color: '#d97706', fontWeight: 600 }}>
+                            🟡 {item.message || `Check-in ${item.time} (${item.lateMinutes || 0}m Late)`}
+                          </span>
                         ) : isIn ? (
-                          <span style={{ color: '#10b981' }}>🟢 Arrived &amp; checked in</span>
+                          <span style={{ color: '#10b981', fontWeight: 600 }}>
+                            🟢 {item.message || `Check-in ${item.time}`}
+                          </span>
                         ) : (
-                          <span style={{ color: '#f43f5e' }}>🏁 Completed shift &amp; checked out</span>
+                          <span style={{ color: '#f43f5e', fontWeight: 600 }}>
+                            🏁 {item.message || `Check-out ${item.time}`}
+                          </span>
                         )}
                       </div>
                     </div>

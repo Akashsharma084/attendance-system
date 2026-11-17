@@ -161,21 +161,18 @@ export function NotificationProvider({ children }) {
     let title = ''
     let message = ''
 
-    if (isCheckIn && isLate) {
-      const lateSuffix = lateText ? ` (+${lateText})` : (lateMinutes > 0 ? ` (+${lateMinutes}m)` : '')
-      title = isSelf
-        ? '🟡 Late Check-In — Softwind Labs'
-        : `🟡 Staff Late Arrival — Softwind Labs`
-      message = isSelf
-        ? `Your check-in punch has been recorded at ${time}${lateSuffix} as Late Arrival.`
-        : `${name} has arrived and checked in late at ${time}${lateSuffix}.`
+    if (isCheckIn) {
+      if (isLate) {
+        const lateMins = lateMinutes || (lateText ? parseInt(lateText, 10) : 0)
+        title = `${name} Check-in ${time} (${lateMins}m Late)`
+        message = `${name} Check-in ${time} (Late by ${lateMins} min)`
+      } else {
+        title = `${name} Check-in ${time}`
+        message = `${name} Check-in ${time}`
+      }
     } else {
-      title = isSelf
-        ? (isCheckIn ? '🟢 Attendance Recorded — Softwind Labs' : '🏁 Check-Out Recorded — Softwind Labs')
-        : (isCheckIn ? `🟢 Staff Arrival — Softwind Labs` : `🏁 Staff Departure — Softwind Labs`)
-      message = isSelf
-        ? (isCheckIn ? `Your check-in punch has been recorded at ${time}.` : `Your check-out punch has been recorded at ${time}.`)
-        : (isCheckIn ? `${name} has arrived and checked in at ${time}.` : `${name} has departed and checked out at ${time}.`)
+      title = `${name} Check-out ${time}`
+      message = `${name} Check-out ${time}`
     }
 
     // 1. Play synthesized bell chime
@@ -199,7 +196,9 @@ export function NotificationProvider({ children }) {
       photoUrl,
       message,
       isSelf,
-      isLate
+      isLate,
+      lateMinutes,
+      lateText
     })
 
     toastTimeoutRef.current = setTimeout(() => {
@@ -215,7 +214,10 @@ export function NotificationProvider({ children }) {
       time,
       photoUrl: photoUrl || null,
       message,
+      title,
       isLate,
+      lateMinutes,
+      lateText,
       read: false,
       timestamp: Date.now()
     }

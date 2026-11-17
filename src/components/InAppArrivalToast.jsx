@@ -155,16 +155,16 @@ export default function InAppArrivalToast() {
                 style={{
                   fontSize: '0.62rem',
                   fontWeight: 800,
-                  color: isCheckIn ? '#065F46' : '#92400E',
-                  background: isCheckIn ? '#D1FAE5' : '#FEF3C7',
+                  color: isCheckIn ? (activeToast.isLate ? '#92400E' : '#065F46') : '#92400E',
+                  background: isCheckIn ? (activeToast.isLate ? '#FEF3C7' : '#D1FAE5') : '#FEF3C7',
                   padding: '1px 7px',
                   borderRadius: 999,
                   letterSpacing: '0.02em'
                 }}
               >
-                {activeToast.isSelf
-                  ? (isCheckIn ? '🟢 Attendance Recorded' : '🏁 Check-Out Recorded')
-                  : (isCheckIn ? '🟢 Staff Arrived' : '🏁 Staff Departed')}
+                {isCheckIn
+                  ? (activeToast.isLate ? `🟡 Late (${activeToast.lateMinutes || 0}m)` : '🟢 Check-In')
+                  : '🏁 Check-Out'}
               </span>
             </div>
             <span className="sw-toast-time" style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748B' }}>
@@ -175,8 +175,8 @@ export default function InAppArrivalToast() {
           <div
             className="sw-toast-title"
             style={{
-              fontSize: '0.82rem',
-              fontWeight: 700,
+              fontSize: '0.84rem',
+              fontWeight: 800,
               color: '#0F172A',
               lineHeight: 1.35,
               whiteSpace: 'nowrap',
@@ -184,18 +184,14 @@ export default function InAppArrivalToast() {
               textOverflow: 'ellipsis'
             }}
           >
-            {activeToast.isSelf ? (
-              isCheckIn ? 'Your check-in has been successfully recorded.' : 'Your check-out has been successfully recorded.'
-            ) : (
-              <span><strong>{activeToast.name}</strong> {isCheckIn ? 'has arrived and checked in!' : 'has checked out.'}</span>
-            )}
+            {activeToast.message || `${activeToast.name} ${isCheckIn ? 'Check-in' : 'Check-out'} ${activeToast.time}`}
           </div>
 
           <div
             className="sw-toast-sub"
             style={{ fontSize: '0.65rem', color: '#64748B', marginTop: 1 }}
           >
-            Softwind Labs • Tap to view live attendance ›
+            Softwind Labs • Live Attendance
           </div>
         </div>
 

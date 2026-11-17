@@ -10,7 +10,8 @@ import {
   doc,
   setDoc,
   deleteDoc,
-  serverTimestamp
+  serverTimestamp,
+  Timestamp
 } from 'firebase/firestore'
 import { initializeApp, getApps } from 'firebase/app'
 import {
@@ -635,7 +636,7 @@ function LiveArrivalsModal({ onClose, onViewSelfie }) {
                       {n.name}
                     </div>
                     <div style={{ fontSize: '0.68rem', color: '#64748B' }}>
-                      {n.type === 'out' ? 'Checked Out' : 'Checked In'} at {n.time}
+                      {n.message || (n.type === 'out' ? `Check-out ${n.time}` : `Check-in ${n.time}`)}
                     </div>
                   </div>
                 </div>
@@ -815,6 +816,7 @@ export default function SWLLiveMasterApp() {
   const [officeTiming, setOfficeTiming] = useState(() => getLocalOfficeTiming())
   const [showGeofenceModal, setShowGeofenceModal] = useState(false)
   const [showTimingModal, setShowTimingModal] = useState(false)
+  const [adminAttendanceModal, setAdminAttendanceModal] = useState(null)
 
   // Real-time listener for office geofence & timing settings
   useEffect(() => {
@@ -1107,6 +1109,7 @@ export default function SWLLiveMasterApp() {
               onNavigate={handleNavigate}
               onOpenGeofence={() => setShowGeofenceModal(true)}
               onOpenTiming={() => setShowTimingModal(true)}
+              onOpenAttendanceModal={setAdminAttendanceModal}
               onViewSelfie={setSelectedSelfieModal}
               officeTiming={officeTiming}
             />
@@ -1129,6 +1132,7 @@ export default function SWLLiveMasterApp() {
               employee={selectedEmp}
               origin={empDetailOrigin}
               onNavigate={handleNavigate}
+              onOpenAttendanceModal={setAdminAttendanceModal}
               onViewSelfie={setSelectedSelfieModal}
               officeTiming={officeTiming}
             />
@@ -1144,6 +1148,7 @@ export default function SWLLiveMasterApp() {
             <LiveReportsScreen
               onNavigate={handleNavigate}
               officeTiming={officeTiming}
+              onOpenAttendanceModal={setAdminAttendanceModal}
               onViewSelfie={setSelectedSelfieModal}
               onSelectEmployee={(emp) => {
                 setSelectedEmp(emp)
@@ -1182,6 +1187,17 @@ export default function SWLLiveMasterApp() {
           officeTiming={officeTiming}
           onClose={() => setShowTimingModal(false)}
           adminName={profile?.name || user?.displayName || 'Admin'}
+        />
+      )}
+
+      {/* Admin Manual Attendance (Add / Edit / Delete) Modal */}
+      {adminAttendanceModal && (
+        <LiveAdminAttendanceModal
+          config={adminAttendanceModal}
+          officeTiming={officeTiming}
+          officeConfig={officeConfig}
+          adminName={profile?.name || user?.displayName || 'Admin'}
+          onClose={() => setAdminAttendanceModal(null)}
         />
       )}
 
@@ -5465,7 +5481,7 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
 /* =========================================================================
    7. LIVE ADMIN DASHBOARD SCREEN (SCREEN 9)
    ========================================================================= */
-function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, onViewSelfie, officeTiming }) {
+function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, onOpenAttendanceModal, onViewSelfie, officeTiming }) {
   const { user, profile } = useAuth()
   const { pushPermission, requestPushPermission } = useNotifications()
   const todayKey = todayDateKey()
@@ -5690,6 +5706,12 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
         {/* Quick Actions */}
         <div style={{ margin: '12px 16px 4px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#0F172A' }}>Quick Actions</div>
         <div className="swl-quick-actions-grid">
+          <div className="swl-action-btn-card" onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'add' })} title="Manual punch entry if employee forgot">
+            <div style={{ fontSize: '1.25rem', lineHeight: 1 }}>⏱️</div>
+            <span>Manual Punch</span>
+            <span style={{ fontSize: '0.58rem', color: '#1E5AE6', fontWeight: 700 }}>+ Add / Fix Punch</span>
+          </div>
+
           <div className="swl-action-btn-card" onClick={() => onNavigate('adm_employees')}>
             <Icons.Employees active={false} />
             <span>Manage Employees</span>
@@ -5725,12 +5747,30 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
           <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0F172A' }}>
             📍 Today's Punches ({todayPunches.length})
           </div>
-          <span
-            style={{ fontSize: '0.66rem', color: '#1E5AE6', fontWeight: 700, cursor: 'pointer' }}
-            onClick={() => onNavigate('adm_reports')}
-          >
-            All Reports &gt;
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'add' })}
+              style={{
+                border: '1px solid #1E5AE6',
+                background: '#EEF4FF',
+                color: '#1E5AE6',
+                fontSize: '0.68rem',
+                fontWeight: 800,
+                padding: '3px 8px',
+                borderRadius: 6,
+                cursor: 'pointer'
+              }}
+            >
+              + Add Punch
+            </button>
+            <span
+              style={{ fontSize: '0.66rem', color: '#1E5AE6', fontWeight: 700, cursor: 'pointer' }}
+              onClick={() => onNavigate('adm_reports')}
+            >
+              All Reports &gt;
+            </span>
+          </div>
         </div>
 
         <div style={{ margin: '0 16px', display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 16 }}>
@@ -5788,7 +5828,109 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
                         </span>
                       )
                     })()}
-                    <LocationBtn location={loc} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <LocationBtn location={loc} />
+                        <button
+                          type="button"
+                          onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'edit', record: r })}
+                          title="Edit Attendance"
+                          style={{
+                            border: '1px solid #CBD5E1',
+                            background: '#F8FAFC',
+                            color: '#1E5AE6',
+                            borderRadius: 5,
+                            padding: '2px 6px',
+                            fontSize: '0.64rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2
+                          }}
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const ok = window.confirm(`Delete attendance record for ${r.name || 'Employee'} on ${r.date}?`)
+                            if (ok && isFirebaseConfigured && db) {
+                              try {
+                                await deleteDoc(doc(db, 'attendance', r.id))
+                              } catch (e) {
+                                alert('Delete error: ' + e.message)
+                              }
+                            }
+                          }}
+                          title="Delete Record"
+                          style={{
+                            border: '1px solid #FECACA',
+                            background: '#FEF2F2',
+                            color: '#DC2626',
+                            borderRadius: 5,
+                            padding: '2px 6px',
+                            fontSize: '0.64rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'edit', record: punch })}
+                        title="Edit Check-In / Check-Out"
+                        style={{
+                          border: '1px solid #CBD5E1',
+                          background: '#F8FAFC',
+                          color: '#1E5AE6',
+                          borderRadius: 5,
+                          padding: '2px 6px',
+                          fontSize: '0.64rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 2
+                        }}
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const ok = window.confirm(`Are you sure you want to delete today's attendance record for ${punch.name || 'Employee'}?`)
+                          if (ok && isFirebaseConfigured && db) {
+                            try {
+                              await deleteDoc(doc(db, 'attendance', punch.id))
+                            } catch (e) {
+                              alert('Delete error: ' + e.message)
+                            }
+                          }
+                        }}
+                        title="Delete Attendance Record"
+                        style={{
+                          border: '1px solid #FECACA',
+                          background: '#FEF2F2',
+                          color: '#DC2626',
+                          borderRadius: 5,
+                          padding: '2px 6px',
+                          fontSize: '0.64rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 2
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
                 </div>
               )
@@ -6235,7 +6377,7 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee, officeTiming }
 /* =========================================================================
    9. LIVE ADMIN EMPLOYEE DETAILS (SCREEN 11) - PROFILE, ACCESS CONTROL & RECORDS
    ========================================================================= */
-function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin, officeTiming }) {
+function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin, officeTiming, onOpenAttendanceModal }) {
   const { resetEmployeeDeviceBinding } = useAuth()
   const [deviceResetting, setDeviceResetting] = useState(false)
   const [empPhotoUploading, setEmpPhotoUploading] = useState(false)
@@ -6604,6 +6746,41 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
           </button>
         </div>
 
+        {tab === 'attendance' && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 16px 8px 16px' }}>
+            <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#334155' }}>
+              Attendance Records ({records.length})
+            </span>
+            <button
+              type="button"
+              onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({
+                mode: 'add',
+                preselectedUser: {
+                  uid: userDoc?.uid || employee?.uid,
+                  name: name || employee?.name,
+                  email: userDoc?.email || employee?.email,
+                  photoURL: userDoc?.photoURL || employee?.photoURL
+                }
+              })}
+              style={{
+                border: '1px solid #1E5AE6',
+                background: '#EEF4FF',
+                color: '#1E5AE6',
+                fontSize: '0.68rem',
+                fontWeight: 800,
+                padding: '3px 9px',
+                borderRadius: 6,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+            >
+              + Add Manual Punch
+            </button>
+          </div>
+        )}
+
         {/* Records */}
         <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {records.length === 0 ? (
@@ -6616,7 +6793,7 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
               const outUrl = r.checkOutSelfieUrl || r.checkOutPhotoUrl
               const loc = r.checkInLocation || r.location
               return (
-                <div key={i} style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <div key={r.id || i} style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <SelfiePairThumbs
                       inUrl={inUrl}
@@ -6648,7 +6825,109 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
                         </span>
                       )
                     })()}
-                    <LocationBtn location={loc} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <LocationBtn location={loc} />
+                        <button
+                          type="button"
+                          onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'edit', record: r })}
+                          title="Edit Attendance"
+                          style={{
+                            border: '1px solid #CBD5E1',
+                            background: '#F8FAFC',
+                            color: '#1E5AE6',
+                            borderRadius: 5,
+                            padding: '2px 6px',
+                            fontSize: '0.64rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2
+                          }}
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const ok = window.confirm(`Delete attendance record for ${r.name || 'Employee'} on ${r.date}?`)
+                            if (ok && isFirebaseConfigured && db) {
+                              try {
+                                await deleteDoc(doc(db, 'attendance', r.id))
+                              } catch (e) {
+                                alert('Delete error: ' + e.message)
+                              }
+                            }
+                          }}
+                          title="Delete Record"
+                          style={{
+                            border: '1px solid #FECACA',
+                            background: '#FEF2F2',
+                            color: '#DC2626',
+                            borderRadius: 5,
+                            padding: '2px 6px',
+                            fontSize: '0.64rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'edit', record: r })}
+                        title="Edit Attendance Record"
+                        style={{
+                          border: '1px solid #CBD5E1',
+                          background: '#F8FAFC',
+                          color: '#1E5AE6',
+                          borderRadius: 5,
+                          padding: '2px 6px',
+                          fontSize: '0.64rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 2
+                        }}
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const ok = window.confirm(`Delete attendance record for ${name} on ${r.date}?`)
+                          if (ok && isFirebaseConfigured && db) {
+                            try {
+                              await deleteDoc(doc(db, 'attendance', r.id))
+                            } catch (e) {
+                              alert('Delete error: ' + e.message)
+                            }
+                          }
+                        }}
+                        title="Delete Attendance Record"
+                        style={{
+                          border: '1px solid #FECACA',
+                          background: '#FEF2F2',
+                          color: '#DC2626',
+                          borderRadius: 5,
+                          padding: '2px 6px',
+                          fontSize: '0.64rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 2
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
                 </div>
               )
@@ -7220,7 +7499,7 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
 /* =========================================================================
    11. LIVE ADMIN REPORTS & CSV EXPORT SCREEN (SCREEN 13)
    ========================================================================= */
-function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeTiming }) {
+function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeTiming, onOpenAttendanceModal }) {
   const [reportTab, setReportTab] = useState('overview') // 'overview' | 'employees' | 'logs'
   const [timeframe, setTimeframe] = useState('Monthly') // 'Daily' | 'Weekly' | 'Monthly' | 'Yearly'
   const [search, setSearch] = useState('')
@@ -7514,6 +7793,26 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
         {/* SUBTAB 3: DETAILED PUNCH LOGS */}
         {reportTab === 'logs' && (
           <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#334155' }}>Punch Logs</span>
+              <button
+                type="button"
+                onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'add' })}
+                style={{
+                  border: '1px solid #1E5AE6',
+                  background: '#EEF4FF',
+                  color: '#1E5AE6',
+                  fontSize: '0.68rem',
+                  fontWeight: 800,
+                  padding: '3px 9px',
+                  borderRadius: 6,
+                  cursor: 'pointer'
+                }}
+              >
+                + Add Attendance
+              </button>
+            </div>
+
             {/* Search Filter */}
             <div className="swl-input-box" style={{ padding: '6px 12px' }}>
               <Icons.Search />
@@ -7574,7 +7873,58 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
                           </span>
                         )
                       })()}
-                      <LocationBtn location={loc} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <LocationBtn location={loc} />
+                        <button
+                          type="button"
+                          onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'edit', record: r })}
+                          title="Edit Attendance"
+                          style={{
+                            border: '1px solid #CBD5E1',
+                            background: '#F8FAFC',
+                            color: '#1E5AE6',
+                            borderRadius: 5,
+                            padding: '2px 6px',
+                            fontSize: '0.64rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2
+                          }}
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const ok = window.confirm(`Delete attendance record for ${r.name || 'Employee'} on ${r.date}?`)
+                            if (ok && isFirebaseConfigured && db) {
+                              try {
+                                await deleteDoc(doc(db, 'attendance', r.id))
+                              } catch (e) {
+                                alert('Delete error: ' + e.message)
+                              }
+                            }
+                          }}
+                          title="Delete Record"
+                          style={{
+                            border: '1px solid #FECACA',
+                            background: '#FEF2F2',
+                            color: '#DC2626',
+                            borderRadius: 5,
+                            padding: '2px 6px',
+                            fontSize: '0.64rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )
@@ -9229,6 +9579,592 @@ function LiveOfficeTimingModal({ officeTiming, onClose, adminName }) {
               {savedSuccess ? '✓ Timings Saved!' : (saving ? 'Saving…' : 'Save Office Timings')}
             </button>
           </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+/* =========================================================================
+   15. LIVE ADMIN ATTENDANCE MANAGEMENT (ADD / EDIT / DELETE) MODAL
+   ========================================================================= */
+function timeStringToTimestamp(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return null
+  const parts = String(timeStr).split(':')
+  const h = parseInt(parts[0], 10)
+  const m = parseInt(parts[1], 10)
+  const dateParts = String(dateStr).split('-')
+  const year = parseInt(dateParts[0], 10)
+  const month = parseInt(dateParts[1], 10)
+  const day = parseInt(dateParts[2], 10)
+  const d = new Date(year, month - 1, day, isNaN(h) ? 9 : h, isNaN(m) ? 0 : m, 0)
+  return Timestamp.fromDate(d)
+}
+
+function timestampToTimeString(ts) {
+  if (!ts) return ''
+  let d = null
+  if (typeof ts?.toDate === 'function') {
+    d = ts.toDate()
+  } else if (ts instanceof Date) {
+    d = ts
+  } else if (typeof ts === 'string' || typeof ts === 'number') {
+    d = new Date(ts)
+  } else if (ts?.seconds) {
+    d = new Date(ts.seconds * 1000)
+  }
+  if (!d || isNaN(d.getTime())) return ''
+  const hours = String(d.getHours()).padStart(2, '0')
+  const mins = String(d.getMinutes()).padStart(2, '0')
+  return `${hours}:${mins}`
+}
+
+function LiveAdminAttendanceModal({ config, officeTiming, officeConfig, adminName, onClose }) {
+  const isEdit = config?.mode === 'edit'
+  const record = config?.record
+  const preselectedUser = config?.preselectedUser
+
+  const [usersList, setUsersList] = useState([])
+  const [selectedUid, setSelectedUid] = useState(() => {
+    if (isEdit) return record?.uid || ''
+    return preselectedUser?.uid || ''
+  })
+  const [date, setDate] = useState(() => {
+    if (isEdit) return record?.date || todayDateKey()
+    return todayDateKey()
+  })
+  const [checkInTimeStr, setCheckInTimeStr] = useState(() => {
+    if (isEdit && record?.checkInTime) {
+      return timestampToTimeString(record.checkInTime)
+    }
+    const now = new Date()
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  })
+  const [checkOutTimeStr, setCheckOutTimeStr] = useState(() => {
+    if (isEdit && record?.checkOutTime) {
+      return timestampToTimeString(record.checkOutTime)
+    }
+    return ''
+  })
+  const [statusOverride, setStatusOverride] = useState(() => {
+    if (isEdit && record?.status) return record.status
+    return 'auto'
+  })
+  const [note, setNote] = useState(() => {
+    if (isEdit && record?.adminNote) return record.adminNote
+    return ''
+  })
+  const [saving, setSaving] = useState(false)
+  const [savedNotice, setSavedNotice] = useState('')
+
+  // Stream registered users list
+  useEffect(() => {
+    if (!isFirebaseConfigured || !db) return
+    const unsub = onSnapshot(collection(db, 'users'), (snap) => {
+      const list = snap.docs.map(d => ({ uid: d.id, ...d.data() }))
+      const emps = list.filter(u => !isUserAdmin(u))
+      setUsersList(emps)
+      if (!selectedUid && emps.length > 0 && !isEdit) {
+        setSelectedUid(emps[0].uid)
+      }
+    })
+    return () => unsub()
+  }, [isEdit, selectedUid])
+
+  const selectedUser = useMemo(() => {
+    if (isEdit) {
+      return {
+        uid: record?.uid,
+        name: record?.name,
+        email: record?.email,
+        photoURL: record?.photoURL || record?.checkInSelfieUrl
+      }
+    }
+    return usersList.find(u => u.uid === selectedUid) || preselectedUser || null
+  }, [isEdit, record, usersList, selectedUid, preselectedUser])
+
+  // Live evaluation of check-in time against Admin's Office Timing
+  const punchLatePreview = useMemo(() => {
+    if (!date || !checkInTimeStr) return { isLate: false, lateMinutes: 0 }
+    const parts = checkInTimeStr.split(':')
+    const h = parseInt(parts[0], 10)
+    const m = parseInt(parts[1], 10)
+    const dateParts = date.split('-')
+    const yr = parseInt(dateParts[0], 10)
+    const mo = parseInt(dateParts[1], 10)
+    const da = parseInt(dateParts[2], 10)
+    const tempDate = new Date(yr, mo - 1, da, isNaN(h) ? 9 : h, isNaN(m) ? 0 : m, 0)
+    return checkIsPunchLate(tempDate, officeTiming)
+  }, [date, checkInTimeStr, officeTiming])
+
+  async function handleSave(e) {
+    e.preventDefault()
+    if (!selectedUid && !isEdit) {
+      alert('Please select an employee.')
+      return
+    }
+    if (!date) {
+      alert('Please select date.')
+      return
+    }
+    if (!checkInTimeStr) {
+      alert('Please enter Check-In time.')
+      return
+    }
+
+    setSaving(true)
+    try {
+      const inTimestamp = timeStringToTimestamp(date, checkInTimeStr)
+      const outTimestamp = checkOutTimeStr ? timeStringToTimestamp(date, checkOutTimeStr) : null
+      const month = date.slice(0, 7)
+
+      const isLate = punchLatePreview.isLate
+      const lateMinutes = punchLatePreview.lateMinutes
+
+      let finalStatus = 'present'
+      if (statusOverride !== 'auto') {
+        finalStatus = statusOverride
+      } else {
+        if (outTimestamp) {
+          finalStatus = isLate ? 'late' : 'completed'
+        } else {
+          finalStatus = isLate ? 'late' : 'present'
+        }
+      }
+
+      const defaultLoc = {
+        latitude: officeConfig?.latitude ? Number(officeConfig.latitude) : 27.146053,
+        longitude: officeConfig?.longitude ? Number(officeConfig.longitude) : 78.041087,
+        accuracy: 5.0
+      }
+
+      const userPhoto = selectedUser?.photoURL || record?.checkInSelfieUrl || record?.selfieUrl || null
+
+      if (isEdit && record?.id) {
+        const docRef = doc(db, 'attendance', record.id)
+        const updatePayload = {
+          date,
+          month,
+          checkInTime: inTimestamp,
+          checkOutTime: outTimestamp,
+          isLate,
+          lateMinutes,
+          status: finalStatus,
+          adminNote: note ? note.trim() : null,
+          manualAdjustment: true,
+          adjustedBy: adminName,
+          updatedAt: serverTimestamp()
+        }
+        if (outTimestamp) {
+          updatePayload.checkOutPhotoUrl = record.checkOutPhotoUrl || userPhoto
+          updatePayload.checkOutSelfieUrl = record.checkOutSelfieUrl || userPhoto
+          updatePayload.checkOutLocation = record.checkOutLocation || defaultLoc
+        } else {
+          updatePayload.checkOutPhotoUrl = null
+          updatePayload.checkOutSelfieUrl = null
+          updatePayload.checkOutLocation = null
+        }
+        await updateDoc(docRef, updatePayload)
+        setSavedNotice('✓ Attendance updated successfully!')
+      } else {
+        let boundDevice = 'Manual Entry (Admin)'
+        let boundDeviceId = 'manual-' + selectedUid.slice(0, 8)
+        if (selectedUser?.boundDeviceName || selectedUser?.boundPhoneModel) {
+          boundDevice = selectedUser.boundDeviceName || selectedUser.boundPhoneModel
+        }
+        if (selectedUser?.boundDeviceId) {
+          boundDeviceId = selectedUser.boundDeviceId
+        }
+
+        await addDoc(collection(db, 'attendance'), {
+          uid: selectedUid,
+          name: selectedUser?.name || 'Employee',
+          email: selectedUser?.email || '',
+          date,
+          month,
+          checkInTime: inTimestamp,
+          checkInPhotoUrl: userPhoto,
+          checkInSelfieUrl: userPhoto,
+          selfieUrl: userPhoto,
+          checkInLocation: defaultLoc,
+          deviceId: boundDeviceId,
+          deviceName: boundDevice,
+          checkOutTime: outTimestamp,
+          checkOutPhotoUrl: outTimestamp ? userPhoto : null,
+          checkOutSelfieUrl: outTimestamp ? userPhoto : null,
+          checkOutLocation: outTimestamp ? defaultLoc : null,
+          isLate,
+          lateMinutes,
+          status: finalStatus,
+          manualEntry: true,
+          addedBy: adminName,
+          adminNote: note ? note.trim() : null,
+          createdAt: inTimestamp
+        })
+        setSavedNotice('✓ Attendance record created successfully!')
+      }
+
+      setTimeout(() => {
+        onClose()
+      }, 800)
+    } catch (err) {
+      alert('Error saving record: ' + (err.message || 'Operation failed'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!isEdit || !record?.id) return
+    const confirmed = window.confirm(
+      `Are you sure you want to delete this attendance record for ${selectedUser?.name || record?.name || 'Employee'} on ${date}?\n\nThis action cannot be undone.`
+    )
+    if (!confirmed) return
+
+    setSaving(true)
+    try {
+      await deleteDoc(doc(db, 'attendance', record.id))
+      setSavedNotice('✓ Attendance record deleted!')
+      setTimeout(() => {
+        onClose()
+      }, 700)
+    } catch (err) {
+      alert('Error deleting record: ' + (err.message || 'Permission denied'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(15, 23, 42, 0.75)',
+        backdropFilter: 'blur(4px)',
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: '#FFFFFF',
+          borderRadius: 20,
+          padding: '20px 22px',
+          maxWidth: 400,
+          width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          <div>
+            <h3 style={{ margin: '0 0 3px 0', fontSize: '1rem', color: '#0F172A', fontWeight: 800 }}>
+              {isEdit ? '✏️ Edit Attendance Punch' : '➕ Manual Attendance Punch'}
+            </h3>
+            <p style={{ margin: 0, fontSize: '0.72rem', color: '#64748B' }}>
+              {isEdit
+                ? 'Update check-in / check-out times, status, or remove accidental punch.'
+                : 'Add missing attendance punch for employee who forgot to clock in.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              border: 'none',
+              background: '#F1F5F9',
+              color: '#64748B',
+              borderRadius: '50%',
+              width: 28,
+              height: 28,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 800
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {savedNotice && (
+          <div style={{ background: '#ECFDF5', color: '#065F46', padding: '8px 12px', borderRadius: 8, fontSize: '0.75rem', fontWeight: 700, marginBottom: 12, textAlign: 'center' }}>
+            {savedNotice}
+          </div>
+        )}
+
+        <form onSubmit={handleSave}>
+          {/* Employee Selection */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 4 }}>
+              Employee
+            </label>
+            {isEdit ? (
+              <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <UserAvatar name={record?.name || 'Employee'} photoURL={selectedUser?.photoURL} size={32} />
+                <div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0F172A' }}>
+                    {record?.name || 'Employee'}
+                  </div>
+                  <div style={{ fontSize: '0.65rem', color: '#64748B' }}>
+                    {record?.email || selectedUser?.email}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <select
+                required
+                value={selectedUid}
+                onChange={(e) => setSelectedUid(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  border: '1.5px solid #CBD5E1',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  boxSizing: 'border-box',
+                  background: '#F8FAFC',
+                  outline: 'none'
+                }}
+              >
+                {usersList.length === 0 && <option value="">Loading employees...</option>}
+                {usersList.map((u) => (
+                  <option key={u.uid} value={u.uid}>
+                    {u.name} ({u.email})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Date Picker */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 4 }}>
+              Date
+            </label>
+            <input
+              type="date"
+              required
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                borderRadius: 8,
+                border: '1.5px solid #CBD5E1',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                boxSizing: 'border-box',
+                background: '#F8FAFC'
+              }}
+            />
+          </div>
+
+          {/* Check-In Time & Late Preview */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155' }}>
+                Check-In Time
+              </label>
+              <span
+                style={{
+                  fontSize: '0.65rem',
+                  fontWeight: 800,
+                  padding: '1px 6px',
+                  borderRadius: 4,
+                  background: punchLatePreview.isLate ? '#FEF3C7' : '#ECFDF5',
+                  color: punchLatePreview.isLate ? '#B45309' : '#047857'
+                }}
+              >
+                {punchLatePreview.isLate ? `🟡 Late (+${punchLatePreview.lateMinutes}m)` : '🟢 On-Time'}
+              </span>
+            </div>
+            <input
+              type="time"
+              required
+              value={checkInTimeStr}
+              onChange={(e) => setCheckInTimeStr(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                borderRadius: 8,
+                border: '1.5px solid #CBD5E1',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                boxSizing: 'border-box',
+                background: '#F8FAFC'
+              }}
+            />
+            <span style={{ fontSize: '0.64rem', color: '#64748B', marginTop: 3, display: 'block' }}>
+              Shift Cutoff: <strong>{formatTime24to12(officeTiming?.startTime || '09:00')}</strong> (+{officeTiming?.graceMinutes != null ? officeTiming.graceMinutes : 30}m grace)
+            </span>
+          </div>
+
+          {/* Check-Out Time */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155' }}>
+                Check-Out Time (Optional)
+              </label>
+              {checkOutTimeStr && (
+                <button
+                  type="button"
+                  onClick={() => setCheckOutTimeStr('')}
+                  style={{
+                    border: 'none',
+                    background: '#FEF2F2',
+                    color: '#DC2626',
+                    fontSize: '0.62rem',
+                    fontWeight: 700,
+                    padding: '2px 6px',
+                    borderRadius: 4,
+                    cursor: 'pointer'
+                  }}
+                  title="Clear departure to keep shift active"
+                >
+                  ✕ Clear Check-Out
+                </button>
+              )}
+            </div>
+            <input
+              type="time"
+              value={checkOutTimeStr}
+              onChange={(e) => setCheckOutTimeStr(e.target.value)}
+              placeholder="--:--"
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                borderRadius: 8,
+                border: '1.5px solid #CBD5E1',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                boxSizing: 'border-box',
+                background: '#F8FAFC'
+              }}
+            />
+            <span style={{ fontSize: '0.64rem', color: '#64748B', marginTop: 3, display: 'block' }}>
+              {checkOutTimeStr
+                ? `Punch will be recorded as completed at ${formatTime24to12(checkOutTimeStr)}.`
+                : 'Leave blank if employee is currently working (Active Shift).'}
+            </span>
+          </div>
+
+          {/* Status Override */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 4 }}>
+              Status
+            </label>
+            <select
+              value={statusOverride}
+              onChange={(e) => setStatusOverride(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                borderRadius: 8,
+                border: '1.5px solid #CBD5E1',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                boxSizing: 'border-box',
+                background: '#F8FAFC'
+              }}
+            >
+              <option value="auto">Auto (Calculate based on office timings)</option>
+              <option value="present">Present (On-Time)</option>
+              <option value="late">Late Arrival</option>
+              <option value="completed">Completed Shift</option>
+            </select>
+          </div>
+
+          {/* Admin Note */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 4 }}>
+              Admin Adjustment Note (Optional)
+            </label>
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="e.g. Employee forgot to checkout / Commute delay"
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                borderRadius: 8,
+                border: '1.5px solid #CBD5E1',
+                fontSize: '0.78rem',
+                boxSizing: 'border-box',
+                background: '#F8FAFC'
+              }}
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: isEdit ? 10 : 0 }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                flex: 1,
+                padding: '9px',
+                background: '#F1F5F9',
+                color: '#475569',
+                border: 'none',
+                borderRadius: 10,
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              style={{
+                flex: 1.4,
+                padding: '9px',
+                background: savedNotice ? '#10B981' : '#1E5AE6',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: 10,
+                fontWeight: 800,
+                cursor: saving ? 'wait' : 'pointer'
+              }}
+            >
+              {savedNotice ? '✓ Saved!' : (saving ? 'Saving…' : (isEdit ? '✓ Update Punch' : '+ Save Punch'))}
+            </button>
+          </div>
+
+          {/* Danger Zone: Delete Punch in Edit Mode */}
+          {isEdit && (
+            <div style={{ paddingTop: 10, borderTop: '1px solid #F1F5F9' }}>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={handleDelete}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  background: '#FEF2F2',
+                  color: '#DC2626',
+                  border: '1px solid #FECACA',
+                  borderRadius: 10,
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                🗑️ Delete This Attendance Record
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>
