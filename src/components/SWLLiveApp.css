@@ -1085,10 +1085,11 @@
   justify-content: center !important;
   gap: 2px !important;
   cursor: pointer !important;
-  padding: 4px 6px !important;
-  border-radius: 16px !important;
+  padding: 4px 2px !important;
+  border-radius: 14px !important;
   flex: 1 !important;
-  max-width: 80px !important;
+  min-width: 0 !important;
+  max-width: 76px !important;
   text-align: center !important;
   user-select: none !important;
   -webkit-tap-highlight-color: transparent !important;
@@ -1100,11 +1101,11 @@
 }
 
 .swl-nav-item svg {
-  width: 22px !important;
-  height: 22px !important;
-  padding: 4px 18px !important;
+  width: 21px !important;
+  height: 21px !important;
+  padding: 4px 10px !important;
   box-sizing: content-box !important;
-  border-radius: 16px !important;
+  border-radius: 14px !important;
   transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease, transform 0.15s ease !important;
   color: #64748B !important;
 }
@@ -1115,11 +1116,14 @@
 }
 
 .swl-nav-item span {
-  font-size: 11px !important;
+  font-size: clamp(9.5px, 2.5vw, 11px) !important;
   font-weight: 600 !important;
   color: #64748B !important;
-  line-height: 1.2 !important;
+  line-height: 1.15 !important;
   white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  overflow: hidden !important;
+  max-width: 100% !important;
   transition: color 0.2s ease, font-weight 0.2s ease !important;
 }
 
@@ -1254,4 +1258,154 @@
 /* Tactile Active Feedback Across Interactive Elements */
 button:active {
   transform: scale(0.97);
+}
+
+/* =========================================================================
+   REAL MULTI-THEME ENGINE (Ocean Blue, Electric Violet, Material You, Emerald, Midnight Dark)
+   ========================================================================= */
+
+/* Theme 1: Ocean Blue (Default) */
+.swl-live-chassis-wrap.theme-ocean,
+[data-theme="theme-ocean"] {
+  --swl-theme-primary: #1E5AE6;
+  --swl-theme-gradient: linear-gradient(135deg, #1E5AE6 0%, #1D4ED8 100%);
+  --swl-theme-bg: #F0F4F8;
+  --swl-theme-card: #FFFFFF;
+  --swl-theme-text-primary: #0F172A;
+  --swl-theme-text-secondary: #64748B;
+  --swl-theme-border: rgba(15, 23, 42, 0.06);
+  --swl-theme-pill-bg: #DBEAFE;
+  --swl-theme-pill-color: #1E40AF;
+}
+
+/* Theme 2: Electric Indigo & Violet */
+.swl-live-chassis-wrap.theme-indigo,
+[data-theme="theme-indigo"] {
+  --swl-theme-primary: #7C3AED;
+  --swl-theme-gradient: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%);
+  --swl-theme-bg: #F5F3FF;
+  --swl-theme-card: #FFFFFF;
+  --swl-theme-text-primary: #1E1B4B;
+  --swl-theme-text-secondary: #6B7280;
+  --swl-theme-border: rgba(124, 58, 237, 0.12);
+  --swl-theme-pill-bg: #EDE9FE;
+  --swl-theme-pill-color: #6D28D9;
+}
+
+/* Theme 3: Material You Vibrant (Coral Rose) */
+.swl-live-chassis-wrap.theme-material-you,
+[data-theme="theme-material-you"] {
+  --swl-theme-primary: #E11D48;
+  --swl-theme-gradient: linear-gradient(135deg, #F43F5E 0%, #BE123C 100%);
+  --swl-theme-bg: #FFF1F2;
+  --swl-theme-card: #FFFFFF;
+  --swl-theme-text-primary: #1C1917;
+  --swl-theme-text-secondary: #57534E;
+  --swl-theme-border: rgba(225, 29, 72, 0.12);
+  --swl-theme-pill-bg: #FFE4E6;
+  --swl-theme-pill-color: #BE123C;
+}
+
+/* Theme 4: Emerald Forest & Teal */
+.swl-live-chassis-wrap.theme-emerald,
+[data-theme="theme-emerald"] {
+  --swl-theme-primary: #059669;
+  --swl-theme-gradient: linear-gradient(135deg, #059669 0%, #0D9488 100%);
+  --swl-theme-bg: #F0FDF4;
+  --swl-theme-card: #FFFFFF;
+  --swl-theme-text-primary: #064E3B;
+  --swl-theme-text-secondary: #475569;
+  --swl-theme-border: rgba(5, 150, 105, 0.12);
+  --swl-theme-pill-bg: #D1FAE5;
+  --swl-theme-pill-color: #065F46;
+}
+
+/* Theme 5: Midnight AMOLED Dark Mode */
+.swl-live-chassis-wrap.theme-midnight,
+[data-theme="theme-midnight"] {
+  --swl-theme-primary: #38BDF8;
+  --swl-theme-gradient: linear-gradient(135deg, #0284C7 0%, #2563EB 100%);
+  --swl-theme-bg: #0B0F19;
+  --swl-theme-card: #161F30;
+  --swl-theme-text-primary: #F8FAFC;
+  --swl-theme-text-secondary: #94A3B8;
+  --swl-theme-border: rgba(255, 255, 255, 0.08);
+  --swl-theme-pill-bg: rgba(56, 189, 248, 0.18);
+  --swl-theme-pill-color: #38BDF8;
+}
+
+/* Apply CSS Variables Across Chassis & Components */
+.swl-live-chassis-wrap,
+.swl-phone-viewport {
+  background: var(--swl-theme-bg, #F0F4F8) !important;
+  transition: background 0.25s ease;
+}
+
+.swl-status-hero-card,
+.swl-summary-card,
+.swl-punch-card,
+.swl-location-card,
+.swl-checklist,
+.swl-admin-stat-card,
+.swl-punch-feed-card,
+.swl-quick-action-tile {
+  background: var(--swl-theme-card, #FFFFFF) !important;
+  border-color: var(--swl-theme-border, rgba(15, 23, 42, 0.06)) !important;
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+
+.swl-screen-top-nav,
+.swl-mobile-nav {
+  background: var(--swl-theme-card, #FFFFFF) !important;
+  border-color: var(--swl-theme-border, rgba(15, 23, 42, 0.06)) !important;
+  transition: background 0.25s ease;
+}
+
+.swl-nav-item.active svg {
+  background-color: var(--swl-theme-pill-bg, #DBEAFE) !important;
+  color: var(--swl-theme-pill-color, #1E40AF) !important;
+}
+
+.swl-nav-item.active span {
+  color: var(--swl-theme-pill-color, #1E40AF) !important;
+}
+
+.swl-btn-login,
+.sw-submit-btn,
+.btn-primary {
+  background: var(--swl-theme-gradient, linear-gradient(135deg, #1E5AE6 0%, #1D4ED8 100%)) !important;
+}
+
+/* Dark Mode Typography Adjustments */
+.swl-live-chassis-wrap.theme-midnight .swl-user-info-name,
+.swl-live-chassis-wrap.theme-midnight .swl-top-nav-title,
+.swl-live-chassis-wrap.theme-midnight .swl-hero-status-text,
+.swl-live-chassis-wrap.theme-midnight .swl-summary-title,
+.swl-live-chassis-wrap.theme-midnight .swl-punch-title,
+.swl-live-chassis-wrap.theme-midnight .swl-emp-name,
+.swl-live-chassis-wrap.theme-midnight .swl-stat-value,
+.swl-live-chassis-wrap.theme-midnight h1,
+.swl-live-chassis-wrap.theme-midnight h2,
+.swl-live-chassis-wrap.theme-midnight h3,
+.swl-live-chassis-wrap.theme-midnight strong {
+  color: #F8FAFC !important;
+}
+
+.swl-live-chassis-wrap.theme-midnight .swl-user-info-greeting,
+.swl-live-chassis-wrap.theme-midnight .swl-user-info-role,
+.swl-live-chassis-wrap.theme-midnight .swl-hero-hours,
+.swl-live-chassis-wrap.theme-midnight .swl-punch-sub,
+.swl-live-chassis-wrap.theme-midnight .swl-stat-label,
+.swl-live-chassis-wrap.theme-midnight p,
+.swl-live-chassis-wrap.theme-midnight span:not(.swl-badge-pill):not([style*="color"]) {
+  color: #94A3B8;
+}
+
+.swl-live-chassis-wrap.theme-midnight .swl-input-box {
+  background: #182234 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.swl-live-chassis-wrap.theme-midnight .swl-input-box input {
+  color: #F8FAFC !important;
 }
