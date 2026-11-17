@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no" />
     <meta name="theme-color" content="#090D18" />
     <title>Softwind Labs — Attendance System</title>
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
@@ -16,6 +16,42 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Softwind Attendance" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+    <!-- Mobile Screen Lock: Block pinch zoom, gesture zoom & double-tap bounce -->
+    <script>
+      (function() {
+        // Prevent Safari multi-touch gesture zoom
+        document.addEventListener('gesturestart', function(e) {
+          e.preventDefault();
+        }, { passive: false });
+        document.addEventListener('gesturechange', function(e) {
+          e.preventDefault();
+        }, { passive: false });
+        document.addEventListener('gestureend', function(e) {
+          e.preventDefault();
+        }, { passive: false });
+
+        // Prevent multi-touch pinch zoom
+        document.addEventListener('touchstart', function(e) {
+          if (e.touches && e.touches.length > 1) {
+            e.preventDefault();
+          }
+        }, { passive: false });
+
+        // Prevent double-tap zoom while preserving input and button taps
+        var lastTouch = 0;
+        document.addEventListener('touchend', function(e) {
+          var now = Date.now();
+          if (now - lastTouch <= 300) {
+            var tag = e.target ? (e.target.tagName || '') : '';
+            if (!['INPUT', 'TEXTAREA', 'SELECT', 'OPTION'].includes(tag)) {
+              e.preventDefault();
+            }
+          }
+          lastTouch = now;
+        }, false);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
