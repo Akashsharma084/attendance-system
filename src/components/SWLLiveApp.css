@@ -32,7 +32,8 @@
   flex-direction: column;
   align-items: center;
   position: relative;
-  padding-bottom: 70px; /* Space for bottom nav */
+  padding-bottom: 70px;
+  /* Space for bottom nav */
 }
 
 .swl-app-content-wrap {
@@ -48,7 +49,8 @@
 
 @media (min-width: 900px) {
   .swl-app-shell.admin-wide .swl-app-content-wrap {
-    max-width: 960px; /* Admin dashboard can expand on desktop */
+    max-width: 960px;
+    /* Admin dashboard can expand on desktop */
   }
 }
 
@@ -407,10 +409,22 @@
   height: 8px;
   border-radius: 50%;
 }
-.swl-legend-dot.green { background: var(--swl-success); }
-.swl-legend-dot.yellow { background: var(--swl-warning); }
-.swl-legend-dot.red { background: var(--swl-danger); }
-.swl-legend-dot.blue { background: #06B6D4; }
+
+.swl-legend-dot.green {
+  background: var(--swl-success);
+}
+
+.swl-legend-dot.yellow {
+  background: var(--swl-warning);
+}
+
+.swl-legend-dot.red {
+  background: var(--swl-danger);
+}
+
+.swl-legend-dot.blue {
+  background: #06B6D4;
+}
 
 .swl-link-action {
   display: block;
@@ -566,10 +580,25 @@
   color: var(--swl-text-primary);
 }
 
-.swl-cal-cell-btn.present { background: var(--swl-success); color: white; }
-.swl-cal-cell-btn.absent { background: var(--swl-danger); color: white; }
-.swl-cal-cell-btn.late { background: var(--swl-warning); color: white; }
-.swl-cal-cell-btn.leave { background: #06B6D4; color: white; }
+.swl-cal-cell-btn.present {
+  background: var(--swl-success);
+  color: white;
+}
+
+.swl-cal-cell-btn.absent {
+  background: var(--swl-danger);
+  color: white;
+}
+
+.swl-cal-cell-btn.late {
+  background: var(--swl-warning);
+  color: white;
+}
+
+.swl-cal-cell-btn.leave {
+  background: #06B6D4;
+  color: white;
+}
 
 .swl-summary-4col-grid {
   display: grid;
@@ -927,14 +956,17 @@
   background: #EEF4FF !important;
   color: #1E5AE6 !important;
 }
+
 .swl-admin-stat-icon.green {
   background: #ECFDF5 !important;
   color: #059669 !important;
 }
+
 .swl-admin-stat-icon.red {
   background: #FEF2F2 !important;
   color: #DC2626 !important;
 }
+
 .swl-admin-stat-icon.orange {
   background: #FFFBEB !important;
   color: #D97706 !important;
@@ -1097,6 +1129,7 @@
     opacity: 0;
     transform: translate(-50%, -24px) scale(0.96);
   }
+
   to {
     opacity: 1;
     transform: translate(-50%, 0) scale(1);
