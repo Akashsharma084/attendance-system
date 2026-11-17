@@ -2201,9 +2201,8 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
   const [countdown, setCountdown] = useState(null)
   const [autoCaptured, setAutoCaptured] = useState(false)
 
-  // Explicit Checkout Mode & Confirmation Modal to prevent accidental checkouts
+  // Checkout Mode: true when punchMode is 'checkout' or employee toggles checkout
   const [checkoutMode, setCheckoutMode] = useState(() => punchMode === 'checkout')
-  const [showConfirmModal, setShowConfirmModal] = useState(false)
 
   // 1. Listen for today's record
   useEffect(() => {
@@ -2227,13 +2226,7 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
   const hasCheckedOut = Boolean(todayDoc?.checkOutTime)
   const isShiftDone = hasCheckedIn && hasCheckedOut
   const isShiftActive = hasCheckedIn && !hasCheckedOut
-
-  // If user navigated with explicit 'checkout' punchMode, prompt confirmation modal
-  useEffect(() => {
-    if (punchMode === 'checkout' && isShiftActive && !checkoutMode) {
-      setShowConfirmModal(true)
-    }
-  }, [punchMode, isShiftActive, checkoutMode])
+  const isCheckout = isShiftActive && (punchMode === 'checkout' || checkoutMode)
 
   // 2. Start Camera Feed (reusable for initial mount & instant retake)
   const startCamera = useCallback(async () => {
@@ -2279,10 +2272,8 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
     setCountdown(null)
   }, [])
 
-  // Camera is strictly and only needed when:
-  // - User has NOT checked in yet (!hasCheckedIn)
-  // - OR user is actively on duty and explicitly activated checkoutMode (isShiftActive && checkoutMode)
-  const isCameraNeeded = (!hasCheckedIn || (isShiftActive && checkoutMode)) && !isShiftDone && !successMsg
+  // Camera is needed when checking in (!hasCheckedIn) or checking out (isCheckout)
+  const isCameraNeeded = (!hasCheckedIn || isCheckout) && !isShiftDone && !successMsg
 
   useEffect(() => {
     if (isCameraNeeded) {
@@ -2382,15 +2373,9 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
     }
   }, [isCameraNeeded, cameraActive, photoUrl])
 
-  // 2c. 3-Second Countdown & Auto-Capture ONLY for morning Check-In when Face is in frame
+  // 2c. 3-Second Countdown & Auto-Capture for BOTH Check-In and Check-Out when Face is in frame
   useEffect(() => {
     if (!isCameraNeeded || photoUrl) {
-      setCountdown(null)
-      return
-    }
-
-    // In checkout departure mode: DO NOT auto-snap to give user full manual control
-    if (isShiftActive) {
       setCountdown(null)
       return
     }
@@ -2419,7 +2404,7 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
       setAutoCaptured(true)
       setCountdown(null)
     }
-  }, [isCameraNeeded, isShiftActive, faceDetected, countdown, photoUrl, autoCaptured])
+  }, [isCameraNeeded, faceDetected, countdown, photoUrl, autoCaptured])
 
   // 3. Acquire GPS Location with resilient iOS/Android fallback & continuous watch
   const fetchGpsLocation = useCallback((isRetry = false) => {
@@ -2535,8 +2520,8 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
   async function handleConfirmPunch() {
     if (submitting) return
     if (isShiftDone) return
-    // Guard: Prevent any accidental checkout if user is not in explicit checkout mode
-    if (isShiftActive && !checkoutMode) return
+    // Guard: Prevent any accidental checkout if user is not in checkout mode
+    if (isShiftActive && !isCheckout) return
     if (profile?.status === 'disabled' || profile?.disabled) {
       alert('Your employee account has been deactivated by the administrator. Clock-in is disabled.')
       return
@@ -2719,9 +2704,7 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
           <span>
             {isShiftDone
               ? 'Shift Completed'
-              : (isShiftActive
-                  ? (checkoutMode ? 'Check Out Departure' : 'Active Shift')
-                  : 'Check In')}
+              : (isShiftActive ? 'Check Out' : 'Check In')}
           </span>
           <div style={{ width: 18 }} />
         </div>
@@ -2927,7 +2910,7 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
 
               <button
                 type="button"
-                onClick={() => setShowConfirmModal(true)}
+                onClick={() => setCheckoutMode(true)}
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -2944,42 +2927,15 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                   gap: 6
                 }}
               >
-                🚪 End Shift &amp; Punch Out
+                🚪 Check Out Now
               </button>
             </div>
           </div>
         )}
 
-        {/* STATE 3: CAMERA PUNCH VIEW (Morning Check-In OR Explicit Check-Out Departure) */}
+        {/* STATE 3: CAMERA PUNCH VIEW */}
         {isCameraNeeded && (
           <div>
-            {/* If in departure checkout mode, show header banner with cancel button */}
-            {isShiftActive && checkoutMode && (
-              <div style={{ margin: '0 16px 8px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 12, padding: '7px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#B45309' }}>
-                  📸 Departure Out-Selfie
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCheckoutMode(false)
-                    setPhotoUrl(null)
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#64748B',
-                    fontSize: '0.68rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    padding: '2px 6px'
-                  }}
-                >
-                  ✕ Cancel &amp; Return
-                </button>
-              </div>
-            )}
-
             {/* Circular Camera Selfie Viewfinder */}
             <div style={{ textAlign: 'center', margin: '8px 0 4px 0' }}>
               <div
@@ -3109,7 +3065,7 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                   </span>
                 ) : faceDetected ? (
                   <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#047857', background: '#D1FAE5', border: '1px solid #6EE7B7', padding: '3px 12px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                    🟢 Face Detected • {isShiftActive ? 'Tap shutter to snap photo' : (countdown !== null && countdown > 0 ? `Auto Capturing in ${countdown}s` : 'Ready')}
+                    🟢 Face Detected • {countdown !== null && countdown > 0 ? `Auto Capturing in ${countdown}s` : 'Ready'}
                   </span>
                 ) : (
                   <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748B', background: '#F1F5F9', padding: '3px 12px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -3322,105 +3278,6 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                               ? 'Verifying & Saving…'
                               : (isShiftActive ? 'Confirm Check Out' : 'Confirm Check In'))))}
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* PUNCH OUT CONFIRMATION MODAL */}
-        {showConfirmModal && (
-          <div style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(3px)',
-            zIndex: 999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 16
-          }}>
-            <div style={{
-              background: '#FFFFFF',
-              borderRadius: 18,
-              padding: '22px 18px',
-              maxWidth: 340,
-              width: '100%',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '2rem', marginBottom: 8 }}>🚪</div>
-              <h4 style={{ margin: '0 0 6px 0', fontSize: '1rem', fontWeight: 800, color: '#0F172A' }}>
-                Confirm Punch Out?
-              </h4>
-              <p style={{ margin: '0 0 14px 0', fontSize: '0.75rem', color: '#64748B', lineHeight: 1.5 }}>
-                Are you ready to end your shift for today ({todayKey})? This will open your camera to record your departure selfie and out time.
-              </p>
-
-              {/* Check if checked in very recently */}
-              {(() => {
-                try {
-                  const inD = todayDoc?.checkInTime?.toDate ? todayDoc.checkInTime.toDate() : new Date(todayDoc.checkInTime)
-                  const mins = Math.floor((Date.now() - inD.getTime()) / 60000)
-                  if (mins < 30) {
-                    return (
-                      <div style={{
-                        background: '#FEF2F2',
-                        border: '1px solid #FCA5A5',
-                        borderRadius: 8,
-                        padding: '8px 10px',
-                        fontSize: '0.68rem',
-                        color: '#991B1B',
-                        marginBottom: 14,
-                        textAlign: 'left'
-                      }}>
-                        ⚠️ <strong>Notice:</strong> You checked in only <strong>{mins} minute(s)</strong> ago. Please verify you genuinely intend to clock out now.
-                      </div>
-                    )
-                  }
-                } catch (_) {}
-                return null
-              })()}
-
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmModal(false)}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    background: '#F1F5F9',
-                    color: '#475569',
-                    border: 'none',
-                    borderRadius: 10,
-                    fontSize: '0.78rem',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowConfirmModal(false)
-                    setPhotoUrl(null)
-                    setCheckoutMode(true)
-                  }}
-                  style={{
-                    flex: 1.3,
-                    padding: '10px',
-                    background: '#F59E0B',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    borderRadius: 10,
-                    fontSize: '0.78rem',
-                    fontWeight: 800,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Yes, Punch Out
-                </button>
-              </div>
             </div>
           </div>
         )}
