@@ -1291,254 +1291,93 @@ function LiveLoginScreen({ onSuccess }) {
 
   return (
     <div className="swl-login-viewport">
-      {/* Top Header & Brand */}
-      <div className="swl-login-top-section">
-        <div className="swl-login-brand-row" style={{ marginBottom: 12 }}>
-          <div className="swl-logo-badge" style={{ width: 38, height: 38, borderRadius: 12 }}>
-            <Icons.Logo />
+      <div className="swl-login-m3-card">
+        {/* App Launcher & Brand Header */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: 14 }}>
+          <div style={{
+            width: 48,
+            height: 48,
+            borderRadius: 16,
+            background: 'linear-gradient(135deg, #1E5AE6 0%, #1D4ED8 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 14px rgba(30, 90, 230, 0.28)',
+            marginBottom: 8
+          }}>
+            <div style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icons.Logo />
+            </div>
           </div>
-          <div>
-            <span className="swl-login-brand-name" style={{ fontSize: '1.22rem', fontWeight: 800 }}>SWL Attend</span>
-            <span style={{ display: 'block', fontSize: '0.64rem', color: '#64748B', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-              Attendance Portal
-            </span>
-          </div>
-        </div>
-
-        {/* Welcome Message Greeting (Seamlessly placed at top) */}
-        <div style={{ textAlign: 'center', marginBottom: 12, width: '100%' }}>
-          <h2 className="swl-login-title" style={{ fontSize: '1.36rem', fontWeight: 800, color: '#0F172A', marginBottom: 4, letterSpacing: '-0.02em' }}>
-            {profileRole === 'admin' ? 'Administrator Portal 🛡️' : 'Welcome Back! 👋'}
+          <h2 style={{ fontSize: '1.24rem', fontWeight: 800, color: '#0F172A', margin: '0 0 2px 0', letterSpacing: '-0.02em' }}>
+            SWL Attend
           </h2>
-          <p className="swl-login-sub" style={{ fontSize: '0.78rem', color: '#64748B', lineHeight: 1.4, margin: 0 }}>
-            {profileRole === 'admin'
-              ? 'Sign in to access admin console, employees & office geofence'
-              : 'Select your profile below and sign in to mark attendance'}
-          </p>
-        </div>
-
-        {/* Visual Profile Avatar Cards for Employee and Admin */}
-        <div style={{ width: '100%', marginBottom: 10 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {/* Employee Card */}
-            <div
-              onClick={() => {
-                setProfileRole('employee')
-                setErrorMsg('')
-                if (typeof window !== 'undefined' && !email) {
-                  try {
-                    setEmail(localStorage.getItem('swl_last_employee_email') || '')
-                  } catch {}
-                }
-              }}
-              style={{
-                background: profileRole === 'employee' ? '#EEF4FF' : '#FFFFFF',
-                border: profileRole === 'employee' ? '2px solid #1E5AE6' : '1.5px solid #E2E8F0',
-                borderRadius: 16,
-                padding: '12px 8px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center',
-                cursor: 'pointer',
-                position: 'relative',
-                boxShadow: profileRole === 'employee' ? '0 6px 16px rgba(30, 90, 230, 0.16)' : '0 1px 4px rgba(0,0,0,0.02)',
-                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                transform: profileRole === 'employee' ? 'translateY(-2px)' : 'none'
-              }}
-            >
-              {profileRole === 'employee' && (
-                <div style={{
-                  position: 'absolute',
-                  top: 6,
-                  right: 6,
-                  width: 18,
-                  height: 18,
-                  borderRadius: '50%',
-                  background: '#1E5AE6',
-                  color: '#FFFFFF',
-                  fontSize: '0.62rem',
-                  fontWeight: 900,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  ✓
-                </div>
-              )}
-              <div style={{ position: 'relative', marginBottom: 8 }}>
-                <div style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: profileRole === 'employee' ? '2.5px solid #1E5AE6' : '2px solid #CBD5E1',
-                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.28)'
-                }}>
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="7" r="4.2" fill="#FFFFFF" />
-                    <path d="M4 19.5C4 16 7.5 13.5 12 13.5C16.5 13.5 20 16 20 19.5" stroke="#FFFFFF" strokeWidth="2.4" strokeLinecap="round" />
-                    <rect x="10.5" y="15" width="3" height="4.5" rx="1" fill="#93C5FD" />
-                  </svg>
-                </div>
-                <span style={{
-                  position: 'absolute',
-                  bottom: -2,
-                  right: -2,
-                  background: '#10B981',
-                  color: '#fff',
-                  fontSize: '0.52rem',
-                  borderRadius: 999,
-                  padding: '1px 5px',
-                  fontWeight: 800
-                }}>
-                  STAFF
-                </span>
-              </div>
-              <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.2 }}>
-                Employee
-              </div>
-              <div style={{
-                fontSize: '0.64rem',
-                fontWeight: 800,
-                color: profileRole === 'employee' ? '#1E5AE6' : '#64748B',
-                background: profileRole === 'employee' ? '#DBEAFE' : '#F1F5F9',
-                padding: '2px 8px',
-                borderRadius: 999,
-                marginTop: 4
-              }}>
-                👤 Staff Portal
-              </div>
-            </div>
-
-            {/* Admin Card */}
-            <div
-              onClick={() => {
-                setProfileRole('admin')
-                setEmail('admin@softwindlabs.com')
-                setPassword('admin123')
-                setErrorMsg('')
-              }}
-              style={{
-                background: profileRole === 'admin' ? '#EEF4FF' : '#FFFFFF',
-                border: profileRole === 'admin' ? '2px solid #1E5AE6' : '1.5px solid #E2E8F0',
-                borderRadius: 16,
-                padding: '12px 8px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center',
-                cursor: 'pointer',
-                position: 'relative',
-                boxShadow: profileRole === 'admin' ? '0 6px 16px rgba(30, 90, 230, 0.16)' : '0 1px 4px rgba(0,0,0,0.02)',
-                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                transform: profileRole === 'admin' ? 'translateY(-2px)' : 'none'
-              }}
-            >
-              {profileRole === 'admin' && (
-                <div style={{
-                  position: 'absolute',
-                  top: 6,
-                  right: 6,
-                  width: 18,
-                  height: 18,
-                  borderRadius: '50%',
-                  background: '#1E5AE6',
-                  color: '#FFFFFF',
-                  fontSize: '0.62rem',
-                  fontWeight: 900,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  ✓
-                </div>
-              )}
-              <div style={{ position: 'relative', marginBottom: 8 }}>
-                <div style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #6366F1 0%, #4338CA 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: profileRole === 'admin' ? '2.5px solid #1E5AE6' : '2px solid #CBD5E1',
-                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
-                }}>
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 2L4.5 5.5V11C4.5 16.5 7.8 21 12 22C16.2 21 19.5 16.5 19.5 11V5.5L12 2Z" fill="#FFFFFF" fillOpacity="0.2" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round" />
-                    <circle cx="12" cy="9.5" r="2.8" fill="#FFFFFF" />
-                    <path d="M8.2 16.5C8.5 14.5 10.2 13.5 12 13.5C13.8 13.5 15.5 14.5 15.8 16.5" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </div>
-                <span style={{
-                  position: 'absolute',
-                  bottom: -2,
-                  right: -2,
-                  background: '#F59E0B',
-                  color: '#fff',
-                  fontSize: '0.52rem',
-                  borderRadius: 999,
-                  padding: '1px 5px',
-                  fontWeight: 800
-                }}>
-                  ADMIN
-                </span>
-              </div>
-              <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.2 }}>
-                Administrator
-              </div>
-              <div style={{
-                fontSize: '0.64rem',
-                fontWeight: 800,
-                color: profileRole === 'admin' ? '#1E5AE6' : '#64748B',
-                background: profileRole === 'admin' ? '#DBEAFE' : '#F1F5F9',
-                padding: '2px 8px',
-                borderRadius: 999,
-                marginTop: 4
-              }}>
-                🛡️ Admin Console
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Active Context Chip */}
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          background: profileRole === 'admin' ? '#EEF2FF' : '#EFF6FF',
-          color: profileRole === 'admin' ? '#4338CA' : '#1E5AE6',
-          border: profileRole === 'admin' ? '1px solid #C7D2FE' : '1px solid #BFDBFE',
-          padding: '4px 12px',
-          borderRadius: 999,
-          fontSize: '0.7rem',
-          fontWeight: 700,
-          marginBottom: 10
-        }}>
-          <span>{profileRole === 'admin' ? '🛡️' : '👤'}</span>
-          <span>
-            {profileRole === 'admin'
-              ? 'Admin Mode: Manage Organization & Radius'
-              : 'Employee Mode: Selfie Punch & Shifts'}
+          <span style={{ fontSize: '0.64rem', color: '#64748B', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            Enterprise Attendance Portal
           </span>
         </div>
-      </div>
 
-      {/* Middle Form Section */}
-      <div className="swl-login-mid-section">
+        {/* Android M3 Segmented Control (Staff Employee vs Administrator) */}
+        <div className="swl-m3-segmented-control">
+          <button
+            type="button"
+            className={`swl-m3-segment-btn ${profileRole === 'employee' ? 'active' : ''}`}
+            onClick={() => {
+              setProfileRole('employee')
+              setErrorMsg('')
+              if (typeof window !== 'undefined' && !email) {
+                try {
+                  setEmail(localStorage.getItem('swl_last_employee_email') || '')
+                } catch {}
+              }
+            }}
+          >
+            <span>👤</span>
+            <span>Staff Employee</span>
+          </button>
+
+          <button
+            type="button"
+            className={`swl-m3-segment-btn ${profileRole === 'admin' ? 'active' : ''}`}
+            onClick={() => {
+              setProfileRole('admin')
+              setEmail('admin@softwindlabs.com')
+              setPassword('admin123')
+              setErrorMsg('')
+            }}
+          >
+            <span>🛡️</span>
+            <span>Administrator</span>
+          </button>
+        </div>
+
+        {/* Context Subtitle Pill */}
+        <div style={{ textAlign: 'center', marginBottom: 14 }}>
+          <span style={{
+            display: 'inline-block',
+            fontSize: '0.68rem',
+            fontWeight: 700,
+            color: profileRole === 'admin' ? '#4338CA' : '#1E5AE6',
+            background: profileRole === 'admin' ? '#EEF2FF' : '#EFF6FF',
+            border: profileRole === 'admin' ? '1px solid #C7D2FE' : '1px solid #BFDBFE',
+            padding: '3px 10px',
+            borderRadius: 999
+          }}>
+            {profileRole === 'admin'
+              ? '🛡️ Admin Console: Live geofence & staff records'
+              : '👤 Staff Portal: Face punch & live office shifts'}
+          </span>
+        </div>
+
+        {/* Error Banner */}
         {errorMsg && (
           <div style={{
             background: '#FEE2E2',
             color: '#B91C1C',
+            border: '1px solid #FECACA',
             fontSize: '0.74rem',
             padding: '8px 12px',
-            borderRadius: '10px',
+            borderRadius: '12px',
             marginBottom: '14px',
             textAlign: 'center',
             fontWeight: 600
@@ -1547,12 +1386,13 @@ function LiveLoginScreen({ onSuccess }) {
           </div>
         )}
 
+        {/* Email & Password Form */}
         <form onSubmit={handleEmailLogin}>
-          <div className="swl-form-group" style={{ marginBottom: 14 }}>
+          <div className="swl-form-group" style={{ marginBottom: 12 }}>
             <label style={{ fontSize: '0.76rem', fontWeight: 700, color: '#334155', marginBottom: 6, display: 'block' }}>
               {profileRole === 'admin' ? 'Admin Email Address' : 'Work Email Address'}
             </label>
-            <div className="swl-input-box" style={{ padding: '12px 14px' }}>
+            <div className="swl-input-box">
               <Icons.User />
               <input
                 id="swl-login-email"
@@ -1592,7 +1432,7 @@ function LiveLoginScreen({ onSuccess }) {
                 Forgot Password?
               </a>
             </div>
-            <div className="swl-input-box" style={{ padding: '12px 14px', position: 'relative' }}>
+            <div className="swl-input-box" style={{ position: 'relative' }}>
               <Icons.Lock />
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -1632,7 +1472,7 @@ function LiveLoginScreen({ onSuccess }) {
             type="submit"
             className="swl-btn-login"
             disabled={submitting}
-            style={{ padding: '14px', marginTop: 8, fontSize: '0.92rem', fontWeight: 800, borderRadius: 12 }}
+            style={{ minHeight: 48, width: '100%', fontSize: '0.92rem', fontWeight: 800, borderRadius: 9999 }}
           >
             {submitting ? 'Authenticating…' : (profileRole === 'admin' ? 'Sign In as Administrator ➔' : 'Sign In as Employee ➔')}
           </button>
@@ -1645,29 +1485,29 @@ function LiveLoginScreen({ onSuccess }) {
             className="swl-btn-google"
             onClick={handleGoogleLogin}
             disabled={submitting}
-            style={{ padding: '12px', borderRadius: 12, minHeight: 46 }}
+            style={{ minHeight: 46, width: '100%', borderRadius: 9999 }}
           >
             <Icons.Google />
             <span>{profileRole === 'admin' ? 'Sign in with Google (Admin)' : 'Sign in with Google (Employee)'}</span>
           </button>
         </div>
-      </div>
 
-      {/* Bottom Footer Section */}
-      <div className="swl-login-bottom-section">
-        <div className="swl-login-trust-pill">
-          <span>🔒 256-Bit SSL Encrypted</span>
-          <span>•</span>
-          <span>📍 GPS Geofenced</span>
-        </div>
-        <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center' }}>
-          <AppUpdateSyncButton
-            label="Sync Latest App Version (v2.4)"
-            style={{ borderRadius: 999, padding: '4px 12px', fontSize: '0.64rem', fontWeight: 800 }}
-          />
-        </div>
-        <div className="swl-login-footer" style={{ margin: '6px 0 0 0', fontSize: '0.7rem' }}>
-          Softwind Labs Attendance · <span>Corporate Workspace</span>
+        {/* Bottom Trust & App Version Info */}
+        <div style={{ marginTop: 14, textAlign: 'center' }}>
+          <div className="swl-login-trust-pill">
+            <span>🔒 256-Bit SSL Encrypted</span>
+            <span>•</span>
+            <span>📍 GPS Geofenced</span>
+          </div>
+          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center' }}>
+            <AppUpdateSyncButton
+              label="Sync Latest App Version (v2.4)"
+              style={{ borderRadius: 999, padding: '4px 12px', fontSize: '0.64rem', fontWeight: 800 }}
+            />
+          </div>
+          <div className="swl-login-footer" style={{ margin: '6px 0 0 0', fontSize: '0.7rem' }}>
+            Softwind Labs Attendance · <span>Corporate Workspace</span>
+          </div>
         </div>
       </div>
     </div>
@@ -1907,59 +1747,188 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
           </div>
         )}
 
-        {/* Hero Attendance Card */}
+        {/* Hero Attendance Card (Native Android Material 3 At-a-Glance Widget) */}
         <div className="swl-status-hero-card">
-          <div className="swl-status-hero-top">
-            <span>Today, {formattedToday}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>{dayOfWeek}</span>
-              <span style={{ color: '#94A3B8' }}>♡</span>
+          {/* Top Date & Live Status Row */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#F1F5F9',
+              padding: '4px 10px',
+              borderRadius: 999,
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              color: '#334155'
+            }}>
+              <span>📅 Today, {formattedToday} • {dayOfWeek}</span>
             </div>
-          </div>
 
-          <div className="swl-status-hero-badge-row">
-            {isPresentToday ? (
-              <>
-                <div
-                  className="swl-green-check-circle"
-                  style={{
-                    background: todayLate.isLate ? '#FEF3C7' : '#ECFDF5',
-                    color: todayLate.isLate ? '#D97706' : '#10B981',
-                    border: todayLate.isLate ? '1.5px solid #FDE68A' : '1.5px solid #A7F3D0'
-                  }}
-                >
-                  {todayLate.isLate ? '⏱️' : '✓'}
-                </div>
-                <span className="swl-hero-status-text" style={{ color: todayLate.isLate ? '#B45309' : '#0F172A' }}>
-                  {isCheckedOutToday
-                    ? (todayLate.isLate ? `Shift Completed (Late${todayLate.lateText ? ' +' + todayLate.lateText : ''})` : 'Shift Completed')
-                    : (todayLate.isLate ? `You are Present (Late${todayLate.lateText ? ' +' + todayLate.lateText : ''})` : 'You are Present')}
-                </span>
-              </>
+            {/* Live Status Pill */}
+            {isCheckedOutToday ? (
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                background: '#ECFDF5',
+                color: '#047857',
+                border: '1px solid #A7F3D0',
+                padding: '3px 9px',
+                borderRadius: 999,
+                fontSize: '0.70rem',
+                fontWeight: 800
+              }}>
+                <span>✓</span>
+                <span>Completed</span>
+              </div>
+            ) : isPresentToday ? (
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                background: '#EFF6FF',
+                color: '#1D4ED8',
+                border: '1px solid #BFDBFE',
+                padding: '3px 9px',
+                borderRadius: 999,
+                fontSize: '0.70rem',
+                fontWeight: 800
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2563EB', display: 'inline-block' }}></span>
+                <span>Shift Active</span>
+              </div>
             ) : (
-              <>
-                <div className="swl-green-check-circle" style={{ background: '#F59E0B' }}>⏱️</div>
-                <span className="swl-hero-status-text" style={{ color: '#0F172A' }}>Not Checked In Yet</span>
-              </>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                background: '#FFFBEB',
+                color: '#B45309',
+                border: '1px solid #FDE68A',
+                padding: '3px 9px',
+                borderRadius: 999,
+                fontSize: '0.70rem',
+                fontWeight: 800
+              }}>
+                <span>⏱️</span>
+                <span>Pending</span>
+              </div>
             )}
           </div>
 
-          <div className="swl-hero-hours" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <div>
-              {isPresentToday
-                ? `Punch Time: In ${formatTime(todayRecord.checkInTime)}${isCheckedOutToday ? ` • Out ${formatTime(todayRecord.checkOutTime)}` : ' (Ongoing)'}`
-                : `Working Hours: ${formatTime24to12(officeTiming?.startTime || '09:00')} - ${formatTime24to12(officeTiming?.endTime || '18:00')}`}
+          {/* Main Hero Status Row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <div style={{
+              width: 48,
+              height: 48,
+              borderRadius: 15,
+              background: isCheckedOutToday
+                ? '#ECFDF5'
+                : isPresentToday
+                  ? (todayLate.isLate ? '#FEF3C7' : '#EFF6FF')
+                  : '#FFFBEB',
+              border: isCheckedOutToday
+                ? '1.5px solid #A7F3D0'
+                : isPresentToday
+                  ? (todayLate.isLate ? '1.5px solid #FDE68A' : '1.5px solid #BFDBFE')
+                  : '1.5px solid #FDE68A',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              {isCheckedOutToday ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M5 13l4 4L19 7" stroke="#059669" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              ) : isPresentToday ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="9" stroke={todayLate.isLate ? '#D97706' : '#2563EB'} strokeWidth="2.2" />
+                  <polyline points="12 6 12 12 16 14" stroke={todayLate.isLate ? '#D97706' : '#2563EB'} strokeWidth="2.2" strokeLinecap="round" />
+                </svg>
+              ) : (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="9" stroke="#D97706" strokeWidth="2.2" />
+                  <polyline points="12 7 12 12 15 15" stroke="#D97706" strokeWidth="2.2" strokeLinecap="round" />
+                </svg>
+              )}
             </div>
-            <div style={{ fontSize: '0.66rem', color: '#1E5AE6', fontWeight: 700 }}>
-              ⏰ Office Shift: {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '18:00')} • Late after {officeCutoffStr}
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontSize: '1.04rem',
+                fontWeight: 800,
+                color: '#0F172A',
+                letterSpacing: '-0.01em',
+                lineHeight: 1.25,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {isCheckedOutToday
+                  ? (todayLate.isLate ? `Shift Completed (Late${todayLate.lateText ? ' +' + todayLate.lateText : ''})` : 'Shift Completed')
+                  : isPresentToday
+                    ? (todayLate.isLate ? `You are Present (Late${todayLate.lateText ? ' +' + todayLate.lateText : ''})` : 'You are Present')
+                    : 'Not Checked In Yet'}
+              </div>
+              <div style={{
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                color: '#64748B',
+                marginTop: 3,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {isPresentToday
+                  ? `Punch Time: In ${formatTime(todayRecord.checkInTime)}${isCheckedOutToday ? ` • Out ${formatTime(todayRecord.checkOutTime)}` : ' • Ongoing'}`
+                  : `Expected Shift: ${formatTime24to12(officeTiming?.startTime || '09:00')} – ${formatTime24to12(officeTiming?.endTime || '18:00')}`}
+              </div>
+            </div>
+          </div>
+
+          {/* Shift Timing & Late Cutoff Bar */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: '#F8FAFC',
+            border: '1px solid #E2E8F0',
+            borderRadius: 12,
+            padding: '7px 10px',
+            gap: 6
+          }}>
+            <div style={{ fontSize: '0.72rem', color: '#334155', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span>⏰</span>
+              <span>Shift: {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '18:00')}</span>
+            </div>
+            <div style={{
+              fontSize: '0.68rem',
+              fontWeight: 800,
+              color: '#1E5AE6',
+              background: '#EFF6FF',
+              padding: '2px 8px',
+              borderRadius: 999,
+              whiteSpace: 'nowrap',
+              border: '1px solid #DBEAFE'
+            }}>
+              Late after {officeCutoffStr}
             </div>
           </div>
 
           {/* Today's In/Out Verified Selfies */}
           {isPresentToday && (
-            <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(226, 232, 240, 0.6)', paddingTop: 8 }}>
-              <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 700 }}>
-                Today's Punch Selfies:
+            <div style={{
+              marginTop: 10,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderTop: '1px solid #F1F5F9',
+              paddingTop: 8
+            }}>
+              <span style={{ fontSize: '0.70rem', color: '#64748B', fontWeight: 700 }}>
+                Verified Punch Selfies:
               </span>
               <SelfiePairThumbs
                 inUrl={todayRecord?.checkInSelfieUrl || todayRecord?.checkInPhotoUrl || todayRecord?.selfieUrl}
