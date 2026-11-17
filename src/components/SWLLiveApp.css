@@ -696,10 +696,20 @@
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   padding-bottom: 24px;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
-.swl-screen-scroll-body::-webkit-scrollbar {
-  display: none;
+.swl-screen-scroll-body::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.no-scrollbar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
 /* Home Screen Breathing Spacing */

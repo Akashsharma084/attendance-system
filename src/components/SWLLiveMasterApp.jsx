@@ -574,7 +574,7 @@ function LiveArrivalsModal({ onClose, onViewSelfie }) {
           </div>
         )}
 
-        <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="no-scrollbar" style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 8, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {notifications.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '36px 12px', color: '#94A3B8' }}>
               <div style={{ fontSize: '2rem', marginBottom: 6 }}>📭</div>
@@ -1796,7 +1796,7 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="swl-home-viewport" style={{ flex: 1, overflowY: 'auto' }}>
+      <div className="swl-home-viewport no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {/* User Header */}
         <div className="swl-user-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -2696,7 +2696,7 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <button className="swl-nav-back-btn" onClick={() => onNavigate('emp_home')}>
             <Icons.BackArrow />
@@ -3500,7 +3500,7 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <button className="swl-nav-back-btn" onClick={() => onNavigate('emp_home')}>
             <Icons.BackArrow />
@@ -4033,7 +4033,7 @@ function LiveLeaveAppScreen({ onNavigate }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <button className="swl-nav-back-btn" onClick={() => onNavigate('emp_home')}>
             <Icons.BackArrow />
@@ -4616,7 +4616,7 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {/* SUBVIEW 1: MENU ROOT */}
         {subview === 'menu' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 0 18px 0' }}>
@@ -5400,7 +5400,7 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div onClick={onOpenGeofence} style={{ cursor: 'pointer', padding: 2 }} title="Office Geofence Setup">
@@ -5897,7 +5897,7 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee, officeTiming }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <button className="swl-nav-back-btn" onClick={() => onNavigate('adm_dashboard')}>
             <Icons.BackArrow />
@@ -6323,7 +6323,7 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <button
             className="swl-nav-back-btn"
@@ -6877,7 +6877,7 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <button className="swl-nav-back-btn" onClick={() => onNavigate('adm_dashboard')}>
             <Icons.BackArrow />
@@ -7394,7 +7394,7 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <button className="swl-nav-back-btn" onClick={() => onNavigate('adm_dashboard')}>
             <Icons.BackArrow />
@@ -7898,7 +7898,7 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <button
             className="swl-nav-back-btn"
@@ -9606,6 +9606,7 @@ function LiveAdminAttendanceModal({ config, officeTiming, officeConfig, adminNam
       onClick={onClose}
     >
       <div
+        className="no-scrollbar"
         style={{
           background: '#FFFFFF',
           borderRadius: 20,
@@ -9614,6 +9615,8 @@ function LiveAdminAttendanceModal({ config, officeTiming, officeConfig, adminNam
           width: '100%',
           maxHeight: '90vh',
           overflowY: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
           boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
         }}
         onClick={(e) => e.stopPropagation()}

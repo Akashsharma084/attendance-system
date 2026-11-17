@@ -309,7 +309,7 @@
   position: relative !important;
 }
 
-/* Ensure inner scroll areas take remaining height and scroll smoothly */
+/* Ensure inner scroll areas take remaining height, scroll smoothly, and NEVER show scrollbars */
 .swl-live-chassis-wrap .swl-home-viewport,
 .swl-live-chassis-wrap .swl-phone-viewport>div>div[style*="overflowY"],
 .swl-live-chassis-wrap .swl-phone-viewport>div>div[style*="overflow-y"],
@@ -319,18 +319,34 @@
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior: contain !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.swl-live-chassis-wrap *::-webkit-scrollbar,
+.swl-live-chassis-wrap .swl-home-viewport::-webkit-scrollbar,
+.swl-live-chassis-wrap .swl-phone-viewport>div>div[style*="overflowY"]::-webkit-scrollbar,
+.swl-live-chassis-wrap .swl-phone-viewport>div>div[style*="overflow-y"]::-webkit-scrollbar,
+.swl-live-chassis-wrap .swl-phone-viewport div[style*="flex: 1"][style*="overflow"]::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }
 
 /* Desktop Screens with mouse pointer: Clean, modern card container (NEVER a phone simulator bezel) */
 @media (min-width: 821px) and (hover: hover) {
   .swl-live-chassis-wrap {
-    min-height: 100vh;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
     background-color: #F1F5F9;
     background-image: radial-gradient(circle at 50% 0%, rgba(30, 90, 230, 0.04) 0%, transparent 60%);
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 24px 16px;
+    box-sizing: border-box;
   }
 
   .swl-live-chassis-wrap .swl-phone-chassis {
@@ -349,9 +365,9 @@
 
   .swl-live-chassis-wrap.admin-mode .swl-phone-chassis {
     max-width: 1100px;
-    height: min(920px, calc(100vh - 40px));
-    min-height: min(920px, calc(100vh - 40px));
-    max-height: calc(100vh - 40px);
+    height: min(920px, calc(100vh - 48px));
+    min-height: min(920px, calc(100vh - 48px));
+    max-height: calc(100vh - 48px);
   }
 }
 

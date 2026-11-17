@@ -27,6 +27,19 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+/* Hide all scrollbars globally across the entire app (desktop & mobile) */
+*::-webkit-scrollbar,
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+#root::-webkit-scrollbar {
+  display: none !important;
+  width: 0px !important;
+  height: 0px !important;
+  background: transparent !important;
 }
 
 /* Universal Mobile Responsive Lock: No left-right scroll, no movable canvas, no zoom */
