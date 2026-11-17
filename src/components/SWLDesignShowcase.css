@@ -393,7 +393,7 @@
     overflow: hidden !important;
     overflow-x: hidden !important;
     overscroll-behavior: none !important;
-    touch-action: pan-y !important;
+    touch-action: none !important;
     z-index: 1 !important;
   }
 
@@ -410,7 +410,7 @@
     overflow: hidden !important;
     overflow-x: hidden !important;
     overscroll-behavior: none !important;
-    touch-action: pan-y !important;
+    touch-action: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     border: none !important;

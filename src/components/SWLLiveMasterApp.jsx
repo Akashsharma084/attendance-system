@@ -2695,8 +2695,8 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', touchAction: 'none' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', touchAction: 'none', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <button className="swl-nav-back-btn" onClick={() => onNavigate('emp_home')}>
             <Icons.BackArrow />
@@ -2933,16 +2933,16 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
           </div>
         )}
 
-        {/* STATE 3: CAMERA PUNCH VIEW */}
+        {/* STATE 3: CAMERA PUNCH VIEW - FIXED ADJUSTED 1-SCREEN (ZERO SCROLL) */}
         {isCameraNeeded && (
-          <div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '2px 14px 6px 14px', overflow: 'hidden', touchAction: 'none' }}>
             {/* Circular Camera Selfie Viewfinder */}
-            <div style={{ textAlign: 'center', margin: '8px 0 4px 0' }}>
+            <div style={{ textAlign: 'center', margin: '2px 0' }}>
               <div
                 className={`swl-camera-frame ${photoUrl ? 'photo-captured' : (faceDetected ? 'face-detected' : '')}`}
                 style={{
-                  width: 220,
-                  height: 220,
+                  width: 'clamp(150px, 24vh, 195px)',
+                  height: 'clamp(150px, 24vh, 195px)',
                   borderRadius: '50%',
                   margin: '0 auto',
                   position: 'relative',
@@ -2952,8 +2952,8 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                     ? '4px solid #1E5AE6'
                     : (faceDetected ? '4px solid #10B981' : '4px solid #94A3B8'),
                   boxShadow: photoUrl
-                    ? '0 0 20px rgba(30, 90, 230, 0.4)'
-                    : (faceDetected ? '0 0 28px rgba(16, 185, 129, 0.55)' : '0 4px 15px rgba(0,0,0,0.2)'),
+                    ? '0 0 18px rgba(30, 90, 230, 0.4)'
+                    : (faceDetected ? '0 0 24px rgba(16, 185, 129, 0.55)' : '0 4px 12px rgba(0,0,0,0.2)'),
                   transition: 'border-color 0.3s ease, box-shadow 0.3s ease'
                 }}
               >
@@ -2985,7 +2985,7 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                   <div
                     style={{
                       position: 'absolute',
-                      inset: 16,
+                      inset: 14,
                       borderRadius: '50%',
                       border: faceDetected ? '2px dashed rgba(16, 185, 129, 0.7)' : '2px dashed rgba(255, 255, 255, 0.4)',
                       pointerEvents: 'none',
@@ -3011,10 +3011,10 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                       pointerEvents: 'none'
                     }}
                   >
-                    <div className="swl-countdown-digit">{countdown}</div>
+                    <div className="swl-countdown-digit" style={{ fontSize: '2.4rem' }}>{countdown}</div>
                     <span
                       style={{
-                        fontSize: '0.68rem',
+                        fontSize: '0.65rem',
                         fontWeight: 800,
                         color: '#ECFDF5',
                         background: 'rgba(16, 185, 129, 0.95)',
@@ -3036,11 +3036,11 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                   title={photoUrl ? 'Retake selfie' : 'Snap photo'}
                   style={{
                     position: 'absolute',
-                    bottom: 8,
+                    bottom: 6,
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    width: 36,
-                    height: 36,
+                    width: 32,
+                    height: 32,
                     borderRadius: '50%',
                     background: photoUrl ? '#F59E0B' : (isShiftActive ? '#F59E0B' : '#1E5AE6'),
                     color: '#fff',
@@ -3058,169 +3058,119 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
               </div>
 
               {/* Face Status Pill */}
-              <div style={{ marginTop: 6, marginBottom: 6 }}>
+              <div style={{ marginTop: 2, marginBottom: 2 }}>
                 {photoUrl ? (
-                  <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#10B981', background: '#ECFDF5', border: '1px solid #A7F3D0', padding: '3px 12px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#10B981', background: '#ECFDF5', border: '1px solid #A7F3D0', padding: '2px 10px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                     ✓ Face Verified &amp; Captured
                   </span>
                 ) : faceDetected ? (
-                  <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#047857', background: '#D1FAE5', border: '1px solid #6EE7B7', padding: '3px 12px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#047857', background: '#D1FAE5', border: '1px solid #6EE7B7', padding: '2px 10px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                     🟢 Face Detected • {countdown !== null && countdown > 0 ? `Auto Capturing in ${countdown}s` : 'Ready'}
                   </span>
                 ) : (
-                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748B', background: '#F1F5F9', padding: '3px 12px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748B', background: '#F1F5F9', padding: '2px 10px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                     👤 Align face in circle…
                   </span>
                 )}
               </div>
             </div>
 
-            {/* Location Verified Card */}
-            <div className="swl-location-card">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Icons.LocationPin />
-                <div className="swl-loc-text-col">
-                  <span className="swl-loc-title">
-                    {geofence?.isAllowed ? 'Location Verified' : (gpsLocked ? 'Outside Office Geofence' : (gpsLoading ? 'Acquiring GPS Location…' : 'Locking GPS Location...'))}
-                  </span>
-                  <span className="swl-loc-coords">
-                    {gpsLocation
-                      ? `${gpsLocation.latitude.toFixed(4)}° N, ${gpsLocation.longitude.toFixed(4)}° E • ${geofence?.distanceMeters ?? 0}m away`
-                      : (gpsLoading ? 'Fetching coordinates…' : (gpsError ? 'Unable to acquire location' : 'Acquiring coordinates...'))}
-                  </span>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {!gpsLocked && (
-                  <button
-                    type="button"
-                    onClick={() => fetchGpsLocation(true)}
-                    disabled={gpsLoading}
-                    title="Retry Location Fetch"
-                    style={{
-                      border: '1px solid #CBD5E1',
-                      background: '#FFFFFF',
-                      color: '#2563EB',
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      padding: '4px 8px',
-                      borderRadius: 6,
-                      cursor: gpsLoading ? 'wait' : 'pointer'
-                    }}
-                  >
-                    🔄 {gpsLoading ? '…' : 'Retry'}
-                  </button>
-                )}
-                <div
-                  className="swl-gps-badge"
-                  style={{
-                    background: geofence?.isAllowed ? '#ECFDF5' : '#FEE2E2',
-                    color: geofence?.isAllowed ? '#10B981' : '#EF4444',
-                    fontWeight: 800
-                  }}
-                >
-                  {geofence?.isAllowed ? 'IN RANGE' : (gpsLocked ? 'OUTSIDE' : 'LOCATING')}
-                </div>
-              </div>
-            </div>
-
-            {/* Checklist */}
-            <div className="swl-checklist">
-              <div className="swl-check-item">
-                <div className="swl-check-icon" style={{ background: photoUrl ? '#10B981' : '#94A3B8' }}>
-                  {photoUrl ? '✓' : '…'}
-                </div>
-                <span>Selfie captured {photoUrl ? '(Verified)' : '(Pending)'}</span>
-              </div>
-              <div className="swl-check-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div className="swl-check-icon" style={{ background: gpsLocked ? '#10B981' : (gpsLoading ? '#3B82F6' : '#94A3B8') }}>
-                    {gpsLocked ? '✓' : (gpsLoading ? '⟳' : '…')}
-                  </div>
-                  <span>{gpsLocked ? 'GPS location locked' : (gpsLoading ? 'Fetching GPS coordinates…' : 'GPS location pending')}</span>
-                </div>
-                {!gpsLocked && (
-                  <button
-                    type="button"
-                    onClick={() => fetchGpsLocation(true)}
-                    disabled={gpsLoading}
-                    style={{
-                      border: 'none',
-                      background: '#EFF6FF',
-                      color: '#2563EB',
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      padding: '3px 8px',
-                      borderRadius: 6,
-                      cursor: gpsLoading ? 'wait' : 'pointer'
-                    }}
-                  >
-                    🔄 Retry
-                  </button>
-                )}
-              </div>
-              <div className="swl-check-item">
-                <div
-                  className="swl-check-icon"
-                  style={{ background: geofence?.isAllowed ? '#10B981' : '#EF4444' }}
-                >
-                  {geofence?.isAllowed ? '✓' : '✕'}
-                </div>
-                <span>
-                  {geofence?.isAllowed
-                    ? `Within office premise (${geofence?.distanceMeters ?? 0}m ≤ ${geofence?.allowedRadius ?? 100}m)`
-                    : `Outside premise: ${geofence?.distanceMeters ?? 0}m (Strict allowed: ${geofence?.allowedRadius ?? 100}m)`}
-                </span>
-              </div>
-            </div>
-
-            {/* Outside Geofence Warning Box */}
-            {isOutsideGeofence && (
+            {/* Middle: Compact Status Strip (All-in-one GPS + Geofence + Verification) */}
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 4, margin: '2px 0' }}>
               <div style={{
-                background: '#FEF2F2',
-                border: '1.5px solid #FCA5A5',
-                borderRadius: 10,
-                padding: '10px 12px',
-                margin: '10px 16px 0',
+                background: '#FFFFFF',
+                border: '1px solid #E2E8F0',
+                borderRadius: 12,
+                padding: '6px 10px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 10,
-                color: '#991B1B'
+                justifyContent: 'space-between',
+                gap: 8,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
               }}>
-                <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>🚫</span>
-                <div style={{ fontSize: '0.72rem', lineHeight: 1.4 }}>
-                  <strong style={{ display: 'block', fontSize: '0.76rem', color: '#7F1D1D' }}>Punch Blocked (Outside Office Premise)</strong>
-                  You are currently <strong>{geofence?.distanceMeters ?? 0}m</strong> away from the office. Attendance punch is strictly permitted within the <strong>{geofence?.allowedRadius ?? 100}m</strong> office premise radius.
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.68rem', fontWeight: 700, color: '#334155' }}>
+                  <span style={{ color: photoUrl ? '#10B981' : '#94A3B8' }}>{photoUrl ? '✓' : '○'} Selfie</span>
+                  <span style={{ color: '#CBD5E1' }}>•</span>
+                  <span style={{ color: gpsLocked ? '#10B981' : (gpsLoading ? '#3B82F6' : '#94A3B8') }}>
+                    {gpsLocked ? '✓' : '○'} GPS {gpsLoading ? '…' : ''}
+                  </span>
+                  <span style={{ color: '#CBD5E1' }}>•</span>
+                  <span style={{ color: geofence?.isAllowed ? '#10B981' : '#EF4444' }}>
+                    {geofence?.isAllowed ? '✓ Premise' : '✕ Premise'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {!gpsLocked && (
+                    <button
+                      type="button"
+                      onClick={() => fetchGpsLocation(true)}
+                      disabled={gpsLoading}
+                      style={{
+                        border: '1px solid #CBD5E1',
+                        background: '#EFF6FF',
+                        color: '#2563EB',
+                        fontSize: '0.64rem',
+                        fontWeight: 700,
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🔄 Retry
+                    </button>
+                  )}
+                  <span
+                    style={{
+                      background: geofence?.isAllowed ? '#ECFDF5' : '#FEE2E2',
+                      color: geofence?.isAllowed ? '#10B981' : '#EF4444',
+                      fontSize: '0.64rem',
+                      fontWeight: 800,
+                      padding: '2px 7px',
+                      borderRadius: 6
+                    }}
+                  >
+                    {geofence?.isAllowed
+                      ? `IN RANGE (${geofence?.distanceMeters ?? 0}m)`
+                      : (gpsLocked ? `OUTSIDE (${geofence?.distanceMeters ?? 0}m)` : 'LOCATING…')}
+                  </span>
                 </div>
               </div>
-            )}
 
-            {/* GPS Error Warning Box with iOS Help & Tap-to-Retry */}
-            {!gpsLocked && gpsError && (
-              <div style={{
-                background: '#FFFBEB',
-                border: '1.5px solid #FCD34D',
-                borderRadius: 10,
-                padding: '12px 14px',
-                margin: '10px 16px 0',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-                color: '#92400E'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <span style={{ fontSize: '1.3rem', lineHeight: 1 }}>📍</span>
-                  <div style={{ fontSize: '0.74rem', lineHeight: 1.45, flex: 1 }}>
-                    <strong style={{ display: 'block', fontSize: '0.78rem', color: '#78350F', marginBottom: 2 }}>
-                      Location Permission / GPS Required
-                    </strong>
-                    {gpsError}
-                  </div>
+              {/* Warning (only shown if outside premise or GPS error) */}
+              {isOutsideGeofence && (
+                <div style={{
+                  background: '#FEF2F2',
+                  border: '1px solid #FCA5A5',
+                  borderRadius: 8,
+                  padding: '5px 8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  color: '#991B1B',
+                  fontSize: '0.66rem'
+                }}>
+                  <span>🚫</span>
+                  <span>Outside Office Premise ({geofence?.distanceMeters ?? 0}m &gt; {geofence?.allowedRadius ?? 100}m radius)</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6, borderTop: '1px solid #FDE68A' }}>
-                  <span style={{ fontSize: '0.70rem', color: '#B45309' }}>
-                    iPhone: Settings &gt; Safari/Chrome &gt; Location &gt; Turn ON <b>Precise Location</b>
-                  </span>
+              )}
+
+              {!gpsLocked && gpsError && (
+                <div style={{
+                  background: '#FFFBEB',
+                  border: '1px solid #FCD34D',
+                  borderRadius: 8,
+                  padding: '5px 8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 6,
+                  color: '#92400E',
+                  fontSize: '0.66rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span>📍</span>
+                    <span>{gpsError}</span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => fetchGpsLocation(true)}
@@ -3229,26 +3179,30 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                       border: 'none',
                       background: '#D97706',
                       color: '#FFFFFF',
-                      fontSize: '0.75rem',
+                      fontSize: '0.64rem',
                       fontWeight: 700,
-                      padding: '5px 12px',
-                      borderRadius: 6,
-                      cursor: gpsLoading ? 'wait' : 'pointer',
-                      flexShrink: 0
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      cursor: 'pointer'
                     }}
                   >
-                    {gpsLoading ? 'Acquiring GPS…' : '🔄 Tap to Retry'}
+                    Retry
                   </button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Confirm Check In/Out button */}
-            <div className="swl-checkin-btn-wrap" style={{ margin: '16px', paddingBottom: 28, flexShrink: 0 }}>
+            {/* Bottom: Confirm Check In/Out button */}
+            <div style={{ width: '100%', margin: '4px 0 2px 0' }}>
               <button
                 type="button"
                 className="swl-btn-login"
                 style={{
+                  width: '100%',
+                  padding: '11px',
+                  borderRadius: 12,
+                  fontSize: '0.84rem',
+                  fontWeight: 800,
                   background: isOutsideGeofence
                     ? '#EF4444'
                     : (successMsg ? '#10B981' : (isShiftActive ? '#F59E0B' : '#1E5AE6')),
@@ -3499,8 +3453,8 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
   const todayLoc = todayRecord?.checkInLocation || todayRecord?.location
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', touchAction: 'none' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', touchAction: 'none', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <button className="swl-nav-back-btn" onClick={() => onNavigate('emp_home')}>
             <Icons.BackArrow />
@@ -4032,8 +3986,8 @@ function LiveLeaveAppScreen({ onNavigate }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', touchAction: 'none' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', touchAction: 'none', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <button className="swl-nav-back-btn" onClick={() => onNavigate('emp_home')}>
             <Icons.BackArrow />
@@ -4615,8 +4569,8 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', touchAction: 'none' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', touchAction: 'none', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {/* SUBVIEW 1: MENU ROOT */}
         {subview === 'menu' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 0 18px 0' }}>
@@ -5399,8 +5353,8 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
   const presentPct = totalEmployees > 0 ? Math.round((presentEmployees / totalEmployees) * 100) : 0
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', touchAction: 'none' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', touchAction: 'none', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div onClick={onOpenGeofence} style={{ cursor: 'pointer', padding: 2 }} title="Office Geofence Setup">
@@ -5491,146 +5445,158 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
           </div>
         )}
 
-        {/* 4 Stats in 2x2 Grid */}
-        <div className="swl-admin-stats-2x2">
-          <div className="swl-admin-stat-card" onClick={() => onNavigate('adm_employees')} style={{ cursor: 'pointer' }}>
-            <div className="swl-admin-stat-icon blue">👥</div>
-            <div>
-              <div style={{ fontSize: '0.65rem', color: '#64748B' }}>Total Employees</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A' }}>{totalEmployees}</div>
-            </div>
+        {/* 4 Quick Stats: Compact 1-Row Bar */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: 6,
+          margin: '6px 14px 4px 14px',
+          flexShrink: 0
+        }}>
+          <div onClick={() => onNavigate('adm_employees')} style={{ cursor: 'pointer', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 10, padding: '6px 4px', textAlign: 'center' }}>
+            <div style={{ fontSize: '0.62rem', color: '#64748B', fontWeight: 700 }}>Total</div>
+            <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#1E5AE6' }}>👥 {totalEmployees}</div>
           </div>
-
-          <div className="swl-admin-stat-card">
-            <div className="swl-admin-stat-icon green">✓</div>
-            <div>
-              <div style={{ fontSize: '0.65rem', color: '#64748B' }}>Present</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#10B981' }}>{presentEmployees}</div>
-            </div>
+          <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 10, padding: '6px 4px', textAlign: 'center' }}>
+            <div style={{ fontSize: '0.62rem', color: '#64748B', fontWeight: 700 }}>Present</div>
+            <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#10B981' }}>✓ {presentEmployees}</div>
           </div>
-
-          <div className="swl-admin-stat-card">
-            <div className="swl-admin-stat-icon red">✕</div>
-            <div>
-              <div style={{ fontSize: '0.65rem', color: '#64748B' }}>Absent</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#EF4444' }}>{absentEmployees}</div>
-            </div>
+          <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 10, padding: '6px 4px', textAlign: 'center' }}>
+            <div style={{ fontSize: '0.62rem', color: '#64748B', fontWeight: 700 }}>Absent</div>
+            <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#EF4444' }}>✕ {absentEmployees}</div>
           </div>
-
-          <div className="swl-admin-stat-card" onClick={onOpenTiming} style={{ cursor: 'pointer' }} title="Click to view/change Office Timings">
-            <div className="swl-admin-stat-icon orange">🕒</div>
-            <div>
-              <div style={{ fontSize: '0.65rem', color: '#64748B' }}>Late</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#F59E0B' }}>{lateEmployees}</div>
-              <div style={{ fontSize: '0.58rem', color: '#D97706', fontWeight: 700, marginTop: 1 }}>After {cutoffDisplay}</div>
-            </div>
+          <div onClick={onOpenTiming} style={{ cursor: 'pointer', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 10, padding: '6px 4px', textAlign: 'center' }}>
+            <div style={{ fontSize: '0.62rem', color: '#64748B', fontWeight: 700 }}>Late</div>
+            <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#F59E0B' }}>🕒 {lateEmployees}</div>
           </div>
         </div>
 
-        {/* Today's Attendance Donut Card */}
-        <div className="swl-summary-card" style={{ margin: '0 16px' }}>
-          <div className="swl-summary-title">Today's Attendance</div>
-          <div className="swl-donut-row">
-            <div className="swl-donut-container">
-              <svg className="swl-donut-svg" viewBox="0 0 36 36">
-                <path
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="#E2E8F0"
-                  strokeWidth="3.8"
-                />
-                <path
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="#10B981"
-                  strokeWidth="3.8"
-                  strokeDasharray={`${presentPct}, 100`}
-                />
-              </svg>
-              <div className="swl-donut-center-text" style={{ fontSize: '0.72rem' }}>
-                {presentPct}%<br/>
-                <span style={{ fontSize: '0.55rem', color: '#10B981' }}>Present</span>
-              </div>
-            </div>
-            <div className="swl-donut-legend">
-              <div className="swl-legend-row"><span className="swl-dot green"></span> Present {presentEmployees}</div>
-              <div className="swl-legend-row"><span className="swl-dot red"></span> Absent {absentEmployees}</div>
-              <div className="swl-legend-row"><span className="swl-dot yellow"></span> Late {lateEmployees}</div>
-            </div>
-          </div>
+        {/* Quick Action Chips */}
+        <div style={{
+          display: 'flex',
+          gap: 6,
+          margin: '2px 14px 6px 14px',
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          flexShrink: 0
+        }}>
+          <button
+            type="button"
+            onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'add' })}
+            style={{
+              flex: 1,
+              padding: '6px 8px',
+              background: '#EEF4FF',
+              border: '1px solid #BFDBFE',
+              borderRadius: 8,
+              fontSize: '0.7rem',
+              fontWeight: 800,
+              color: '#1E5AE6',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            ⏱️ + Add Punch
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigate('adm_employees')}
+            style={{
+              flex: 1,
+              padding: '6px 8px',
+              background: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              borderRadius: 8,
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              color: '#334155',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            👥 Staff
+          </button>
+          <button
+            type="button"
+            onClick={onOpenTiming}
+            style={{
+              flex: 1,
+              padding: '6px 8px',
+              background: '#FFFBEB',
+              border: '1px solid #FDE68A',
+              borderRadius: 8,
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              color: '#B45309',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            ⏰ Timing
+          </button>
+          <button
+            type="button"
+            onClick={onOpenGeofence}
+            style={{
+              flex: 1,
+              padding: '6px 8px',
+              background: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              borderRadius: 8,
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              color: '#334155',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            📍 Geofence
+          </button>
         </div>
 
-        {/* Quick Actions */}
-        <div style={{ margin: '12px 16px 4px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#0F172A' }}>Quick Actions</div>
-        <div className="swl-quick-actions-grid">
-          <div className="swl-action-btn-card" onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'add' })} title="Manual punch entry if employee forgot">
-            <div style={{ fontSize: '1.25rem', lineHeight: 1 }}>⏱️</div>
-            <span>Manual Punch</span>
-            <span style={{ fontSize: '0.58rem', color: '#1E5AE6', fontWeight: 700 }}>+ Add / Fix Punch</span>
-          </div>
-
-          <div className="swl-action-btn-card" onClick={() => onNavigate('adm_employees')}>
-            <Icons.Employees active={false} />
-            <span>Manage Employees</span>
-          </div>
-
-          <div className="swl-action-btn-card" onClick={() => onNavigate('adm_approvals')}>
-            <Icons.Leave active={false} />
-            <span>Leave Approvals</span>
-            {pendingLeavesCount > 0 && <div className="swl-action-badge">{pendingLeavesCount}</div>}
-          </div>
-
-          <div className="swl-action-btn-card" onClick={() => onNavigate('adm_reports')}>
-            <Icons.Reports active={false} />
-            <span>Reports</span>
-          </div>
-
-          <div className="swl-action-btn-card" onClick={onOpenGeofence}>
-            <Icons.LocationPin />
-            <span>Office Geofence</span>
-          </div>
-
-          <div className="swl-action-btn-card" onClick={onOpenTiming} title="Set office shift hours and late grace period">
-            <div style={{ fontSize: '1.25rem', lineHeight: 1 }}>⏰</div>
-            <span>Office Timings</span>
-            <span style={{ fontSize: '0.58rem', color: '#1E5AE6', fontWeight: 700 }}>
-              {formatTime24to12(officeTiming?.startTime || '09:00')} (+{officeTiming?.graceMinutes != null ? officeTiming.graceMinutes : 30}m)
-            </span>
-          </div>
-        </div>
-
-        {/* 📍 Today's Punch Feed */}
-        <div style={{ margin: '14px 16px 6px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* 📍 Today's Punch Feed Header */}
+        <div style={{ margin: '6px 14px 4px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0F172A' }}>
             📍 Today's Punches ({todayPunches.length})
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              type="button"
-              onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'add' })}
-              style={{
-                border: '1px solid #1E5AE6',
-                background: '#EEF4FF',
-                color: '#1E5AE6',
-                fontSize: '0.68rem',
-                fontWeight: 800,
-                padding: '3px 8px',
-                borderRadius: 6,
-                cursor: 'pointer'
-              }}
-            >
-              + Add Punch
-            </button>
-            <span
-              style={{ fontSize: '0.66rem', color: '#1E5AE6', fontWeight: 700, cursor: 'pointer' }}
-              onClick={() => onNavigate('adm_reports')}
-            >
-              All Reports &gt;
-            </span>
-          </div>
+          <span
+            style={{ fontSize: '0.66rem', color: '#1E5AE6', fontWeight: 700, cursor: 'pointer' }}
+            onClick={() => onNavigate('adm_reports')}
+          >
+            All Reports &gt;
+          </span>
         </div>
 
-        <div style={{ margin: '0 16px', display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 16 }}>
+        {/* Scrollable Punches Feed (Takes remaining space, smooth list scroll without whole-screen bounce) */}
+        <div style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          touchAction: 'pan-y',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          padding: '0 14px 14px 14px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6
+        }}>
           {todayPunches.length === 0 ? (
             <div style={{ background: '#FFFFFF', border: '1px dashed #CBD5E1', borderRadius: 12, padding: '14px', textAlign: 'center', fontSize: '0.72rem', color: '#94A3B8' }}>
               No punch records yet today.
@@ -5896,8 +5862,8 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee, officeTiming }
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', touchAction: 'none' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', touchAction: 'none', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <button className="swl-nav-back-btn" onClick={() => onNavigate('adm_dashboard')}>
             <Icons.BackArrow />
@@ -6322,8 +6288,8 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', touchAction: 'none' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', touchAction: 'none', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <button
             className="swl-nav-back-btn"
@@ -6876,8 +6842,8 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', touchAction: 'none' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', touchAction: 'none', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <button className="swl-nav-back-btn" onClick={() => onNavigate('adm_dashboard')}>
             <Icons.BackArrow />
@@ -7393,8 +7359,8 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', touchAction: 'none' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', touchAction: 'none', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <button className="swl-nav-back-btn" onClick={() => onNavigate('adm_dashboard')}>
             <Icons.BackArrow />
@@ -7897,8 +7863,8 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', touchAction: 'none' }}>
+      <div className="no-scrollbar" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', touchAction: 'none', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <div className="swl-screen-top-nav">
           <button
             className="swl-nav-back-btn"
