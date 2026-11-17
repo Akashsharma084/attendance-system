@@ -843,8 +843,11 @@ export default function SWLLiveMasterApp() {
     adm_profile: '/admin/profile'
   }
 
+  // Punch mode state for guarded check-in vs check-out navigation: 'auto' | 'checkin' | 'checkout' | 'status'
+  const [punchMode, setPunchMode] = useState('auto')
+
   // Strictly role-isolated navigation handler with browser history tracking
-  const handleNavigate = (targetScreen, pushHistory = true) => {
+  const handleNavigate = (targetScreen, pushHistory = true, options = {}) => {
     if (!user) {
       setActiveScreen('login')
       return
@@ -862,6 +865,12 @@ export default function SWLLiveMasterApp() {
         console.warn('Employee account cannot access admin screens:', targetScreen)
         validScreen = 'emp_home'
       }
+    }
+
+    if (options && options.punchMode) {
+      setPunchMode(options.punchMode)
+    } else {
+      setPunchMode('auto')
     }
 
     setActiveScreen(validScreen)
@@ -1063,6 +1072,7 @@ export default function SWLLiveMasterApp() {
               onNavigate={handleNavigate}
               officeConfig={officeConfig}
               officeTiming={officeTiming}
+              punchMode={punchMode}
             />
           )}
 
@@ -1956,7 +1966,13 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
           <div
             className="swl-punch-card"
             style={{ cursor: isPresentToday ? 'default' : 'pointer' }}
-            onClick={() => onNavigate('emp_checkin')}
+            onClick={() => {
+              if (isPresentToday) {
+                onNavigate('emp_checkin', true, { punchMode: 'status' })
+              } else {
+                onNavigate('emp_checkin', true, { punchMode: 'checkin' })
+              }
+            }}
           >
             <div className={`swl-punch-icon ${isPresentToday ? 'in' : 'in'}`}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -1974,9 +1990,15 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
             className="swl-punch-card"
             style={{ cursor: isPresentToday && !isCheckedOutToday ? 'pointer' : 'default' }}
             onClick={() => {
-              if (isPresentToday && !isCheckedOutToday) {
-                onNavigate('emp_checkin')
+              if (!isPresentToday) {
+                alert('You have not checked in yet. Please punch Check-In first.')
+                return
               }
+              if (isCheckedOutToday) {
+                onNavigate('emp_checkin', true, { punchMode: 'status' })
+                return
+              }
+              onNavigate('emp_checkin', true, { punchMode: 'checkout' })
             }}
           >
             <div className={`swl-punch-icon ${isCheckedOutToday ? 'in' : 'out'}`}>
@@ -2141,7 +2163,7 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
 /* =========================================================================
    3. LIVE CHECK-IN SCREEN (SCREEN 4) - CAMERA, GPS & GEOFENCE PUNCH
    ========================================================================= */
-function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming }) {
+function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode = 'auto' }) {
   const { user, profile } = useAuth()
   const { triggerArrivalAlert } = useNotifications()
   const todayKey = todayDateKey()
@@ -2161,6 +2183,10 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming }) {
   const [countdown, setCountdown] = useState(null)
   const [autoCaptured, setAutoCaptured] = useState(false)
 
+  // Explicit Checkout Mode & Confirmation Modal to prevent accidental checkouts
+  const [checkoutMode, setCheckoutMode] = useState(() => punchMode === 'checkout')
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+
   // 1. Listen for today's record
   useEffect(() => {
     if (!user?.uid || !isFirebaseConfigured || !db) return
@@ -2178,6 +2204,18 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming }) {
     })
     return () => unsub()
   }, [user?.uid, todayKey])
+
+  const hasCheckedIn = Boolean(todayDoc?.checkInTime)
+  const hasCheckedOut = Boolean(todayDoc?.checkOutTime)
+  const isShiftDone = hasCheckedIn && hasCheckedOut
+  const isShiftActive = hasCheckedIn && !hasCheckedOut
+
+  // If user navigated with explicit 'checkout' punchMode, prompt confirmation modal
+  useEffect(() => {
+    if (punchMode === 'checkout' && isShiftActive && !checkoutMode) {
+      setShowConfirmModal(true)
+    }
+  }, [punchMode, isShiftActive, checkoutMode])
 
   // 2. Start Camera Feed (reusable for initial mount & instant retake)
   const startCamera = useCallback(async () => {
@@ -2207,21 +2245,41 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming }) {
         setPhotoUrl(profile?.photoURL || user?.photoURL)
       }
     }
+  }, [profile?.photoURL, user?.photoURL])
+
+  // Stop camera feed and release hardware camera sensor
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop())
+      streamRef.current = null
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+    setCameraActive(false)
+    setFaceDetected(false)
+    setCountdown(null)
   }, [])
 
-  useEffect(() => {
-    startCamera()
+  // Camera is strictly and only needed when:
+  // - User has NOT checked in yet (!hasCheckedIn)
+  // - OR user is actively on duty and explicitly activated checkoutMode (isShiftActive && checkoutMode)
+  const isCameraNeeded = (!hasCheckedIn || (isShiftActive && checkoutMode)) && !isShiftDone && !successMsg
 
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop())
-      }
+  useEffect(() => {
+    if (isCameraNeeded) {
+      startCamera()
+    } else {
+      stopCamera()
     }
-  }, [startCamera])
+    return () => {
+      stopCamera()
+    }
+  }, [isCameraNeeded, startCamera, stopCamera])
 
   // 2b. REAL Face Detection loop - only detects when an actual human face is present
   useEffect(() => {
-    if (!cameraActive || photoUrl || !videoRef.current) return
+    if (!isCameraNeeded || !cameraActive || photoUrl || !videoRef.current) return
     let active = true
 
     const canvas = document.createElement('canvas')
@@ -2304,11 +2362,17 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming }) {
       active = false
       clearInterval(checkInterval)
     }
-  }, [cameraActive, photoUrl])
+  }, [isCameraNeeded, cameraActive, photoUrl])
 
-  // 2c. 3-Second Countdown & Auto-Capture ONLY WHEN Face is actively in frame
+  // 2c. 3-Second Countdown & Auto-Capture ONLY for morning Check-In when Face is in frame
   useEffect(() => {
-    if (photoUrl) {
+    if (!isCameraNeeded || photoUrl) {
+      setCountdown(null)
+      return
+    }
+
+    // In checkout departure mode: DO NOT auto-snap to give user full manual control
+    if (isShiftActive) {
       setCountdown(null)
       return
     }
@@ -2337,7 +2401,7 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming }) {
       setAutoCaptured(true)
       setCountdown(null)
     }
-  }, [faceDetected, countdown, photoUrl, autoCaptured])
+  }, [isCameraNeeded, isShiftActive, faceDetected, countdown, photoUrl, autoCaptured])
 
   // 3. Acquire GPS Location
   useEffect(() => {
@@ -2412,6 +2476,9 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming }) {
   // Confirm Punch Action
   async function handleConfirmPunch() {
     if (submitting) return
+    if (isShiftDone) return
+    // Guard: Prevent any accidental checkout if user is not in explicit checkout mode
+    if (isShiftActive && !checkoutMode) return
     if (profile?.status === 'disabled' || profile?.disabled) {
       alert('Your employee account has been deactivated by the administrator. Clock-in is disabled.')
       return
@@ -2547,9 +2614,10 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming }) {
         }
       }
 
+      stopCamera()
       playPunchChime()
       if (isCheckOut) {
-        setSuccessMsg('✓ Check-Out Confirmed!')
+        setSuccessMsg('✓ Check-Out Confirmed! Shift Completed.')
       } else if (lateCalc.isLate) {
         setSuccessMsg(`✓ Check-In Confirmed! (Marked Late: +${lateCalc.lateText})`)
       } else {
@@ -2583,9 +2651,6 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming }) {
     }
   }
 
-  const isCheckOut = Boolean(todayDoc?.checkInTime && !todayDoc?.checkOutTime)
-  const isShiftDone = Boolean(todayDoc?.checkInTime && todayDoc?.checkOutTime)
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -2593,316 +2658,523 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming }) {
           <button className="swl-nav-back-btn" onClick={() => onNavigate('emp_home')}>
             <Icons.BackArrow />
           </button>
-          <span>{isShiftDone ? 'Shift Completed' : (isCheckOut ? 'Check Out' : 'Check In')}</span>
+          <span>
+            {isShiftDone
+              ? 'Shift Completed'
+              : (isShiftActive
+                  ? (checkoutMode ? 'Check Out Departure' : 'Active Shift')
+                  : 'Check In')}
+          </span>
           <div style={{ width: 18 }} />
         </div>
 
-        {/* Previous Check-In Selfie status banner when checking out */}
-        {isCheckOut && (
-          <div style={{ margin: '0 16px 8px 16px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 12, padding: '7px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {(todayDoc.checkInSelfieUrl || todayDoc.checkInPhotoUrl) && (
-                <img
-                  src={todayDoc.checkInSelfieUrl || todayDoc.checkInPhotoUrl}
-                  alt="Check In Selfie"
-                  style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '2px solid #10B981' }}
-                />
-              )}
-              <div>
-                <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#065F46' }}>Check-In Verified</div>
-                <div style={{ fontSize: '0.64rem', color: '#047857' }}>In at {formatTime(todayDoc.checkInTime)}</div>
+        {/* STATE 1: SHIFT FULLY COMPLETED TODAY */}
+        {isShiftDone && (
+          <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#ECFDF5', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', margin: '0 auto 12px' }}>
+              ✓
+            </div>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontWeight: 800, color: '#0F172A' }}>
+              Shift Completed Today
+            </h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '0.75rem', color: '#64748B' }}>
+              Both Check-In and Check-Out have been recorded for {todayKey}.
+            </p>
+
+            <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 700 }}>CHECK IN</div>
+                  <div style={{ fontSize: '0.9rem', color: '#0F172A', fontWeight: 800, marginTop: 2 }}>
+                    {formatTime(todayDoc.checkInTime)}
+                  </div>
+                  {(todayDoc.checkInSelfieUrl || todayDoc.checkInPhotoUrl) && (
+                    <img
+                      src={todayDoc.checkInSelfieUrl || todayDoc.checkInPhotoUrl}
+                      alt="In Selfie"
+                      style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', border: '2px solid #10B981', marginTop: 6 }}
+                    />
+                  )}
+                </div>
+
+                <div style={{ width: 1, height: 40, background: '#E2E8F0' }} />
+
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 700 }}>CHECK OUT</div>
+                  <div style={{ fontSize: '0.9rem', color: '#0F172A', fontWeight: 800, marginTop: 2 }}>
+                    {formatTime(todayDoc.checkOutTime)}
+                  </div>
+                  {(todayDoc.checkOutSelfieUrl || todayDoc.checkOutPhotoUrl) && (
+                    <img
+                      src={todayDoc.checkOutSelfieUrl || todayDoc.checkOutPhotoUrl}
+                      alt="Out Selfie"
+                      style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', border: '2px solid #F59E0B', marginTop: 6 }}
+                    />
+                  )}
+                </div>
               </div>
             </div>
-            <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#059669', background: '#D1FAE5', padding: '2px 7px', borderRadius: 999 }}>
-              📸 Ready for Out Selfie
-            </span>
-          </div>
-        )}
 
-        {/* Shift Completed Summary Card */}
-        {isShiftDone && (
-          <div style={{ margin: '0 16px 10px 16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 14, padding: '12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '1.25rem', marginBottom: 2 }}>🎉</div>
-            <h4 style={{ margin: '0 0 2px', fontSize: '0.86rem', fontWeight: 800, color: '#0F172A' }}>Shift Completed Today</h4>
-            <p style={{ margin: '0 0 8px', fontSize: '0.68rem', color: '#64748B' }}>
-              In: {formatTime(todayDoc.checkInTime)} • Out: {formatTime(todayDoc.checkOutTime)}
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
-              {(todayDoc.checkInSelfieUrl || todayDoc.checkInPhotoUrl) && (
-                <div style={{ textAlign: 'center' }}>
-                  <img src={todayDoc.checkInSelfieUrl || todayDoc.checkInPhotoUrl} alt="In Selfie" style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', border: '2px solid #10B981' }} />
-                  <div style={{ fontSize: '0.6rem', fontWeight: 800, color: '#10B981', marginTop: 2 }}>In Selfie</div>
-                </div>
-              )}
-              {(todayDoc.checkOutSelfieUrl || todayDoc.checkOutPhotoUrl) && (
-                <div style={{ textAlign: 'center' }}>
-                  <img src={todayDoc.checkOutSelfieUrl || todayDoc.checkOutPhotoUrl} alt="Out Selfie" style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', border: '2px solid #F59E0B' }} />
-                  <div style={{ fontSize: '0.6rem', fontWeight: 800, color: '#F59E0B', marginTop: 2 }}>Out Selfie</div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Circular Camera Selfie Viewfinder with Face Detection & 3s Countdown */}
-        {!isShiftDone && (
-          <div style={{ textAlign: 'center', margin: '8px 0 4px 0' }}>
-            <div
-              className={`swl-camera-frame ${photoUrl ? 'photo-captured' : (faceDetected ? 'face-detected' : '')}`}
+            <button
+              type="button"
+              onClick={() => onNavigate('emp_home')}
               style={{
-                width: 220,
-                height: 220,
-                borderRadius: '50%',
-                margin: '0 auto',
-                position: 'relative',
-                overflow: 'hidden',
-                background: '#0F172A',
-                border: photoUrl
-                  ? '4px solid #1E5AE6'
-                  : (faceDetected ? '4px solid #10B981' : '4px solid #94A3B8'),
-                boxShadow: photoUrl
-                  ? '0 0 20px rgba(30, 90, 230, 0.4)'
-                  : (faceDetected ? '0 0 28px rgba(16, 185, 129, 0.55)' : '0 4px 15px rgba(0,0,0,0.2)'),
-                transition: 'border-color 0.3s ease, box-shadow 0.3s ease'
+                width: '100%',
+                padding: '12px',
+                background: '#1E5AE6',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: 12,
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                cursor: 'pointer'
               }}
             >
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="swl-camera-photo"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  borderRadius: '50%',
-                  display: photoUrl ? 'none' : 'block'
-                }}
-              />
-              {photoUrl && (
-                <img
-                  src={photoUrl}
-                  alt="Captured Selfie"
-                  className="swl-camera-photo"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
-                />
-              )}
+              Return to Home Dashboard
+            </button>
+          </div>
+        )}
 
-              {/* Inner Circular Guide */}
-              {!photoUrl && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 16,
+        {/* STATE 2: ALREADY CHECKED IN (Active Shift in Progress, Camera is OFF) */}
+        {isShiftActive && !checkoutMode && (
+          <div style={{ padding: '16px' }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)',
+              border: '1.5px solid #86EFAC',
+              borderRadius: 18,
+              padding: '20px 16px',
+              textAlign: 'center',
+              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.12)'
+            }}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: '#16A34A',
+                color: '#FFFFFF',
+                padding: '4px 12px',
+                borderRadius: 999,
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                marginBottom: 14
+              }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#FFFFFF', display: 'inline-block' }} />
+                Active Shift in Progress
+              </div>
+
+              <div style={{ position: 'relative', width: 84, height: 84, margin: '0 auto 12px' }}>
+                {(todayDoc.checkInSelfieUrl || todayDoc.checkInPhotoUrl) ? (
+                  <img
+                    src={todayDoc.checkInSelfieUrl || todayDoc.checkInPhotoUrl}
+                    alt="Check-In Selfie"
+                    style={{
+                      width: 84,
+                      height: 84,
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '3px solid #16A34A',
+                      boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)'
+                    }}
+                  />
+                ) : (
+                  <div style={{
+                    width: 84,
+                    height: 84,
                     borderRadius: '50%',
-                    border: faceDetected ? '2px dashed rgba(16, 185, 129, 0.7)' : '2px dashed rgba(255, 255, 255, 0.4)',
-                    pointerEvents: 'none',
-                    transition: 'border-color 0.3s ease'
-                  }}
-                />
-              )}
-
-              {/* 3-Second Countdown Overlay */}
-              {!photoUrl && countdown !== null && countdown > 0 && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
+                    background: '#FFFFFF',
+                    border: '3px solid #16A34A',
                     display: 'flex',
-                    flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: 'rgba(15, 23, 42, 0.45)',
-                    backdropFilter: 'blur(2px)',
-                    borderRadius: '50%',
-                    zIndex: 15,
-                    pointerEvents: 'none'
-                  }}
-                >
-                  <div className="swl-countdown-digit">{countdown}</div>
-                  <span
-                    style={{
-                      fontSize: '0.68rem',
-                      fontWeight: 800,
-                      color: '#ECFDF5',
-                      background: 'rgba(16, 185, 129, 0.95)',
-                      padding: '2px 8px',
-                      borderRadius: 999,
-                      marginTop: 2
-                    }}
-                  >
-                    Auto Snap in {countdown}s
-                  </span>
-                </div>
-              )}
-
-              {/* Camera Shutter / Retake Button */}
-              <button
-                type="button"
-                className="swl-cam-shutter-btn"
-                onClick={photoUrl ? handleRetakePhoto : handleSnapPhoto}
-                title={photoUrl ? 'Retake selfie' : 'Snap photo immediately'}
-                style={{
+                    fontSize: '2rem'
+                  }}>
+                    👤
+                  </div>
+                )}
+                <span style={{
                   position: 'absolute',
-                  bottom: 8,
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: 36,
-                  height: 36,
+                  bottom: 2,
+                  right: 2,
+                  background: '#16A34A',
+                  color: '#FFFFFF',
                   borderRadius: '50%',
-                  background: photoUrl ? '#F59E0B' : '#1E5AE6',
-                  color: '#fff',
-                  border: '2px solid #fff',
+                  width: 22,
+                  height: 22,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  fontSize: '0.65rem',
+                  border: '2px solid #FFFFFF'
+                }}>
+                  ✓
+                </span>
+              </div>
+
+              <h3 style={{ margin: '0 0 4px 0', fontSize: '1.05rem', fontWeight: 800, color: '#14532D' }}>
+                You are Clocked In
+              </h3>
+              <div style={{ fontSize: '0.82rem', color: '#166534', fontWeight: 700 }}>
+                In at {formatTime(todayDoc.checkInTime)}
+                <span style={{
+                  marginLeft: 6,
+                  fontSize: '0.66rem',
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  background: todayDoc.isLate ? '#FEF3C7' : '#DCFCE7',
+                  color: todayDoc.isLate ? '#92400E' : '#166534',
+                  fontWeight: 800
+                }}>
+                  {todayDoc.isLate ? `Late (+${todayDoc.lateMinutes}m)` : 'On Time'}
+                </span>
+              </div>
+
+              <div style={{
+                marginTop: 14,
+                background: 'rgba(255, 255, 255, 0.88)',
+                backdropFilter: 'blur(4px)',
+                borderRadius: 12,
+                padding: '10px 12px',
+                fontSize: '0.74rem',
+                color: '#334155',
+                lineHeight: 1.45
+              }}>
+                🛡️ <strong>Attendance Safely Logged:</strong> Your morning check-in and selfie are verified in the cloud. You do NOT need to take any more photos until you leave for the day.
+              </div>
+            </div>
+
+            {/* Actions: Home vs Punch Out */}
+            <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => onNavigate('emp_home')}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: '#EEF4FF',
+                  color: '#1E5AE6',
+                  border: '1.5px solid #BFDBFE',
+                  borderRadius: 12,
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
                   cursor: 'pointer',
-                  zIndex: 20
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6
                 }}
               >
-                {photoUrl ? '🔄' : <Icons.Camera />}
+                <Icons.BackArrow />
+                Return to Home Dashboard
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowConfirmModal(true)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: '#FFFBEB',
+                  color: '#B45309',
+                  border: '1.5px solid #FCD34D',
+                  borderRadius: 12,
+                  fontWeight: 800,
+                  fontSize: '0.84rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6
+                }}
+              >
+                🚪 End Shift &amp; Punch Out
               </button>
             </div>
-
-            {/* Face Status Pill */}
-            <div style={{ marginTop: 6, marginBottom: 6 }}>
-              {photoUrl ? (
-                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#10B981', background: '#ECFDF5', border: '1px solid #A7F3D0', padding: '3px 12px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                  ✓ Face Verified &amp; Captured
-                </span>
-              ) : faceDetected ? (
-                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#047857', background: '#D1FAE5', border: '1px solid #6EE7B7', padding: '3px 12px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                  🟢 Face Detected • {countdown !== null && countdown > 0 ? `Auto Capturing in ${countdown}s` : 'Ready'}
-                </span>
-              ) : (
-                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748B', background: '#F1F5F9', padding: '3px 12px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                  👤 Align face in circle…
-                </span>
-              )}
-            </div>
           </div>
         )}
 
-        {/* Location Verified Card */}
-        <div className="swl-location-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Icons.LocationPin />
-            <div className="swl-loc-text-col">
-              <span className="swl-loc-title">
-                {geofence?.isAllowed ? 'Location Verified' : (gpsLocked ? 'Outside Office Geofence' : 'Locking GPS Location...')}
-              </span>
-              <span className="swl-loc-coords">
-                {gpsLocation
-                  ? `${gpsLocation.latitude.toFixed(4)}° N, ${gpsLocation.longitude.toFixed(4)}° E • ${geofence?.distanceMeters ?? 0}m away`
-                  : 'Acquiring coordinates...'}
-              </span>
-            </div>
-          </div>
-          <div
-            className="swl-gps-badge"
-            style={{
-              background: geofence?.isAllowed ? '#ECFDF5' : '#FEE2E2',
-              color: geofence?.isAllowed ? '#10B981' : '#EF4444',
-              fontWeight: 800
-            }}
-          >
-            {geofence?.isAllowed ? 'IN RANGE' : 'OUTSIDE'}
-          </div>
-        </div>
+        {/* STATE 3: CAMERA PUNCH VIEW (Morning Check-In OR Explicit Check-Out Departure) */}
+        {isCameraNeeded && (
+          <div>
+            {/* If in departure checkout mode, show header banner with cancel button */}
+            {isShiftActive && checkoutMode && (
+              <div style={{ margin: '0 16px 8px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 12, padding: '7px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#B45309' }}>
+                  📸 Departure Out-Selfie
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCheckoutMode(false)
+                    setPhotoUrl(null)
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#64748B',
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    padding: '2px 6px'
+                  }}
+                >
+                  ✕ Cancel &amp; Return
+                </button>
+              </div>
+            )}
 
-        {/* Checklist */}
-        <div className="swl-checklist">
-          <div className="swl-check-item">
-            <div className="swl-check-icon" style={{ background: photoUrl || isShiftDone ? '#10B981' : '#94A3B8' }}>
-              {photoUrl || isShiftDone ? '✓' : '…'}
-            </div>
-            <span>Selfie captured {photoUrl ? '(Verified)' : (isShiftDone ? '(Saved)' : '(Pending)')}</span>
-          </div>
-          <div className="swl-check-item">
-            <div className="swl-check-icon" style={{ background: gpsLocked ? '#10B981' : '#94A3B8' }}>
-              {gpsLocked ? '✓' : '…'}
-            </div>
-            <span>GPS location locked</span>
-          </div>
-          <div className="swl-check-item">
-            <div
-              className="swl-check-icon"
-              style={{ background: geofence?.isAllowed ? '#10B981' : '#EF4444' }}
-            >
-              {geofence?.isAllowed ? '✓' : '✕'}
-            </div>
-            <span>
-              {geofence?.isAllowed
-                ? `Within office premise (${geofence?.distanceMeters ?? 0}m ≤ ${geofence?.allowedRadius ?? 100}m)`
-                : `Outside premise: ${geofence?.distanceMeters ?? 0}m (Strict allowed: ${geofence?.allowedRadius ?? 100}m)`}
-            </span>
-          </div>
-        </div>
+            {/* Circular Camera Selfie Viewfinder */}
+            <div style={{ textAlign: 'center', margin: '8px 0 4px 0' }}>
+              <div
+                className={`swl-camera-frame ${photoUrl ? 'photo-captured' : (faceDetected ? 'face-detected' : '')}`}
+                style={{
+                  width: 220,
+                  height: 220,
+                  borderRadius: '50%',
+                  margin: '0 auto',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  background: '#0F172A',
+                  border: photoUrl
+                    ? '4px solid #1E5AE6'
+                    : (faceDetected ? '4px solid #10B981' : '4px solid #94A3B8'),
+                  boxShadow: photoUrl
+                    ? '0 0 20px rgba(30, 90, 230, 0.4)'
+                    : (faceDetected ? '0 0 28px rgba(16, 185, 129, 0.55)' : '0 4px 15px rgba(0,0,0,0.2)'),
+                  transition: 'border-color 0.3s ease, box-shadow 0.3s ease'
+                }}
+              >
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="swl-camera-photo"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: '50%',
+                    display: photoUrl ? 'none' : 'block'
+                  }}
+                />
+                {photoUrl && (
+                  <img
+                    src={photoUrl}
+                    alt="Captured Selfie"
+                    className="swl-camera-photo"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                  />
+                )}
 
-        {/* Outside Geofence Warning Box */}
-        {isOutsideGeofence && (
-          <div style={{
-            background: '#FEF2F2',
-            border: '1.5px solid #FCA5A5',
-            borderRadius: 10,
-            padding: '10px 12px',
-            margin: '10px 16px 0',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            color: '#991B1B'
-          }}>
-            <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>🚫</span>
-            <div style={{ fontSize: '0.72rem', lineHeight: 1.4 }}>
-              <strong style={{ display: 'block', fontSize: '0.76rem', color: '#7F1D1D' }}>Punch Blocked (Outside Office Premise)</strong>
-              You are currently <strong>{geofence?.distanceMeters ?? 0}m</strong> away from the office. Attendance punch is strictly permitted within the <strong>{geofence?.allowedRadius ?? 100}m</strong> office premise radius.
-            </div>
-          </div>
-        )}
+                {/* Inner Circular Guide */}
+                {!photoUrl && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 16,
+                      borderRadius: '50%',
+                      border: faceDetected ? '2px dashed rgba(16, 185, 129, 0.7)' : '2px dashed rgba(255, 255, 255, 0.4)',
+                      pointerEvents: 'none',
+                      transition: 'border-color 0.3s ease'
+                    }}
+                  />
+                )}
 
-        {/* GPS Error Warning Box */}
-        {!gpsLocked && gpsError && (
-          <div style={{
-            background: '#FFFBEB',
-            border: '1.5px solid #FCD34D',
-            borderRadius: 10,
-            padding: '10px 12px',
-            margin: '10px 16px 0',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            color: '#92400E'
-          }}>
-            <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>⚠️</span>
-            <div style={{ fontSize: '0.72rem', lineHeight: 1.4 }}>
-              <strong style={{ display: 'block', fontSize: '0.76rem', color: '#78350F' }}>Location Permission Needed</strong>
-              {gpsError}
-            </div>
-          </div>
-        )}
+                {/* 3-Second Countdown Overlay (Morning Check-In only) */}
+                {!photoUrl && countdown !== null && countdown > 0 && !isShiftActive && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'rgba(15, 23, 42, 0.45)',
+                      backdropFilter: 'blur(2px)',
+                      borderRadius: '50%',
+                      zIndex: 15,
+                      pointerEvents: 'none'
+                    }}
+                  >
+                    <div className="swl-countdown-digit">{countdown}</div>
+                    <span
+                      style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 800,
+                        color: '#ECFDF5',
+                        background: 'rgba(16, 185, 129, 0.95)',
+                        padding: '2px 8px',
+                        borderRadius: 999,
+                        marginTop: 2
+                      }}
+                    >
+                      Auto Snap in {countdown}s
+                    </span>
+                  </div>
+                )}
 
-        {/* Confirm Check In/Out button */}
-        <div className="swl-checkin-btn-wrap" style={{ margin: '16px', paddingBottom: 28, flexShrink: 0 }}>
-          <button
-            type="button"
-            className="swl-btn-login"
-            style={{
-              background: isShiftDone
-                ? '#94A3B8'
-                : (isOutsideGeofence
+                {/* Camera Shutter / Retake Button */}
+                <button
+                  type="button"
+                  className="swl-cam-shutter-btn"
+                  onClick={photoUrl ? handleRetakePhoto : handleSnapPhoto}
+                  title={photoUrl ? 'Retake selfie' : 'Snap photo'}
+                  style={{
+                    position: 'absolute',
+                    bottom: 8,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    background: photoUrl ? '#F59E0B' : (isShiftActive ? '#F59E0B' : '#1E5AE6'),
+                    color: '#fff',
+                    border: '2px solid #fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    cursor: 'pointer',
+                    zIndex: 20
+                  }}
+                >
+                  {photoUrl ? '🔄' : <Icons.Camera />}
+                </button>
+              </div>
+
+              {/* Face Status Pill */}
+              <div style={{ marginTop: 6, marginBottom: 6 }}>
+                {photoUrl ? (
+                  <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#10B981', background: '#ECFDF5', border: '1px solid #A7F3D0', padding: '3px 12px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    ✓ Face Verified &amp; Captured
+                  </span>
+                ) : faceDetected ? (
+                  <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#047857', background: '#D1FAE5', border: '1px solid #6EE7B7', padding: '3px 12px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    🟢 Face Detected • {isShiftActive ? 'Tap shutter to snap photo' : (countdown !== null && countdown > 0 ? `Auto Capturing in ${countdown}s` : 'Ready')}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748B', background: '#F1F5F9', padding: '3px 12px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    👤 Align face in circle…
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Location Verified Card */}
+            <div className="swl-location-card">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Icons.LocationPin />
+                <div className="swl-loc-text-col">
+                  <span className="swl-loc-title">
+                    {geofence?.isAllowed ? 'Location Verified' : (gpsLocked ? 'Outside Office Geofence' : 'Locking GPS Location...')}
+                  </span>
+                  <span className="swl-loc-coords">
+                    {gpsLocation
+                      ? `${gpsLocation.latitude.toFixed(4)}° N, ${gpsLocation.longitude.toFixed(4)}° E • ${geofence?.distanceMeters ?? 0}m away`
+                      : 'Acquiring coordinates...'}
+                  </span>
+                </div>
+              </div>
+              <div
+                className="swl-gps-badge"
+                style={{
+                  background: geofence?.isAllowed ? '#ECFDF5' : '#FEE2E2',
+                  color: geofence?.isAllowed ? '#10B981' : '#EF4444',
+                  fontWeight: 800
+                }}
+              >
+                {geofence?.isAllowed ? 'IN RANGE' : 'OUTSIDE'}
+              </div>
+            </div>
+
+            {/* Checklist */}
+            <div className="swl-checklist">
+              <div className="swl-check-item">
+                <div className="swl-check-icon" style={{ background: photoUrl ? '#10B981' : '#94A3B8' }}>
+                  {photoUrl ? '✓' : '…'}
+                </div>
+                <span>Selfie captured {photoUrl ? '(Verified)' : '(Pending)'}</span>
+              </div>
+              <div className="swl-check-item">
+                <div className="swl-check-icon" style={{ background: gpsLocked ? '#10B981' : '#94A3B8' }}>
+                  {gpsLocked ? '✓' : '…'}
+                </div>
+                <span>GPS location locked</span>
+              </div>
+              <div className="swl-check-item">
+                <div
+                  className="swl-check-icon"
+                  style={{ background: geofence?.isAllowed ? '#10B981' : '#EF4444' }}
+                >
+                  {geofence?.isAllowed ? '✓' : '✕'}
+                </div>
+                <span>
+                  {geofence?.isAllowed
+                    ? `Within office premise (${geofence?.distanceMeters ?? 0}m ≤ ${geofence?.allowedRadius ?? 100}m)`
+                    : `Outside premise: ${geofence?.distanceMeters ?? 0}m (Strict allowed: ${geofence?.allowedRadius ?? 100}m)`}
+                </span>
+              </div>
+            </div>
+
+            {/* Outside Geofence Warning Box */}
+            {isOutsideGeofence && (
+              <div style={{
+                background: '#FEF2F2',
+                border: '1.5px solid #FCA5A5',
+                borderRadius: 10,
+                padding: '10px 12px',
+                margin: '10px 16px 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                color: '#991B1B'
+              }}>
+                <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>🚫</span>
+                <div style={{ fontSize: '0.72rem', lineHeight: 1.4 }}>
+                  <strong style={{ display: 'block', fontSize: '0.76rem', color: '#7F1D1D' }}>Punch Blocked (Outside Office Premise)</strong>
+                  You are currently <strong>{geofence?.distanceMeters ?? 0}m</strong> away from the office. Attendance punch is strictly permitted within the <strong>{geofence?.allowedRadius ?? 100}m</strong> office premise radius.
+                </div>
+              </div>
+            )}
+
+            {/* GPS Error Warning Box */}
+            {!gpsLocked && gpsError && (
+              <div style={{
+                background: '#FFFBEB',
+                border: '1.5px solid #FCD34D',
+                borderRadius: 10,
+                padding: '10px 12px',
+                margin: '10px 16px 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                color: '#92400E'
+              }}>
+                <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>⚠️</span>
+                <div style={{ fontSize: '0.72rem', lineHeight: 1.4 }}>
+                  <strong style={{ display: 'block', fontSize: '0.76rem', color: '#78350F' }}>Location Permission Needed</strong>
+                  {gpsError}
+                </div>
+              </div>
+            )}
+
+            {/* Confirm Check In/Out button */}
+            <div className="swl-checkin-btn-wrap" style={{ margin: '16px', paddingBottom: 28, flexShrink: 0 }}>
+              <button
+                type="button"
+                className="swl-btn-login"
+                style={{
+                  background: isOutsideGeofence
                     ? '#EF4444'
-                    : (successMsg ? '#10B981' : (isCheckOut ? '#F59E0B' : '#1E5AE6'))),
-              cursor: (submitting || Boolean(successMsg) || isShiftDone || isOutsideGeofence || !gpsLocked) ? 'not-allowed' : 'pointer',
-              opacity: (submitting || isShiftDone || isOutsideGeofence || !gpsLocked) ? 0.85 : 1
-            }}
-            disabled={submitting || Boolean(successMsg) || isShiftDone || isOutsideGeofence || !gpsLocked}
-            onClick={handleConfirmPunch}
-          >
-            {isShiftDone
-              ? 'Shift Complete for Today'
-              : (isOutsideGeofence
+                    : (successMsg ? '#10B981' : (isShiftActive ? '#F59E0B' : '#1E5AE6')),
+                  cursor: (submitting || Boolean(successMsg) || isOutsideGeofence || !gpsLocked) ? 'not-allowed' : 'pointer',
+                  opacity: (submitting || isOutsideGeofence || !gpsLocked) ? 0.85 : 1
+                }}
+                disabled={submitting || Boolean(successMsg) || isOutsideGeofence || !gpsLocked}
+                onClick={handleConfirmPunch}
+              >
+                {isOutsideGeofence
                   ? `🚫 Outside Office (${geofence?.distanceMeters ?? 0}m > ${geofence?.allowedRadius ?? 100}m)`
                   : (!gpsLocked
                       ? (gpsError ? '⚠️ Location Required' : 'Acquiring GPS Location…')
@@ -2910,9 +3182,110 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming }) {
                           ? successMsg
                           : (submitting
                               ? 'Verifying & Saving…'
-                              : (isCheckOut ? 'Confirm Check Out' : 'Confirm Check In')))))}
-          </button>
-        </div>
+                              : (isShiftActive ? 'Confirm Check Out' : 'Confirm Check In'))))}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* PUNCH OUT CONFIRMATION MODAL */}
+        {showConfirmModal && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16
+          }}>
+            <div style={{
+              background: '#FFFFFF',
+              borderRadius: 18,
+              padding: '22px 18px',
+              maxWidth: 340,
+              width: '100%',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '2rem', marginBottom: 8 }}>🚪</div>
+              <h4 style={{ margin: '0 0 6px 0', fontSize: '1rem', fontWeight: 800, color: '#0F172A' }}>
+                Confirm Punch Out?
+              </h4>
+              <p style={{ margin: '0 0 14px 0', fontSize: '0.75rem', color: '#64748B', lineHeight: 1.5 }}>
+                Are you ready to end your shift for today ({todayKey})? This will open your camera to record your departure selfie and out time.
+              </p>
+
+              {/* Check if checked in very recently */}
+              {(() => {
+                try {
+                  const inD = todayDoc?.checkInTime?.toDate ? todayDoc.checkInTime.toDate() : new Date(todayDoc.checkInTime)
+                  const mins = Math.floor((Date.now() - inD.getTime()) / 60000)
+                  if (mins < 30) {
+                    return (
+                      <div style={{
+                        background: '#FEF2F2',
+                        border: '1px solid #FCA5A5',
+                        borderRadius: 8,
+                        padding: '8px 10px',
+                        fontSize: '0.68rem',
+                        color: '#991B1B',
+                        marginBottom: 14,
+                        textAlign: 'left'
+                      }}>
+                        ⚠️ <strong>Notice:</strong> You checked in only <strong>{mins} minute(s)</strong> ago. Please verify you genuinely intend to clock out now.
+                      </div>
+                    )
+                  }
+                } catch (_) {}
+                return null
+              })()}
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmModal(false)}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    background: '#F1F5F9',
+                    color: '#475569',
+                    border: 'none',
+                    borderRadius: 10,
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowConfirmModal(false)
+                    setPhotoUrl(null)
+                    setCheckoutMode(true)
+                  }}
+                  style={{
+                    flex: 1.3,
+                    padding: '10px',
+                    background: '#F59E0B',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: 10,
+                    fontSize: '0.78rem',
+                    fontWeight: 800,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Yes, Punch Out
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom Nav */}
