@@ -764,15 +764,20 @@
 
 .swl-quick-actions-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   gap: 10px !important;
   margin: 0 16px 16px 16px !important;
+  box-sizing: border-box !important;
 }
 
 .swl-action-btn-card {
-  padding: 14px 10px !important;
-  min-height: 78px !important;
+  padding: 12px 8px !important;
+  min-height: 72px !important;
   border-radius: 14px !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  box-sizing: border-box !important;
 }
 
 /* Bottom Navigation Bar: fixed to bottom, elevated & clear */

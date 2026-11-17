@@ -5522,7 +5522,6 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
             <div>
               <div style={{ fontSize: '0.65rem', color: '#64748B' }}>Late</div>
               <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#F59E0B' }}>{lateEmployees}</div>
-              <div style={{ fontSize: '0.58rem', color: '#D97706', fontWeight: 700, marginTop: 1 }}>After {cutoffDisplay}</div>
             </div>
           </div>
         </div>
@@ -5566,7 +5565,6 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
           <div className="swl-action-btn-card" onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'add' })} title="Manual punch entry if employee forgot">
             <div style={{ fontSize: '1.25rem', lineHeight: 1 }}>⏱️</div>
             <span>Manual Punch</span>
-            <span style={{ fontSize: '0.58rem', color: '#1E5AE6', fontWeight: 700 }}>+ Add / Fix Punch</span>
           </div>
 
           <div className="swl-action-btn-card" onClick={() => onNavigate('adm_employees')}>
@@ -5593,9 +5591,6 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
           <div className="swl-action-btn-card" onClick={onOpenTiming} title="Set office shift hours and late grace period">
             <div style={{ fontSize: '1.25rem', lineHeight: 1 }}>⏰</div>
             <span>Office Timings</span>
-            <span style={{ fontSize: '0.58rem', color: '#1E5AE6', fontWeight: 700 }}>
-              {formatTime24to12(officeTiming?.startTime || '09:00')} (+{officeTiming?.graceMinutes != null ? officeTiming.graceMinutes : 30}m)
-            </span>
           </div>
         </div>
 
