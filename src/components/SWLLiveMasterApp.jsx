@@ -5686,62 +5686,11 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
                       )
                     })()}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <LocationBtn location={loc} />
-                        <button
-                          type="button"
-                          onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'edit', record: r })}
-                          title="Edit Attendance"
-                          style={{
-                            border: '1px solid #CBD5E1',
-                            background: '#F8FAFC',
-                            color: '#1E5AE6',
-                            borderRadius: 5,
-                            padding: '2px 6px',
-                            fontSize: '0.64rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 2
-                          }}
-                        >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            const ok = window.confirm(`Delete attendance record for ${r.name || 'Employee'} on ${r.date}?`)
-                            if (ok && isFirebaseConfigured && db) {
-                              try {
-                                await deleteDoc(doc(db, 'attendance', r.id))
-                              } catch (e) {
-                                alert('Delete error: ' + e.message)
-                              }
-                            }
-                          }}
-                          title="Delete Record"
-                          style={{
-                            border: '1px solid #FECACA',
-                            background: '#FEF2F2',
-                            color: '#DC2626',
-                            borderRadius: 5,
-                            padding: '2px 6px',
-                            fontSize: '0.64rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 2
-                          }}
-                        >
-                          🗑️
-                        </button>
-                      </div>
+                      <LocationBtn location={loc} />
                       <button
                         type="button"
                         onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'edit', record: punch })}
-                        title="Edit Check-In / Check-Out"
+                        title="Edit Attendance"
                         style={{
                           border: '1px solid #CBD5E1',
                           background: '#F8FAFC',
@@ -6683,58 +6632,7 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
                       )
                     })()}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <LocationBtn location={loc} />
-                        <button
-                          type="button"
-                          onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'edit', record: r })}
-                          title="Edit Attendance"
-                          style={{
-                            border: '1px solid #CBD5E1',
-                            background: '#F8FAFC',
-                            color: '#1E5AE6',
-                            borderRadius: 5,
-                            padding: '2px 6px',
-                            fontSize: '0.64rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 2
-                          }}
-                        >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            const ok = window.confirm(`Delete attendance record for ${r.name || 'Employee'} on ${r.date}?`)
-                            if (ok && isFirebaseConfigured && db) {
-                              try {
-                                await deleteDoc(doc(db, 'attendance', r.id))
-                              } catch (e) {
-                                alert('Delete error: ' + e.message)
-                              }
-                            }
-                          }}
-                          title="Delete Record"
-                          style={{
-                            border: '1px solid #FECACA',
-                            background: '#FEF2F2',
-                            color: '#DC2626',
-                            borderRadius: 5,
-                            padding: '2px 6px',
-                            fontSize: '0.64rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 2
-                          }}
-                        >
-                          🗑️
-                        </button>
-                      </div>
+                      <LocationBtn location={loc} />
                       <button
                         type="button"
                         onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'edit', record: r })}
