@@ -5560,43 +5560,51 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
         </div>
 
         {/* Quick Actions */}
-        <div style={{ margin: '12px 16px 4px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#0F172A' }}>Quick Actions</div>
+        <div style={{ margin: '14px 16px 8px 16px', fontSize: '0.82rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em' }}>Quick Actions</div>
         <div className="swl-quick-actions-grid">
           <div className="swl-action-btn-card" onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'add' })} title="Manual punch entry if employee forgot">
-            <div style={{ fontSize: '1.25rem', lineHeight: 1 }}>⏱️</div>
+            <div className="swl-action-icon-wrap" style={{ background: '#EEF2FF', color: '#1E40AF' }}>⏱️</div>
             <span>Manual Punch</span>
           </div>
 
           <div className="swl-action-btn-card" onClick={() => onNavigate('adm_employees')}>
-            <Icons.Employees active={false} />
+            <div className="swl-action-icon-wrap" style={{ background: '#F0FDF4', color: '#16A34A' }}>
+              <Icons.Employees active={true} />
+            </div>
             <span>Manage Employees</span>
           </div>
 
           <div className="swl-action-btn-card" onClick={() => onNavigate('adm_approvals')}>
-            <Icons.Leave active={false} />
+            <div className="swl-action-icon-wrap" style={{ background: '#FAF5FF', color: '#9333EA' }}>
+              <Icons.Leave active={true} />
+            </div>
             <span>Leave Approvals</span>
             {pendingLeavesCount > 0 && <div className="swl-action-badge">{pendingLeavesCount}</div>}
           </div>
 
           <div className="swl-action-btn-card" onClick={() => onNavigate('adm_reports')}>
-            <Icons.Reports active={false} />
+            <div className="swl-action-icon-wrap" style={{ background: '#FFF7ED', color: '#EA580C' }}>
+              <Icons.Reports active={true} />
+            </div>
             <span>Reports</span>
           </div>
 
           <div className="swl-action-btn-card" onClick={onOpenGeofence}>
-            <Icons.LocationPin />
+            <div className="swl-action-icon-wrap" style={{ background: '#EFF6FF', color: '#2563EB' }}>
+              <Icons.LocationPin />
+            </div>
             <span>Office Geofence</span>
           </div>
 
           <div className="swl-action-btn-card" onClick={onOpenTiming} title="Set office shift hours and late grace period">
-            <div style={{ fontSize: '1.25rem', lineHeight: 1 }}>⏰</div>
+            <div className="swl-action-icon-wrap" style={{ background: '#FEF9C3', color: '#CA8A04' }}>⏰</div>
             <span>Office Timings</span>
           </div>
         </div>
 
         {/* 📍 Today's Punch Feed */}
-        <div style={{ margin: '14px 16px 6px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0F172A' }}>
+        <div style={{ margin: '14px 16px 8px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em' }}>
             📍 Today's Punches ({todayPunches.length})
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -5604,20 +5612,25 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
               type="button"
               onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'add' })}
               style={{
-                border: '1px solid #1E5AE6',
-                background: '#EEF4FF',
-                color: '#1E5AE6',
-                fontSize: '0.68rem',
-                fontWeight: 800,
-                padding: '3px 8px',
-                borderRadius: 6,
-                cursor: 'pointer'
+                border: 'none',
+                background: '#1E40AF',
+                color: '#FFFFFF',
+                fontSize: '0.70rem',
+                fontWeight: 700,
+                padding: '5px 12px',
+                borderRadius: 999,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                boxShadow: '0 2px 6px rgba(30, 64, 175, 0.25)',
+                transition: 'transform 0.1s ease'
               }}
             >
               + Add Punch
             </button>
             <span
-              style={{ fontSize: '0.66rem', color: '#1E5AE6', fontWeight: 700, cursor: 'pointer' }}
+              style={{ fontSize: '0.68rem', color: '#1E40AF', fontWeight: 700, cursor: 'pointer' }}
               onClick={() => onNavigate('adm_reports')}
             >
               All Reports &gt;
@@ -5680,27 +5693,32 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
                         </span>
                       )
                     })()}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <LocationBtn location={loc} />
                       <button
                         type="button"
                         onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'edit', record: punch })}
                         title="Edit Attendance"
                         style={{
-                          border: '1px solid #CBD5E1',
-                          background: '#F8FAFC',
-                          color: '#1E5AE6',
-                          borderRadius: 5,
-                          padding: '2px 6px',
-                          fontSize: '0.64rem',
+                          border: 'none',
+                          background: '#EEF4FF',
+                          color: '#1E40AF',
+                          borderRadius: 999,
+                          padding: '4px 10px',
+                          fontSize: '0.68rem',
                           fontWeight: 700,
                           cursor: 'pointer',
-                          display: 'flex',
+                          display: 'inline-flex',
                           alignItems: 'center',
-                          gap: 2
+                          gap: 4,
+                          boxShadow: '0 1px 3px rgba(30, 64, 175, 0.1)',
+                          transition: 'transform 0.1s ease'
                         }}
                       >
-                        ✏️ Edit
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                        </svg>
+                        Edit
                       </button>
                       <button
                         type="button"
@@ -5716,20 +5734,26 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
                         }}
                         title="Delete Attendance Record"
                         style={{
-                          border: '1px solid #FECACA',
-                          background: '#FEF2F2',
+                          border: 'none',
+                          background: '#FEE2E2',
                           color: '#DC2626',
-                          borderRadius: 5,
-                          padding: '2px 6px',
-                          fontSize: '0.64rem',
+                          borderRadius: 999,
+                          padding: '4px 10px',
+                          fontSize: '0.68rem',
                           fontWeight: 700,
                           cursor: 'pointer',
-                          display: 'flex',
+                          display: 'inline-flex',
                           alignItems: 'center',
-                          gap: 2
+                          gap: 4,
+                          boxShadow: '0 1px 3px rgba(220, 38, 38, 0.1)',
+                          transition: 'transform 0.1s ease'
                         }}
                       >
-                        🗑️
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                        Delete
                       </button>
                     </div>
                   </div>

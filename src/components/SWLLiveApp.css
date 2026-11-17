@@ -748,22 +748,201 @@
   height: 82px !important;
 }
 
-/* Admin Dashboard Breathing Spacing */
-.swl-admin-stats-2x2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+/* Real Native Android Material 3 Design System */
+.swl-live-chassis-wrap,
+.swl-phone-viewport {
+  background: #F0F4F8 !important;
+}
+
+/* Screen Top App Bar */
+.swl-screen-top-nav {
+  background: #FFFFFF !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.7) !important;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03) !important;
+  height: 56px !important;
+  padding: 0 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.swl-screen-top-nav span {
+  font-size: 1.08rem !important;
+  font-weight: 800 !important;
+  color: #0F172A !important;
+  letter-spacing: -0.02em !important;
+}
+
+.swl-nav-back-btn {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 50% !important;
+  background: #F1F5F9 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #0F172A !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: transform 0.1s ease, background 0.15s ease !important;
+}
+
+.swl-nav-back-btn:active {
+  transform: scale(0.92) !important;
+  background: #E2E8F0 !important;
+}
+
+.swl-user-header {
+  background: #FFFFFF !important;
+  border-radius: 20px !important;
+  padding: 16px !important;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04) !important;
+  border: 1px solid rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Home Screen Breathing Spacing */
+.swl-home-viewport {
+  padding: 16px 16px 28px 16px !important;
+  gap: 16px !important;
+}
+
+.swl-punch-cards-row {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
   gap: 12px !important;
-  margin: 12px 16px 16px 16px !important;
+}
+
+.swl-punch-card {
+  background: #FFFFFF !important;
+  border: 1px solid rgba(15, 23, 42, 0.04) !important;
+  border-radius: 20px !important;
+  padding: 16px 14px !important;
+  min-height: 104px !important;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  gap: 6px !important;
+  transition: transform 0.12s ease, box-shadow 0.12s ease !important;
+}
+
+.swl-punch-card:active {
+  transform: scale(0.96) !important;
+}
+
+.swl-punch-icon {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-bottom: 2px !important;
+}
+
+.swl-status-hero-card {
+  background: linear-gradient(135deg, #1E40AF 0%, #1D4ED8 45%, #2563EB 100%) !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  border-radius: 24px !important;
+  padding: 20px 18px !important;
+  box-shadow: 0 8px 24px rgba(30, 64, 175, 0.28) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.swl-status-hero-card .swl-status-hero-top {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-weight: 600 !important;
+}
+
+.swl-status-hero-card .swl-hero-status-text {
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+.swl-status-hero-card .swl-hero-hours {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.swl-summary-card {
+  background: #FFFFFF !important;
+  border: 1px solid rgba(15, 23, 42, 0.04) !important;
+  border-radius: 22px !important;
+  padding: 18px 20px !important;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04) !important;
+}
+
+.swl-summary-title {
+  font-size: 0.92rem !important;
+  font-weight: 800 !important;
+  color: #0F172A !important;
+  letter-spacing: -0.01em !important;
+  margin-bottom: 12px !important;
+}
+
+.swl-donut-container {
+  width: 84px !important;
+  height: 84px !important;
+}
+
+/* Admin Dashboard 2x2 Stats Widgets */
+.swl-admin-stats-2x2 {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 12px !important;
+  margin: 12px 16px 14px 16px !important;
 }
 
 .swl-admin-stat-card {
-  padding: 16px 14px !important;
-  min-height: 82px !important;
-  border-radius: 16px !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(15, 23, 42, 0.04) !important;
+  border-radius: 20px !important;
+  padding: 14px 16px !important;
+  min-height: 84px !important;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  transition: transform 0.12s ease, box-shadow 0.12s ease !important;
 }
 
+.swl-admin-stat-card:active {
+  transform: scale(0.97) !important;
+}
+
+.swl-admin-stat-icon {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 1.25rem !important;
+  flex-shrink: 0 !important;
+}
+
+.swl-admin-stat-icon.blue {
+  background: #EEF4FF !important;
+  color: #1E5AE6 !important;
+}
+.swl-admin-stat-icon.green {
+  background: #ECFDF5 !important;
+  color: #059669 !important;
+}
+.swl-admin-stat-icon.red {
+  background: #FEF2F2 !important;
+  color: #DC2626 !important;
+}
+.swl-admin-stat-icon.orange {
+  background: #FFFBEB !important;
+  color: #D97706 !important;
+}
+
+/* Quick Actions Grid (Android Native Action Tiles) */
 .swl-quick-actions-grid {
-  display: grid;
+  display: grid !important;
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   gap: 10px !important;
   margin: 0 16px 16px 16px !important;
@@ -771,34 +950,145 @@
 }
 
 .swl-action-btn-card {
-  padding: 12px 8px !important;
-  min-height: 72px !important;
-  border-radius: 14px !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(15, 23, 42, 0.04) !important;
+  border-radius: 18px !important;
+  padding: 14px 6px !important;
+  min-height: 86px !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
   min-width: 0 !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   box-sizing: border-box !important;
+  cursor: pointer !important;
+  transition: transform 0.12s ease, background 0.12s ease !important;
 }
 
-/* Bottom Navigation Bar: fixed to bottom, elevated & clear */
+.swl-action-btn-card:active {
+  transform: scale(0.93) !important;
+  background: #F8FAFC !important;
+}
+
+.swl-action-icon-wrap {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 1.25rem !important;
+  flex-shrink: 0 !important;
+}
+
+.swl-action-btn-card span {
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  color: #1E293B !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+}
+
+/* Punches Feed List Cards */
+.swl-punch-feed-card {
+  background: #FFFFFF !important;
+  border: 1px solid rgba(15, 23, 42, 0.04) !important;
+  border-radius: 18px !important;
+  padding: 12px 14px !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  transition: transform 0.12s ease, box-shadow 0.12s ease !important;
+}
+
+.swl-punch-feed-card:active {
+  transform: scale(0.985) !important;
+}
+
+.swl-badge-pill {
+  border-radius: 9999px !important;
+  font-weight: 700 !important;
+  font-size: 0.68rem !important;
+  padding: 4px 10px !important;
+  letter-spacing: 0.2px !important;
+}
+
+/* Material 3 Bottom Navigation Bar with Capsule Pill Indicator */
 .swl-mobile-nav {
   position: sticky !important;
   bottom: 0 !important;
   left: 0 !important;
   right: 0 !important;
   width: 100% !important;
-  min-height: 56px !important;
-  height: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
+  min-height: 64px !important;
+  height: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
   padding-bottom: env(safe-area-inset-bottom, 0px) !important;
-  background: rgba(255, 255, 255, 0.98) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border-top: 1px solid #E2E8F0 !important;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06) !important;
-  padding-left: 6px !important;
-  padding-right: 6px !important;
+  background: #FFFFFF !important;
+  border-top: 1px solid rgba(226, 232, 240, 0.8) !important;
+  box-shadow: 0 -2px 16px rgba(15, 23, 42, 0.06) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-around !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
   z-index: 9999 !important;
   flex-shrink: 0 !important;
+}
+
+.swl-nav-item {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  cursor: pointer !important;
+  padding: 4px 6px !important;
+  border-radius: 16px !important;
+  flex: 1 !important;
+  max-width: 80px !important;
+  text-align: center !important;
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  transition: transform 0.12s ease !important;
+}
+
+.swl-nav-item:active {
+  transform: scale(0.92) !important;
+}
+
+.swl-nav-item svg {
+  width: 22px !important;
+  height: 22px !important;
+  padding: 4px 18px !important;
+  box-sizing: content-box !important;
+  border-radius: 16px !important;
+  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease, transform 0.15s ease !important;
+  color: #64748B !important;
+}
+
+.swl-nav-item.active svg {
+  background-color: #DBEAFE !important;
+  color: #1E40AF !important;
+}
+
+.swl-nav-item span {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #64748B !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  transition: color 0.2s ease, font-weight 0.2s ease !important;
+}
+
+.swl-nav-item.active span {
+  color: #1E40AF !important;
+  font-weight: 800 !important;
 }
 
 /* Floating Real-Time Arrival Toast Styles & Animation */
@@ -825,17 +1115,50 @@
   animation: swlToastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-/* Button Visibility Guarantees - Buttons Never Disappear */
+/* Real Native Android Material You Buttons */
 .swl-btn-login,
-.swl-btn-google,
-.sw-submit-btn {
+.sw-submit-btn,
+.btn-primary {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  min-height: 48px !important;
+  min-height: 50px !important;
   visibility: visible !important;
   opacity: 1 !important;
   flex-shrink: 0 !important;
+  border-radius: 9999px !important;
+  background: linear-gradient(135deg, #1E40AF 0%, #2563EB 100%) !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  font-size: 0.9rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.25px !important;
+  box-shadow: 0 4px 14px rgba(30, 64, 175, 0.28) !important;
+  gap: 8px !important;
+  cursor: pointer !important;
+  transition: transform 0.1s ease, filter 0.1s ease !important;
+}
+
+.swl-btn-login:active,
+.sw-submit-btn:active,
+.btn-primary:active {
+  transform: scale(0.97) !important;
+  filter: brightness(0.95) !important;
+}
+
+.swl-btn-google {
+  border-radius: 9999px !important;
+  min-height: 48px !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04) !important;
+  font-weight: 700 !important;
+  transition: transform 0.1s ease !important;
+}
+
+.swl-btn-google:active {
+  transform: scale(0.97) !important;
+  background: #F8FAFC !important;
 }
 
 .swl-checkin-btn-wrap {
@@ -847,4 +1170,50 @@
 .swl-checkin-btn-wrap .swl-btn-login {
   min-height: 52px !important;
   width: 100% !important;
+}
+
+/* Android Form Inputs (Material You Outlined Style) */
+.swl-input-box {
+  background: #FFFFFF !important;
+  border: 1.5px solid #CBD5E1 !important;
+  border-radius: 16px !important;
+  padding: 12px 16px !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.swl-input-box:focus-within {
+  border-color: #1E40AF !important;
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.15) !important;
+}
+
+/* Location and Checklist Cards (Native Android Elevated Style) */
+.swl-location-card,
+.swl-checklist {
+  background: #FFFFFF !important;
+  border: 1px solid rgba(15, 23, 42, 0.04) !important;
+  border-radius: 20px !important;
+  padding: 14px 16px !important;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Camera Shutter & Punch Viewfinder (Real Native Camera Controls) */
+.swl-camera-frame {
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25) !important;
+}
+
+.swl-cam-shutter-btn:active {
+  transform: translateX(-50%) scale(0.9) !important;
+}
+
+/* Android Action Chips & Modals */
+.swl-badge-pill {
+  border-radius: 9999px !important;
+  padding: 4px 12px !important;
+  font-weight: 700 !important;
+}
+
+/* Tactile Active Feedback Across Interactive Elements */
+button:active {
+  transform: scale(0.97);
 }
