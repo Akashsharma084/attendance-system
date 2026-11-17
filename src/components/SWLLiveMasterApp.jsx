@@ -94,6 +94,7 @@ import {
   checkGeofence,
   saveOfficeNetworkConfig,
   getCurrentGpsCoordinates,
+  watchGpsCoordinates,
   subscribeOfficeTimingConfig,
   saveOfficeTimingConfig,
   formatTime24to12,
@@ -2175,6 +2176,7 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
   const [todayDoc, setTodayDoc] = useState(null)
   const [gpsLocation, setGpsLocation] = useState(null)
   const [gpsLocked, setGpsLocked] = useState(false)
+  const [gpsLoading, setGpsLoading] = useState(false)
   const [gpsError, setGpsError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
@@ -2403,20 +2405,60 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
     }
   }, [isCameraNeeded, isShiftActive, faceDetected, countdown, photoUrl, autoCaptured])
 
-  // 3. Acquire GPS Location
-  useEffect(() => {
+  // 3. Acquire GPS Location with resilient iOS/Android fallback & continuous watch
+  const fetchGpsLocation = useCallback((isRetry = false) => {
+    setGpsLoading(true)
+    if (isRetry) {
+      setGpsError('')
+    }
     getCurrentGpsCoordinates()
       .then((coords) => {
         setGpsLocation(coords)
         setGpsLocked(true)
         setGpsError('')
+        setGpsLoading(false)
       })
       .catch((err) => {
         console.warn('GPS location note:', err)
         setGpsLocked(false)
-        setGpsError('GPS location unavailable. Please grant location access.')
+        setGpsLoading(false)
+        const isIOS = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
+        let msg = 'GPS location unavailable. Please grant location access.'
+        if (err?.code === 1) {
+          msg = isIOS
+            ? 'Location access denied. On iPhone: Settings > Safari (or Chrome) > Location > select "Allow", and turn ON "Precise Location".'
+            : 'Location access denied. Please allow location permissions in your browser settings.'
+        } else if (err?.code === 3) {
+          msg = isIOS
+            ? 'GPS request timed out indoors. Ensure "Precise Location" is ON in iPhone Settings > Safari > Location, and tap Retry.'
+            : 'GPS request timed out. Please tap Retry or step near a window/open area.'
+        } else if (isIOS) {
+          msg = 'Unable to fetch iPhone location. Ensure "Precise Location" is enabled in Settings > Safari > Location.'
+        }
+        setGpsError(msg)
       })
   }, [])
+
+  useEffect(() => {
+    fetchGpsLocation(false)
+
+    // Watch position continuously so indoors or slow satellite fixes resolve automatically
+    const unwatch = watchGpsCoordinates(
+      (coords) => {
+        setGpsLocation(coords)
+        setGpsLocked(true)
+        setGpsError('')
+        setGpsLoading(false)
+      },
+      (err) => {
+        console.warn('watchGpsCoordinates warning:', err)
+      }
+    )
+
+    return () => {
+      unwatch()
+    }
+  }, [fetchGpsLocation])
 
   // 4. Geofence Check
   const geofence = useMemo(() => {
@@ -3067,24 +3109,46 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                 <Icons.LocationPin />
                 <div className="swl-loc-text-col">
                   <span className="swl-loc-title">
-                    {geofence?.isAllowed ? 'Location Verified' : (gpsLocked ? 'Outside Office Geofence' : 'Locking GPS Location...')}
+                    {geofence?.isAllowed ? 'Location Verified' : (gpsLocked ? 'Outside Office Geofence' : (gpsLoading ? 'Acquiring GPS Location…' : 'Locking GPS Location...'))}
                   </span>
                   <span className="swl-loc-coords">
                     {gpsLocation
                       ? `${gpsLocation.latitude.toFixed(4)}° N, ${gpsLocation.longitude.toFixed(4)}° E • ${geofence?.distanceMeters ?? 0}m away`
-                      : 'Acquiring coordinates...'}
+                      : (gpsLoading ? 'Fetching coordinates…' : (gpsError ? 'Unable to acquire location' : 'Acquiring coordinates...'))}
                   </span>
                 </div>
               </div>
-              <div
-                className="swl-gps-badge"
-                style={{
-                  background: geofence?.isAllowed ? '#ECFDF5' : '#FEE2E2',
-                  color: geofence?.isAllowed ? '#10B981' : '#EF4444',
-                  fontWeight: 800
-                }}
-              >
-                {geofence?.isAllowed ? 'IN RANGE' : 'OUTSIDE'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {!gpsLocked && (
+                  <button
+                    type="button"
+                    onClick={() => fetchGpsLocation(true)}
+                    disabled={gpsLoading}
+                    title="Retry Location Fetch"
+                    style={{
+                      border: '1px solid #CBD5E1',
+                      background: '#FFFFFF',
+                      color: '#2563EB',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      padding: '4px 8px',
+                      borderRadius: 6,
+                      cursor: gpsLoading ? 'wait' : 'pointer'
+                    }}
+                  >
+                    🔄 {gpsLoading ? '…' : 'Retry'}
+                  </button>
+                )}
+                <div
+                  className="swl-gps-badge"
+                  style={{
+                    background: geofence?.isAllowed ? '#ECFDF5' : '#FEE2E2',
+                    color: geofence?.isAllowed ? '#10B981' : '#EF4444',
+                    fontWeight: 800
+                  }}
+                >
+                  {geofence?.isAllowed ? 'IN RANGE' : (gpsLocked ? 'OUTSIDE' : 'LOCATING')}
+                </div>
               </div>
             </div>
 
@@ -3096,11 +3160,32 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                 </div>
                 <span>Selfie captured {photoUrl ? '(Verified)' : '(Pending)'}</span>
               </div>
-              <div className="swl-check-item">
-                <div className="swl-check-icon" style={{ background: gpsLocked ? '#10B981' : '#94A3B8' }}>
-                  {gpsLocked ? '✓' : '…'}
+              <div className="swl-check-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div className="swl-check-icon" style={{ background: gpsLocked ? '#10B981' : (gpsLoading ? '#3B82F6' : '#94A3B8') }}>
+                    {gpsLocked ? '✓' : (gpsLoading ? '⟳' : '…')}
+                  </div>
+                  <span>{gpsLocked ? 'GPS location locked' : (gpsLoading ? 'Fetching GPS coordinates…' : 'GPS location pending')}</span>
                 </div>
-                <span>GPS location locked</span>
+                {!gpsLocked && (
+                  <button
+                    type="button"
+                    onClick={() => fetchGpsLocation(true)}
+                    disabled={gpsLoading}
+                    style={{
+                      border: 'none',
+                      background: '#EFF6FF',
+                      color: '#2563EB',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      padding: '3px 8px',
+                      borderRadius: 6,
+                      cursor: gpsLoading ? 'wait' : 'pointer'
+                    }}
+                  >
+                    🔄 Retry
+                  </button>
+                )}
               </div>
               <div className="swl-check-item">
                 <div
@@ -3138,23 +3223,50 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
               </div>
             )}
 
-            {/* GPS Error Warning Box */}
+            {/* GPS Error Warning Box with iOS Help & Tap-to-Retry */}
             {!gpsLocked && gpsError && (
               <div style={{
                 background: '#FFFBEB',
                 border: '1.5px solid #FCD34D',
                 borderRadius: 10,
-                padding: '10px 12px',
+                padding: '12px 14px',
                 margin: '10px 16px 0',
                 display: 'flex',
-                alignItems: 'center',
-                gap: 10,
+                flexDirection: 'column',
+                gap: 8,
                 color: '#92400E'
               }}>
-                <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>⚠️</span>
-                <div style={{ fontSize: '0.72rem', lineHeight: 1.4 }}>
-                  <strong style={{ display: 'block', fontSize: '0.76rem', color: '#78350F' }}>Location Permission Needed</strong>
-                  {gpsError}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <span style={{ fontSize: '1.3rem', lineHeight: 1 }}>📍</span>
+                  <div style={{ fontSize: '0.74rem', lineHeight: 1.45, flex: 1 }}>
+                    <strong style={{ display: 'block', fontSize: '0.78rem', color: '#78350F', marginBottom: 2 }}>
+                      Location Permission / GPS Required
+                    </strong>
+                    {gpsError}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6, borderTop: '1px solid #FDE68A' }}>
+                  <span style={{ fontSize: '0.70rem', color: '#B45309' }}>
+                    iPhone: Settings &gt; Safari/Chrome &gt; Location &gt; Turn ON <b>Precise Location</b>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => fetchGpsLocation(true)}
+                    disabled={gpsLoading}
+                    style={{
+                      border: 'none',
+                      background: '#D97706',
+                      color: '#FFFFFF',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      padding: '5px 12px',
+                      borderRadius: 6,
+                      cursor: gpsLoading ? 'wait' : 'pointer',
+                      flexShrink: 0
+                    }}
+                  >
+                    {gpsLoading ? 'Acquiring GPS…' : '🔄 Tap to Retry'}
+                  </button>
                 </div>
               </div>
             )}
@@ -3168,16 +3280,26 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                   background: isOutsideGeofence
                     ? '#EF4444'
                     : (successMsg ? '#10B981' : (isShiftActive ? '#F59E0B' : '#1E5AE6')),
-                  cursor: (submitting || Boolean(successMsg) || isOutsideGeofence || !gpsLocked) ? 'not-allowed' : 'pointer',
-                  opacity: (submitting || isOutsideGeofence || !gpsLocked) ? 0.85 : 1
+                  cursor: (submitting || Boolean(successMsg) || isOutsideGeofence || !gpsLocked)
+                    ? (!gpsLocked && gpsError ? 'pointer' : 'not-allowed')
+                    : 'pointer',
+                  opacity: (submitting || isOutsideGeofence || (!gpsLocked && !gpsError)) ? 0.85 : 1
                 }}
-                disabled={submitting || Boolean(successMsg) || isOutsideGeofence || !gpsLocked}
-                onClick={handleConfirmPunch}
+                disabled={submitting || Boolean(successMsg) || isOutsideGeofence || (!gpsLocked && !gpsError)}
+                onClick={() => {
+                  if (!gpsLocked && gpsError) {
+                    fetchGpsLocation(true)
+                    return
+                  }
+                  handleConfirmPunch()
+                }}
               >
                 {isOutsideGeofence
                   ? `🚫 Outside Office (${geofence?.distanceMeters ?? 0}m > ${geofence?.allowedRadius ?? 100}m)`
                   : (!gpsLocked
-                      ? (gpsError ? '⚠️ Location Required' : 'Acquiring GPS Location…')
+                      ? (gpsLoading
+                          ? 'Acquiring GPS Location…'
+                          : (gpsError ? '🔄 Tap to Retry Location' : 'Acquiring GPS Location…'))
                       : (successMsg
                           ? successMsg
                           : (submitting

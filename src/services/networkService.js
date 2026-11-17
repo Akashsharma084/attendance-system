@@ -39,27 +39,134 @@ export function calculateDistanceMeters(lat1, lon1, lat2, lon2) {
 }
 
 /**
- * Get current browser GPS location with Promise
+ * Get current browser GPS location with Promise and multi-tier iOS/Android fallback:
+ * Tier 1: Try high accuracy (satellite GPS) with an 7-second timeout.
+ * Tier 2: If Tier 1 fails (very common indoors on iPhone/iOS Safari or when Precise Location is off),
+ *         immediately fall back to standard accuracy with longer timeout (15s) and cached position tolerance.
  */
-export function getCurrentGpsCoordinates() {
+export function getCurrentGpsCoordinates(options = {}) {
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
+    if (typeof window === 'undefined' || !navigator?.geolocation) {
       return reject(new Error('Geolocation is not supported by your browser.'))
     }
+
+    const tier1Options = {
+      enableHighAccuracy: true,
+      timeout: options.timeout || 7000,
+      maximumAge: options.maximumAge !== undefined ? options.maximumAge : 10000
+    }
+
+    const tier2Options = {
+      enableHighAccuracy: false,
+      timeout: 15000,
+      maximumAge: 300000 // Accept recent cached coordinates if indoors on iPhone/Android
+    }
+
+    // Try Tier 1: High accuracy (GPS)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         resolve({
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
-          accuracy: pos.coords.accuracy
+          accuracy: pos.coords.accuracy,
+          isHighAccuracy: true
         })
       },
-      (err) => {
-        reject(err)
+      (errTier1) => {
+        console.warn('GPS High Accuracy Tier 1 failed or timed out, trying fallback Tier 2:', errTier1?.message || errTier1)
+        // If user explicitly denied permission (code 1: PERMISSION_DENIED), do not re-request immediately
+        if (errTier1?.code === 1) {
+          return reject(errTier1)
+        }
+
+        // Try Tier 2: Standard accuracy (cellular / Wi-Fi triangulation for iOS Safari/PWAs)
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            resolve({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+              isHighAccuracy: false
+            })
+          },
+          (errTier2) => {
+            console.error('GPS Tier 2 failed as well:', errTier2)
+            reject(errTier2 || errTier1)
+          },
+          tier2Options
+        )
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+      tier1Options
     )
   })
+}
+
+/**
+ * Watch browser GPS location continuously with dual-tier fallback and clean error handling.
+ * Returns unsubscribe function.
+ */
+export function watchGpsCoordinates(onSuccess, onError) {
+  if (typeof window === 'undefined' || !navigator?.geolocation) {
+    if (onError) onError(new Error('Geolocation is not supported'))
+    return () => {}
+  }
+
+  let watchId = null
+  let isWatchingHighAccuracy = true
+
+  const handleSuccess = (pos) => {
+    if (onSuccess) {
+      onSuccess({
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy
+      })
+    }
+  }
+
+  const handleError = (err) => {
+    console.warn('watchGpsCoordinates error:', err?.message || err)
+    if (isWatchingHighAccuracy && err?.code !== 1) {
+      // Switch watchPosition to standard accuracy
+      isWatchingHighAccuracy = false
+      if (watchId !== null) {
+        try {
+          navigator.geolocation.clearWatch(watchId)
+        } catch {}
+      }
+      try {
+        watchId = navigator.geolocation.watchPosition(
+          handleSuccess,
+          (err2) => {
+            if (onError) onError(err2)
+          },
+          { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 }
+        )
+      } catch (e) {
+        if (onError) onError(e)
+      }
+    } else {
+      if (onError) onError(err)
+    }
+  }
+
+  try {
+    watchId = navigator.geolocation.watchPosition(
+      handleSuccess,
+      handleError,
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    )
+  } catch (e) {
+    console.warn('Failed to start watchPosition:', e)
+  }
+
+  return () => {
+    if (watchId !== null && typeof navigator !== 'undefined' && navigator.geolocation) {
+      try {
+        navigator.geolocation.clearWatch(watchId)
+      } catch {}
+    }
+  }
 }
 
 /**
