@@ -2250,15 +2250,6 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
   const [countdown, setCountdown] = useState(null)
   const [autoCaptured, setAutoCaptured] = useState(false)
 
-  // Camera mirror state - false = normal real view (non-mirrored), true = mirror reflection
-  const [isMirrored, setIsMirrored] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('swl_camera_mirror')
-      if (saved !== null) return saved === 'true'
-    }
-    return false
-  })
-
   // Checkout Mode: true when punchMode is 'checkout' or employee toggles checkout
   const [checkoutMode, setCheckoutMode] = useState(() => punchMode === 'checkout')
 
@@ -2536,17 +2527,13 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
     isOfficeGeofenceConfigured && geofence && !geofence.isAllowed
   )
 
-  // Capture Photo
+  // Capture Photo (Normal true camera orientation)
   function handleSnapPhoto() {
     if (videoRef.current && cameraActive) {
       const canvas = document.createElement('canvas')
       canvas.width = 400
       canvas.height = 400
       const ctx = canvas.getContext('2d')
-      if (isMirrored) {
-        ctx.translate(400, 0)
-        ctx.scale(-1, 1)
-      }
       ctx.drawImage(videoRef.current, 0, 0, 400, 400)
       const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
       setPhotoUrl(dataUrl)
@@ -2643,10 +2630,6 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
         canvas.width = 400
         canvas.height = 400
         const ctx = canvas.getContext('2d')
-        if (isMirrored) {
-          ctx.translate(400, 0)
-          ctx.scale(-1, 1)
-        }
         ctx.drawImage(videoRef.current, 0, 0, 400, 400)
         finalPhoto = canvas.toDataURL('image/jpeg', 0.85)
         setPhotoUrl(finalPhoto)
@@ -3034,8 +3017,6 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                     height: '100%',
                     objectFit: 'cover',
                     borderRadius: '50%',
-                    transform: isMirrored ? 'scaleX(-1)' : 'none',
-                    WebkitTransform: isMirrored ? 'scaleX(-1)' : 'none',
                     display: photoUrl ? 'none' : 'block'
                   }}
                 />
@@ -3141,41 +3122,6 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                   </span>
                 )}
               </div>
-
-              {/* Camera Mirror / Invert Toggle */}
-              {!photoUrl && cameraActive && (
-                <div style={{ marginTop: 2, marginBottom: 8, display: 'flex', justifyContent: 'center' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMirrored(prev => {
-                        const next = !prev
-                        try { localStorage.setItem('swl_camera_mirror', String(next)) } catch (_) {}
-                        return next
-                      })
-                    }}
-                    style={{
-                      padding: '4px 12px',
-                      background: isMirrored ? '#D1FAE5' : '#F8FAFC',
-                      border: isMirrored ? '1.5px solid #059669' : '1px solid #CBD5E1',
-                      borderRadius: 20,
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      color: isMirrored ? '#065F46' : '#475569',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                      transition: 'all 0.18s ease'
-                    }}
-                    title="Click to flip camera orientation (mirror / normal)"
-                  >
-                    <span>🔄</span>
-                    <span>{isMirrored ? '🪞 Mirror: ON (Tap for Normal)' : '📷 Normal View (Tap to Mirror)'}</span>
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Location Verified Card */}
