@@ -812,9 +812,41 @@ export default function SWLLiveMasterApp() {
   // Admin: 'adm_dashboard' | 'adm_employees' | 'adm_details' | 'adm_approvals' | 'adm_reports' | 'adm_profile'
   const [activeScreen, setActiveScreen] = useState(() => {
     if (!user) return 'login'
-    if (isAdmin) return 'adm_dashboard'
+    const p = typeof window !== 'undefined' ? window.location.pathname : '/'
+    if (isAdmin) {
+      if (p === '/admin/reports') return 'adm_reports'
+      if (p === '/admin/users' || p === '/admin/employees') return 'adm_employees'
+      if (p === '/admin/profile') return 'adm_profile'
+      if (p === '/leaves' || p === '/admin/leaves') return 'adm_approvals'
+      return 'adm_dashboard'
+    }
+    if (p === '/checkin') return 'emp_checkin'
+    if (p === '/leaves') return 'emp_leave'
+    if (p === '/history') return 'emp_history'
+    if (p === '/profile') return 'emp_profile'
     return 'emp_home'
   })
+
+  // Effective screen calculation: authenticated users NEVER see login screen
+  const effectiveScreen = useMemo(() => {
+    if (!user) return 'login'
+    if (activeScreen === 'login') {
+      const p = location.pathname
+      if (isAdmin) {
+        if (p === '/admin/reports') return 'adm_reports'
+        if (p === '/admin/users' || p === '/admin/employees') return 'adm_employees'
+        if (p === '/admin/profile') return 'adm_profile'
+        if (p === '/leaves' || p === '/admin/leaves') return 'adm_approvals'
+        return 'adm_dashboard'
+      }
+      if (p === '/checkin') return 'emp_checkin'
+      if (p === '/leaves') return 'emp_leave'
+      if (p === '/history') return 'emp_history'
+      if (p === '/profile') return 'emp_profile'
+      return 'emp_home'
+    }
+    return activeScreen
+  }, [user, activeScreen, isAdmin, location.pathname])
 
   // Selected employee for admin details drill-down
   const [selectedEmp, setSelectedEmp] = useState(null)
@@ -1025,7 +1057,7 @@ export default function SWLLiveMasterApp() {
   }
 
   // Not logged in -> Render pristine showcase Login Screen
-  if (!user || activeScreen === 'login') {
+  if (!user || effectiveScreen === 'login') {
     return (
       <div className={`swl-live-chassis-wrap ${currentTheme} ${isAdmin ? 'admin-mode' : 'employee-mode'}`} data-theme={currentTheme}>
         <div className="swl-phone-chassis">
@@ -1073,7 +1105,7 @@ export default function SWLLiveMasterApp() {
         >
           <InAppArrivalToast />
           {/* Employee Screens (Only rendered when user is Employee) */}
-          {!isAdmin && activeScreen === 'emp_home' && (
+          {!isAdmin && effectiveScreen === 'emp_home' && (
             <LiveHomeScreen
               onNavigate={handleNavigate}
               officeConfig={officeConfig}
@@ -1082,7 +1114,7 @@ export default function SWLLiveMasterApp() {
             />
           )}
 
-          {!isAdmin && activeScreen === 'emp_checkin' && (
+          {!isAdmin && effectiveScreen === 'emp_checkin' && (
             <LiveCheckInScreen
               onNavigate={handleNavigate}
               officeConfig={officeConfig}
@@ -1091,7 +1123,7 @@ export default function SWLLiveMasterApp() {
             />
           )}
 
-          {!isAdmin && activeScreen === 'emp_history' && (
+          {!isAdmin && effectiveScreen === 'emp_history' && (
             <LiveAttendanceHistoryScreen
               onNavigate={handleNavigate}
               onViewSelfie={setSelectedSelfieModal}
@@ -1099,13 +1131,13 @@ export default function SWLLiveMasterApp() {
             />
           )}
 
-          {!isAdmin && activeScreen === 'emp_leave' && (
+          {!isAdmin && effectiveScreen === 'emp_leave' && (
             <LiveLeaveAppScreen
               onNavigate={handleNavigate}
             />
           )}
 
-          {!isAdmin && activeScreen === 'emp_profile' && (
+          {!isAdmin && effectiveScreen === 'emp_profile' && (
             <LiveProfileScreen
               onNavigate={handleNavigate}
               onLogout={logout}
@@ -1116,7 +1148,7 @@ export default function SWLLiveMasterApp() {
           )}
 
           {/* Admin Screens (Only rendered when user is Admin) */}
-          {isAdmin && activeScreen === 'adm_dashboard' && (
+          {isAdmin && effectiveScreen === 'adm_dashboard' && (
             <LiveAdminDashboardScreen
               onNavigate={handleNavigate}
               onOpenGeofence={() => setShowGeofenceModal(true)}
@@ -1127,7 +1159,7 @@ export default function SWLLiveMasterApp() {
             />
           )}
 
-          {isAdmin && activeScreen === 'adm_employees' && (
+          {isAdmin && effectiveScreen === 'adm_employees' && (
             <LiveAdminEmployeesScreen
               onNavigate={handleNavigate}
               officeTiming={officeTiming}
@@ -1139,7 +1171,7 @@ export default function SWLLiveMasterApp() {
             />
           )}
 
-          {isAdmin && activeScreen === 'adm_details' && (
+          {isAdmin && effectiveScreen === 'adm_details' && (
             <LiveEmployeeDetailsScreen
               employee={selectedEmp}
               origin={empDetailOrigin}
@@ -1150,13 +1182,13 @@ export default function SWLLiveMasterApp() {
             />
           )}
 
-          {isAdmin && activeScreen === 'adm_approvals' && (
+          {isAdmin && effectiveScreen === 'adm_approvals' && (
             <LiveLeaveApprovalsScreen
               onNavigate={handleNavigate}
             />
           )}
 
-          {isAdmin && activeScreen === 'adm_reports' && (
+          {isAdmin && effectiveScreen === 'adm_reports' && (
             <LiveReportsScreen
               onNavigate={handleNavigate}
               officeTiming={officeTiming}
@@ -1170,7 +1202,7 @@ export default function SWLLiveMasterApp() {
             />
           )}
 
-          {isAdmin && activeScreen === 'adm_profile' && (
+          {isAdmin && effectiveScreen === 'adm_profile' && (
             <LiveAdminProfileScreen
               onNavigate={handleNavigate}
               onLogout={logout}

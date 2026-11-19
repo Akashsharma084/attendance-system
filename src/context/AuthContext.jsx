@@ -59,9 +59,31 @@ function isPageReload() {
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null)
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [currentUser, setCurrentUser] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('swl_cached_user')
+        if (cached) return JSON.parse(cached)
+      } catch (_) {}
+    }
+    return null
+  })
+  const [profile, setProfile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('swl_cached_profile')
+        if (cached) return JSON.parse(cached)
+      } catch (_) {}
+    }
+    return null
+  })
+  const [loading, setLoading] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('swl_cached_user')
+      if (cached) return false
+    }
+    return true
+  })
 
   useEffect(() => {
     if (isFirebaseConfigured && auth) {
@@ -70,9 +92,22 @@ export function AuthProvider({ children }) {
 
       const unsubAuth = onAuthStateChanged(auth, (user) => {
         setCurrentUser(user)
-        if (!user) {
+        if (user) {
+          try {
+            localStorage.setItem('swl_cached_user', JSON.stringify({
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              photoURL: user.photoURL
+            }))
+          } catch (_) {}
+        } else {
           setProfile(null)
           setLoading(false)
+          try {
+            localStorage.removeItem('swl_cached_user')
+            localStorage.removeItem('swl_cached_profile')
+          } catch (_) {}
         }
       })
       return unsubAuth
@@ -115,6 +150,9 @@ export function AuthProvider({ children }) {
             updateDoc(ref, { role: 'admin', isAdmin: true }).catch(() => {})
           }
           setProfile(data)
+          try {
+            localStorage.setItem('swl_cached_profile', JSON.stringify(data))
+          } catch (_) {}
           setLoading(false)
         } else {
           // Document does not exist in Firestore yet: auto-provision
@@ -132,6 +170,9 @@ export function AuthProvider({ children }) {
           try {
             await setDoc(ref, initialDoc, { merge: true })
             setProfile(initialDoc)
+            try {
+              localStorage.setItem('swl_cached_profile', JSON.stringify(initialDoc))
+            } catch (_) {}
           } catch (e) {
             console.warn('Auto profile doc write note:', e)
             setProfile(initialDoc)
@@ -463,6 +504,10 @@ export function AuthProvider({ children }) {
   async function logout() {
     sessionStorage.removeItem('punch_session_active')
     localStorage.removeItem('punch_portal')
+    try {
+      localStorage.removeItem('swl_cached_user')
+      localStorage.removeItem('swl_cached_profile')
+    } catch (_) {}
     if (isFirebaseConfigured && auth) {
       await firebaseSignOut(auth)
     } else {

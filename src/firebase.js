@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, setPersistence, browserSessionPersistence } from 'firebase/auth'
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 
@@ -32,7 +32,7 @@ if (isFirebaseConfigured) {
   try {
     app = initializeApp(firebaseConfig)
     auth = getAuth(app)
-    setPersistence(auth, browserSessionPersistence).catch(() => {})
+    setPersistence(auth, browserLocalPersistence).catch(() => {})
     db = getFirestore(app)
     try {
       if (firebaseConfig.storageBucket) {
