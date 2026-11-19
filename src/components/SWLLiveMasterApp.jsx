@@ -2527,13 +2527,15 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
     isOfficeGeofenceConfigured && geofence && !geofence.isAllowed
   )
 
-  // Capture Photo (Normal true camera orientation)
+  // Capture Photo (Mirrored to match natural selfie orientation)
   function handleSnapPhoto() {
     if (videoRef.current && cameraActive) {
       const canvas = document.createElement('canvas')
       canvas.width = 400
       canvas.height = 400
       const ctx = canvas.getContext('2d')
+      ctx.translate(400, 0)
+      ctx.scale(-1, 1)
       ctx.drawImage(videoRef.current, 0, 0, 400, 400)
       const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
       setPhotoUrl(dataUrl)
@@ -2630,6 +2632,8 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
         canvas.width = 400
         canvas.height = 400
         const ctx = canvas.getContext('2d')
+        ctx.translate(400, 0)
+        ctx.scale(-1, 1)
         ctx.drawImage(videoRef.current, 0, 0, 400, 400)
         finalPhoto = canvas.toDataURL('image/jpeg', 0.85)
         setPhotoUrl(finalPhoto)
@@ -3017,6 +3021,8 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                     height: '100%',
                     objectFit: 'cover',
                     borderRadius: '50%',
+                    transform: 'scaleX(-1)',
+                    WebkitTransform: 'scaleX(-1)',
                     display: photoUrl ? 'none' : 'block'
                   }}
                 />
