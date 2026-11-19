@@ -103,7 +103,8 @@ export function AuthProvider({ children }) {
               photoURL: user.photoURL
             }))
           } catch (_) {}
-          // When user is confirmed, loading will resolve as soon as profile snapshot completes
+          // Session confirmed by Firebase Auth: resolve loading immediately so Dashboard renders smoothly
+          setLoading(false)
         } else {
           setProfile(null)
           setLoading(false)
@@ -298,13 +299,25 @@ export function AuthProvider({ children }) {
         try {
           await setDoc(userRef, profileData, { merge: true })
           setProfile(profileData)
+          try {
+            localStorage.setItem('swl_cached_profile', JSON.stringify(profileData))
+          } catch (_) {}
         } catch (e) {
           console.warn('Profile write error:', e)
           setProfile(profileData)
         }
       }
 
+      try {
+        localStorage.setItem('swl_cached_user', JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL
+        }))
+      } catch (_) {}
       setCurrentUser(user)
+      setLoading(false)
       return user
     } else {
       // Demo Mode
@@ -450,13 +463,25 @@ export function AuthProvider({ children }) {
         try {
           await setDoc(userRef, profileData, { merge: true })
           setProfile(profileData)
+          try {
+            localStorage.setItem('swl_cached_profile', JSON.stringify(profileData))
+          } catch (_) {}
         } catch (e) {
           console.warn('Profile write error:', e)
           setProfile(profileData)
         }
       }
 
+      try {
+        localStorage.setItem('swl_cached_user', JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL
+        }))
+      } catch (_) {}
       setCurrentUser(user)
+      setLoading(false)
       return user
     } else {
       const user = await mockGoogleSignIn()

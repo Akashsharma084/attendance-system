@@ -82,6 +82,9 @@
                 reg.update()
               }
             })
+            window.addEventListener('pageshow', () => {
+              reg.update()
+            })
             window.addEventListener('focus', () => {
               reg.update()
             })
