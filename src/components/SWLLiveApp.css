@@ -1365,3 +1365,9 @@ button:active {
 .swl-live-chassis-wrap.theme-midnight .swl-input-box input {
   color: #F8FAFC !important;
 }
+
+/* Splash Screen Theme Support */
+.swl-live-chassis-wrap.theme-emerald .swl-splash-screen,
+[data-theme="theme-emerald"] .swl-splash-screen {
+  background: linear-gradient(180deg, #065F46 0%, #047857 50%, #064E3B 100%) !important;
+}

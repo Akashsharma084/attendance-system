@@ -1043,13 +1043,28 @@ export default function SWLLiveMasterApp() {
     return (
       <div className={`swl-live-chassis-wrap ${currentTheme} ${isAdmin ? 'admin-mode' : 'employee-mode'}`} data-theme={currentTheme}>
         <div className="swl-phone-chassis">
-          <div className="swl-splash-screen">
-            <div className="swl-splash-logo-circle">
-              <Icons.LogoWave />
+          <div
+            className="swl-phone-viewport"
+            style={{
+              position: 'relative',
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              flex: 1,
+              minHeight: 0,
+              overflow: 'hidden'
+            }}
+          >
+            <div className="swl-splash-screen" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="swl-splash-logo-circle">
+                <Icons.LogoWave />
+              </div>
+              <div className="swl-splash-title">SWL Attend</div>
+              <div className="swl-splash-tagline">Track · Verify · Stay On Time</div>
+              <div className="swl-splash-spinner" />
+              <div className="swl-splash-loading-text">Connecting to workspace…</div>
             </div>
-            <div className="swl-splash-title">SWL Attend</div>
-            <div className="swl-splash-spinner" />
-            <div className="swl-splash-loading-text">Connecting to workspace…</div>
           </div>
         </div>
       </div>

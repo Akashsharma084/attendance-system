@@ -77,20 +77,22 @@ export function AuthProvider({ children }) {
     }
     return null
   })
-  const [loading, setLoading] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const cached = localStorage.getItem('swl_cached_user')
-      if (cached) return false
-    }
-    return true
-  })
+  // Loading starts as true so the clean splash screen is always displayed
+  // while Firebase determines authentication state, preventing any login screen flash.
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (isFirebaseConfigured && auth) {
       // Use permanent local persistence - user stays logged in until manual logout
       setPersistence(auth, browserLocalPersistence).catch(() => {})
 
+      // Safety timeout: if Firebase Auth takes longer than 4.5s (e.g. offline/network delay), resolve loading
+      const fallbackTimer = setTimeout(() => {
+        setLoading(false)
+      }, 4500)
+
       const unsubAuth = onAuthStateChanged(auth, (user) => {
+        clearTimeout(fallbackTimer)
         setCurrentUser(user)
         if (user) {
           try {
@@ -101,6 +103,7 @@ export function AuthProvider({ children }) {
               photoURL: user.photoURL
             }))
           } catch (_) {}
+          // When user is confirmed, loading will resolve as soon as profile snapshot completes
         } else {
           setProfile(null)
           setLoading(false)
@@ -110,7 +113,10 @@ export function AuthProvider({ children }) {
           } catch (_) {}
         }
       })
-      return unsubAuth
+      return () => {
+        clearTimeout(fallbackTimer)
+        unsubAuth()
+      }
     } else {
       // Demo Mode: persist session
       const session = getMockSession()
@@ -129,7 +135,8 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!isFirebaseConfigured || !currentUser) {
-      if (!currentUser) setLoading(false)
+      // Do NOT call setLoading(false) here when !currentUser.
+      // Loading resolution for unauthenticated state is strictly managed by onAuthStateChanged!
       return
     }
 
