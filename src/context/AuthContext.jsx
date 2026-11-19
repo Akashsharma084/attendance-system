@@ -83,18 +83,59 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (isFirebaseConfigured && auth) {
-      // Use permanent local persistence - user stays logged in until manual logout
-      setPersistence(auth, browserLocalPersistence).catch(() => {})
+      let isMounted = true
+      let initialAuthSettled = false
 
-      // Safety timeout: if Firebase Auth takes longer than 4.5s (e.g. offline/network delay), resolve loading
+      // Safety timeout: if auth state resolution takes longer than 4.5s (e.g. offline/network delay), resolve loading
       const fallbackTimer = setTimeout(() => {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }, 4500)
 
-      const unsubAuth = onAuthStateChanged(auth, (user) => {
+      // Use authStateReady() to wait until Firebase has finished reading persistence from IndexedDB/LocalStorage.
+      // This completely prevents the cold-start tick-0 `null` event from flashing the login screen or wiping cached sessions in PWAs!
+      const initAuth = async () => {
+        try {
+          if (typeof auth.authStateReady === 'function') {
+            await auth.authStateReady()
+          }
+        } catch (e) {
+          console.warn('authStateReady note:', e)
+        }
+
+        if (!isMounted) return
         clearTimeout(fallbackTimer)
-        setCurrentUser(user)
+        initialAuthSettled = true
+
+        const resolvedUser = auth.currentUser
+        if (resolvedUser) {
+          setCurrentUser(resolvedUser)
+          try {
+            localStorage.setItem('swl_cached_user', JSON.stringify({
+              uid: resolvedUser.uid,
+              email: resolvedUser.email,
+              displayName: resolvedUser.displayName,
+              photoURL: resolvedUser.photoURL
+            }))
+          } catch (_) {}
+          setLoading(false)
+        } else {
+          setCurrentUser(null)
+          setProfile(null)
+          setLoading(false)
+          try {
+            localStorage.removeItem('swl_cached_user')
+            localStorage.removeItem('swl_cached_profile')
+          } catch (_) {}
+        }
+      }
+
+      initAuth()
+
+      // Live listener for subsequent auth state changes (sign in, sign out, token refresh)
+      const unsubAuth = onAuthStateChanged(auth, (user) => {
+        if (!isMounted) return
         if (user) {
+          setCurrentUser(user)
           try {
             localStorage.setItem('swl_cached_user', JSON.stringify({
               uid: user.uid,
@@ -103,9 +144,10 @@ export function AuthProvider({ children }) {
               photoURL: user.photoURL
             }))
           } catch (_) {}
-          // Session confirmed by Firebase Auth: resolve loading immediately so Dashboard renders smoothly
           setLoading(false)
-        } else {
+        } else if (initialAuthSettled) {
+          // Only process null event AFTER initial persistent auth state has officially completed.
+          setCurrentUser(null)
           setProfile(null)
           setLoading(false)
           try {
@@ -114,7 +156,9 @@ export function AuthProvider({ children }) {
           } catch (_) {}
         }
       })
+
       return () => {
+        isMounted = false
         clearTimeout(fallbackTimer)
         unsubAuth()
       }
@@ -210,12 +254,6 @@ export function AuthProvider({ children }) {
     }
 
     if (isFirebaseConfigured && auth) {
-      try {
-        await setPersistence(auth, browserLocalPersistence)
-      } catch (err) {
-        console.warn('Set persistence in login note:', err)
-      }
-
       const res = await signInWithEmailAndPassword(auth, email.trim(), password)
       const user = res.user
 
@@ -377,11 +415,6 @@ export function AuthProvider({ children }) {
     }
 
     if (isFirebaseConfigured && auth) {
-      try {
-        await setPersistence(auth, browserLocalPersistence)
-      } catch (err) {
-        console.warn('Set persistence in Google login note:', err)
-      }
       const provider = new GoogleAuthProvider()
       const res = await signInWithPopup(auth, provider)
       const user = res.user

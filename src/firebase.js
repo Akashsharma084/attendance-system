@@ -32,7 +32,6 @@ if (isFirebaseConfigured) {
   try {
     app = initializeApp(firebaseConfig)
     auth = getAuth(app)
-    setPersistence(auth, browserLocalPersistence).catch(() => {})
     db = getFirestore(app)
     try {
       if (firebaseConfig.storageBucket) {
