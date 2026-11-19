@@ -799,280 +799,13 @@ function playPunchChime() {
   }
 }
 
-const THEMES = [
-  {
-    id: 'theme-ocean',
-    name: 'Ocean Blue',
-    tag: 'Classic',
-    desc: 'Professional corporate blue with clean contrast',
-    primary: '#2563EB',
-    colors: ['#1D4ED8', '#2563EB', '#60A5FA'],
-    isDark: false
-  },
-  {
-    id: 'theme-indigo',
-    name: 'Electric Indigo',
-    tag: 'Modern',
-    desc: 'CRED & Linear inspired deep violet style',
-    primary: '#6366F1',
-    colors: ['#4338CA', '#6366F1', '#A78BFA'],
-    isDark: false
-  },
-  {
-    id: 'theme-material-you',
-    name: 'Material You',
-    tag: 'Vibrant',
-    desc: 'Google Pixel inspired coral & vibrant rose',
-    primary: '#E11D48',
-    colors: ['#BE123C', '#E11D48', '#FB7185'],
-    isDark: false
-  },
-  {
-    id: 'theme-emerald',
-    name: 'Emerald Forest',
-    tag: 'Fresh',
-    desc: 'Productive mint & deep forest teal accents',
-    primary: '#059669',
-    colors: ['#047857', '#059669', '#34D399'],
-    isDark: false
-  },
-  {
-    id: 'theme-midnight',
-    name: 'Midnight AMOLED',
-    tag: 'Dark Mode',
-    desc: 'Deep dark background with electric sky accents',
-    primary: '#0EA5E9',
-    colors: ['#0B0F19', '#1E293B', '#38BDF8'],
-    isDark: true
-  }
-]
-
-function ThemeSelectorModal({ isOpen, onClose, currentTheme, onSelectTheme }) {
-  if (!isOpen) return null
-
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(15, 23, 42, 0.65)',
-        backdropFilter: 'blur(6px)',
-        WebkitBackdropFilter: 'blur(6px)',
-        zIndex: 99999,
-        display: 'flex',
-        alignItems: 'flex-end',
-        justifyContent: 'center',
-        padding: 0
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: 'var(--swl-theme-card, #FFFFFF)',
-          color: 'var(--swl-theme-text-primary, #0F172A)',
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
-          padding: '20px 18px calc(24px + env(safe-area-inset-bottom, 0px)) 18px',
-          maxWidth: 440,
-          width: '100%',
-          boxShadow: '0 -10px 40px rgba(0,0,0,0.25)',
-          maxHeight: '85vh',
-          display: 'flex',
-          flexDirection: 'column',
-          border: '1px solid var(--swl-theme-border, rgba(226, 232, 240, 0.8))',
-          borderBottom: 'none'
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Handle bar */}
-        <div style={{ width: 36, height: 4, background: '#CBD5E1', borderRadius: 4, margin: '0 auto 14px auto' }} />
-
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: '1.25rem' }}>🎨</span>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'inherit' }}>
-                App Theme & Color
-              </h3>
-            </div>
-            <p style={{ margin: '3px 0 0 0', fontSize: '0.74rem', color: '#64748B' }}>
-              Choose a vibrant look for your attendance workspace
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              border: 'none',
-              background: 'rgba(100, 116, 139, 0.12)',
-              color: '#64748B',
-              borderRadius: '50%',
-              width: 30,
-              height: 30,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1rem',
-              fontWeight: 700
-            }}
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Theme List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', paddingBottom: 6 }}>
-          {THEMES.map((th) => {
-            const isSelected = (currentTheme || 'theme-ocean') === th.id
-            return (
-              <div
-                key={th.id}
-                onClick={() => {
-                  onSelectTheme(th.id)
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '12px 14px',
-                  borderRadius: 16,
-                  border: isSelected
-                    ? `2px solid ${th.primary}`
-                    : '1.5px solid var(--swl-theme-border, #E2E8F0)',
-                  background: isSelected
-                    ? (th.isDark ? 'rgba(14, 165, 233, 0.12)' : `${th.primary}0D`)
-                    : 'var(--swl-theme-bg, #F8FAFC)',
-                  cursor: 'pointer',
-                  transition: 'all 0.18s ease'
-                }}
-              >
-                {/* Palette color preview bar/swatches */}
-                <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
-                  {th.colors.map((c, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        width: i === 1 ? 18 : 13,
-                        height: i === 1 ? 18 : 13,
-                        borderRadius: '50%',
-                        background: c,
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-                        border: '1.5px solid #FFFFFF'
-                      }}
-                    />
-                  ))}
-                </div>
-
-                {/* Details */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    <span style={{ fontWeight: 800, fontSize: '0.88rem', color: 'inherit' }}>
-                      {th.name}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '0.62rem',
-                        fontWeight: 700,
-                        padding: '1px 6px',
-                        borderRadius: 6,
-                        background: isSelected ? th.primary : '#E2E8F0',
-                        color: isSelected ? '#FFFFFF' : '#475569'
-                      }}
-                    >
-                      {th.tag}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '0.7rem', color: '#64748B', lineHeight: 1.2 }}>
-                    {th.desc}
-                  </div>
-                </div>
-
-                {/* Status Indicator */}
-                <div style={{ flexShrink: 0 }}>
-                  {isSelected ? (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        padding: '4px 10px',
-                        borderRadius: 20,
-                        background: th.primary,
-                        color: '#FFFFFF',
-                        fontSize: '0.72rem',
-                        fontWeight: 800,
-                        boxShadow: `0 2px 8px ${th.primary}55`
-                      }}
-                    >
-                      <span>✓</span>
-                      <span>Active</span>
-                    </div>
-                  ) : (
-                    <div
-                      style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: '50%',
-                        border: '2px solid #CBD5E1',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    />
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Done / Close Button */}
-        <button
-          type="button"
-          onClick={onClose}
-          style={{
-            marginTop: 14,
-            width: '100%',
-            padding: '12px 0',
-            borderRadius: 14,
-            background: 'var(--swl-theme-gradient, linear-gradient(135deg, #1D4ED8 0%, #2563EB 100%))',
-            color: '#FFFFFF',
-            border: 'none',
-            fontSize: '0.88rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-            boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)'
-          }}
-        >
-          Done
-        </button>
-      </div>
-    </div>
-  )
-}
-
 export default function SWLLiveMasterApp() {
   const { user, profile, isAdmin, login, loginWithGoogle, logout, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
-  // App Theme state persisted in localStorage
-  const [currentTheme, setCurrentTheme] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('swl_app_theme') || 'theme-ocean'
-    }
-    return 'theme-ocean'
-  })
-  const [showThemeModal, setShowThemeModal] = useState(false)
-
-  const handleSelectTheme = (themeId) => {
-    setCurrentTheme(themeId)
-    try {
-      localStorage.setItem('swl_app_theme', themeId)
-    } catch (e) {}
-  }
+  // App Theme: Permanently fixed to Emerald Forest & Teal
+  const currentTheme = 'theme-emerald'
 
   // Active screen state matching showcase names:
   // Employee: 'emp_home' | 'emp_checkin' | 'emp_history' | 'emp_leave' | 'emp_profile'
@@ -1346,7 +1079,6 @@ export default function SWLLiveMasterApp() {
               officeConfig={officeConfig}
               officeTiming={officeTiming}
               onViewSelfie={setSelectedSelfieModal}
-              onOpenThemeModal={() => setShowThemeModal(true)}
             />
           )}
 
@@ -1356,7 +1088,6 @@ export default function SWLLiveMasterApp() {
               officeConfig={officeConfig}
               officeTiming={officeTiming}
               punchMode={punchMode}
-              onOpenThemeModal={() => setShowThemeModal(true)}
             />
           )}
 
@@ -1365,14 +1096,12 @@ export default function SWLLiveMasterApp() {
               onNavigate={handleNavigate}
               onViewSelfie={setSelectedSelfieModal}
               officeTiming={officeTiming}
-              onOpenThemeModal={() => setShowThemeModal(true)}
             />
           )}
 
           {!isAdmin && activeScreen === 'emp_leave' && (
             <LiveLeaveAppScreen
               onNavigate={handleNavigate}
-              onOpenThemeModal={() => setShowThemeModal(true)}
             />
           )}
 
@@ -1383,7 +1112,6 @@ export default function SWLLiveMasterApp() {
               onViewSelfie={setSelectedSelfieModal}
               officeConfig={officeConfig}
               officeTiming={officeTiming}
-              onOpenThemeModal={() => setShowThemeModal(true)}
             />
           )}
 
@@ -1396,7 +1124,6 @@ export default function SWLLiveMasterApp() {
               onOpenAttendanceModal={setAdminAttendanceModal}
               onViewSelfie={setSelectedSelfieModal}
               officeTiming={officeTiming}
-              onOpenThemeModal={() => setShowThemeModal(true)}
             />
           )}
 
@@ -1404,7 +1131,6 @@ export default function SWLLiveMasterApp() {
             <LiveAdminEmployeesScreen
               onNavigate={handleNavigate}
               officeTiming={officeTiming}
-              onOpenThemeModal={() => setShowThemeModal(true)}
               onSelectEmployee={(emp) => {
                 setSelectedEmp(emp)
                 setEmpDetailOrigin('adm_employees')
@@ -1421,14 +1147,12 @@ export default function SWLLiveMasterApp() {
               onOpenAttendanceModal={setAdminAttendanceModal}
               onViewSelfie={setSelectedSelfieModal}
               officeTiming={officeTiming}
-              onOpenThemeModal={() => setShowThemeModal(true)}
             />
           )}
 
           {isAdmin && activeScreen === 'adm_approvals' && (
             <LiveLeaveApprovalsScreen
               onNavigate={handleNavigate}
-              onOpenThemeModal={() => setShowThemeModal(true)}
             />
           )}
 
@@ -1438,7 +1162,6 @@ export default function SWLLiveMasterApp() {
               officeTiming={officeTiming}
               onOpenAttendanceModal={setAdminAttendanceModal}
               onViewSelfie={setSelectedSelfieModal}
-              onOpenThemeModal={() => setShowThemeModal(true)}
               onSelectEmployee={(emp) => {
                 setSelectedEmp(emp)
                 setEmpDetailOrigin('adm_reports')
@@ -1456,21 +1179,10 @@ export default function SWLLiveMasterApp() {
               onViewSelfie={setSelectedSelfieModal}
               officeConfig={officeConfig}
               officeTiming={officeTiming}
-              onOpenThemeModal={() => setShowThemeModal(true)}
             />
           )}
         </div>
       </div>
-
-      {/* Theme Selector Modal */}
-      {showThemeModal && (
-        <ThemeSelectorModal
-          isOpen={showThemeModal}
-          onClose={() => setShowThemeModal(false)}
-          currentTheme={currentTheme}
-          onSelectTheme={handleSelectTheme}
-        />
-      )}
 
       {/* Geofence Modal */}
       {showGeofenceModal && (
@@ -1977,7 +1689,7 @@ function LiveLoginScreen({ onSuccess }) {
 /* =========================================================================
    2. LIVE EMPLOYEE HOME SCREEN (SCREEN 3)
    ========================================================================= */
-function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie, onOpenThemeModal }) {
+function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }) {
   const { user, profile } = useAuth()
   const { unreadCount, pushPermission, requestPushPermission } = useNotifications()
   const [showNotifModal, setShowNotifModal] = useState(false)
@@ -2505,10 +2217,6 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie, 
           <Icons.Leave active={false} />
           <span>Leave</span>
         </div>
-        <div className="swl-nav-item" onClick={() => onOpenThemeModal && onOpenThemeModal()}>
-          <Icons.Theme active={false} />
-          <span>Theme</span>
-        </div>
         <div className="swl-nav-item" onClick={() => onNavigate('emp_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
@@ -2521,7 +2229,7 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie, 
 /* =========================================================================
    3. LIVE CHECK-IN SCREEN (SCREEN 4) - CAMERA, GPS & GEOFENCE PUNCH
    ========================================================================= */
-function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode = 'auto', onOpenThemeModal }) {
+function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode = 'auto' }) {
   const { user, profile } = useAuth()
   const { triggerArrivalAlert } = useNotifications()
   const todayKey = todayDateKey()
@@ -2541,6 +2249,15 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
   const [faceDetected, setFaceDetected] = useState(false)
   const [countdown, setCountdown] = useState(null)
   const [autoCaptured, setAutoCaptured] = useState(false)
+
+  // Camera mirror state - false = normal real view (non-mirrored), true = mirror reflection
+  const [isMirrored, setIsMirrored] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('swl_camera_mirror')
+      if (saved !== null) return saved === 'true'
+    }
+    return false
+  })
 
   // Checkout Mode: true when punchMode is 'checkout' or employee toggles checkout
   const [checkoutMode, setCheckoutMode] = useState(() => punchMode === 'checkout')
@@ -2826,6 +2543,10 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
       canvas.width = 400
       canvas.height = 400
       const ctx = canvas.getContext('2d')
+      if (isMirrored) {
+        ctx.translate(400, 0)
+        ctx.scale(-1, 1)
+      }
       ctx.drawImage(videoRef.current, 0, 0, 400, 400)
       const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
       setPhotoUrl(dataUrl)
@@ -2922,6 +2643,10 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
         canvas.width = 400
         canvas.height = 400
         const ctx = canvas.getContext('2d')
+        if (isMirrored) {
+          ctx.translate(400, 0)
+          ctx.scale(-1, 1)
+        }
         ctx.drawImage(videoRef.current, 0, 0, 400, 400)
         finalPhoto = canvas.toDataURL('image/jpeg', 0.85)
         setPhotoUrl(finalPhoto)
@@ -3309,6 +3034,8 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                     height: '100%',
                     objectFit: 'cover',
                     borderRadius: '50%',
+                    transform: isMirrored ? 'scaleX(-1)' : 'none',
+                    WebkitTransform: isMirrored ? 'scaleX(-1)' : 'none',
                     display: photoUrl ? 'none' : 'block'
                   }}
                 />
@@ -3414,6 +3141,41 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                   </span>
                 )}
               </div>
+
+              {/* Camera Mirror / Invert Toggle */}
+              {!photoUrl && cameraActive && (
+                <div style={{ marginTop: 2, marginBottom: 8, display: 'flex', justifyContent: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMirrored(prev => {
+                        const next = !prev
+                        try { localStorage.setItem('swl_camera_mirror', String(next)) } catch (_) {}
+                        return next
+                      })
+                    }}
+                    style={{
+                      padding: '4px 12px',
+                      background: isMirrored ? '#D1FAE5' : '#F8FAFC',
+                      border: isMirrored ? '1.5px solid #059669' : '1px solid #CBD5E1',
+                      borderRadius: 20,
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      color: isMirrored ? '#065F46' : '#475569',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                      transition: 'all 0.18s ease'
+                    }}
+                    title="Click to flip camera orientation (mirror / normal)"
+                  >
+                    <span>🔄</span>
+                    <span>{isMirrored ? '🪞 Mirror: ON (Tap for Normal)' : '📷 Normal View (Tap to Mirror)'}</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Location Verified Card */}
@@ -3638,10 +3400,6 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
           <Icons.Leave active={false} />
           <span>Leave</span>
         </div>
-        <div className="swl-nav-item" onClick={() => onOpenThemeModal && onOpenThemeModal()}>
-          <Icons.Theme active={false} />
-          <span>Theme</span>
-        </div>
         <div className="swl-nav-item" onClick={() => onNavigate('emp_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
@@ -3654,7 +3412,7 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
 /* =========================================================================
    4. LIVE ATTENDANCE HISTORY SCREEN (SCREEN 5) - CALENDAR & DAILY RECORDS
    ========================================================================= */
-function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming, onOpenThemeModal }) {
+function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming }) {
   const { user } = useAuth()
   const todayKey = todayDateKey()
 
@@ -4187,10 +3945,6 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming, o
           <Icons.Leave active={false} />
           <span>Leave</span>
         </div>
-        <div className="swl-nav-item" onClick={() => onOpenThemeModal && onOpenThemeModal()}>
-          <Icons.Theme active={false} />
-          <span>Theme</span>
-        </div>
         <div className="swl-nav-item" onClick={() => onNavigate('emp_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
@@ -4268,7 +4022,7 @@ export function formatLeaveRequestDateTime(timestamp) {
 /* =========================================================================
    5. LIVE LEAVE APPLICATION SCREEN (SCREEN 6) - LEAVE APPLY & MEDICAL PROOF
    ========================================================================= */
-function LiveLeaveAppScreen({ onNavigate, onOpenThemeModal }) {
+function LiveLeaveAppScreen({ onNavigate }) {
   const { user, profile } = useAuth()
   const today = todayDateKey()
 
@@ -4725,10 +4479,6 @@ function LiveLeaveAppScreen({ onNavigate, onOpenThemeModal }) {
           <Icons.Leave active={true} />
           <span>Leave</span>
         </div>
-        <div className="swl-nav-item" onClick={() => onOpenThemeModal && onOpenThemeModal()}>
-          <Icons.Theme active={false} />
-          <span>Theme</span>
-        </div>
         <div className="swl-nav-item" onClick={() => onNavigate('emp_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
@@ -4741,7 +4491,7 @@ function LiveLeaveAppScreen({ onNavigate, onOpenThemeModal }) {
 /* =========================================================================
    6. LIVE PROFILE SCREEN (SCREEN 7)
    ========================================================================= */
-function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, officeTiming, onOpenThemeModal }) {
+function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, officeTiming }) {
   const { user, profile, currentDevice } = useAuth()
   const todayKey = todayDateKey()
 
@@ -5679,10 +5429,6 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
           <Icons.Leave active={false} />
           <span>Leave</span>
         </div>
-        <div className="swl-nav-item" onClick={() => onOpenThemeModal && onOpenThemeModal()}>
-          <Icons.Theme active={false} />
-          <span>Theme</span>
-        </div>
         <div className="swl-nav-item active" onClick={() => onNavigate('emp_profile')}>
           <Icons.Profile active={true} />
           <span>Profile</span>
@@ -5695,7 +5441,7 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
 /* =========================================================================
    7. LIVE ADMIN DASHBOARD SCREEN (SCREEN 9)
    ========================================================================= */
-function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, onOpenAttendanceModal, onViewSelfie, officeTiming, onOpenThemeModal }) {
+function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, onOpenAttendanceModal, onViewSelfie, officeTiming }) {
   const { user, profile } = useAuth()
   const { pushPermission, requestPushPermission } = useNotifications()
   const todayKey = todayDateKey()
@@ -6139,10 +5885,6 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
           <Icons.Reports active={false} />
           <span>Reports</span>
         </div>
-        <div className="swl-nav-item" onClick={() => onOpenThemeModal && onOpenThemeModal()}>
-          <Icons.Theme active={false} />
-          <span>Theme</span>
-        </div>
         <div className="swl-nav-item" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
@@ -6155,7 +5897,7 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
 /* =========================================================================
    8. LIVE ADMIN EMPLOYEES SCREEN (SCREEN 10) - LIST, SEARCH & ADD MEMBER
    ========================================================================= */
-function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee, officeTiming, onOpenThemeModal }) {
+function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee, officeTiming }) {
   const todayKey = todayDateKey()
   const [users, setUsers] = useState([])
   const [todayAtt, setTodayAtt] = useState([])
@@ -6468,10 +6210,6 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee, officeTiming, 
           <Icons.Reports active={false} />
           <span>Reports</span>
         </div>
-        <div className="swl-nav-item" onClick={() => onOpenThemeModal && onOpenThemeModal()}>
-          <Icons.Theme active={false} />
-          <span>Theme</span>
-        </div>
         <div className="swl-nav-item" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
@@ -6567,7 +6305,7 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee, officeTiming, 
 /* =========================================================================
    9. LIVE ADMIN EMPLOYEE DETAILS (SCREEN 11) - PROFILE, ACCESS CONTROL & RECORDS
    ========================================================================= */
-function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin, officeTiming, onOpenAttendanceModal, onOpenThemeModal }) {
+function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin, officeTiming, onOpenAttendanceModal }) {
   const { resetEmployeeDeviceBinding } = useAuth()
   const [deviceResetting, setDeviceResetting] = useState(false)
   const [empPhotoUploading, setEmpPhotoUploading] = useState(false)
@@ -7108,10 +6846,6 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
           <Icons.Reports active={false} />
           <span>Reports</span>
         </div>
-        <div className="swl-nav-item" onClick={() => onOpenThemeModal && onOpenThemeModal()}>
-          <Icons.Theme active={false} />
-          <span>Theme</span>
-        </div>
         <div className="swl-nav-item" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
@@ -7202,7 +6936,7 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
 /* =========================================================================
    10. LIVE ADMIN LEAVE APPROVALS SCREEN (SCREEN 12)
    ========================================================================= */
-function LiveLeaveApprovalsScreen({ onNavigate, onOpenThemeModal }) {
+function LiveLeaveApprovalsScreen({ onNavigate }) {
   const { user, profile } = useAuth()
   const [tab, setTab] = useState('Pending')
   const [leaves, setLeaves] = useState([])
@@ -7474,10 +7208,6 @@ function LiveLeaveApprovalsScreen({ onNavigate, onOpenThemeModal }) {
           <Icons.Reports active={false} />
           <span>Reports</span>
         </div>
-        <div className="swl-nav-item" onClick={() => onOpenThemeModal && onOpenThemeModal()}>
-          <Icons.Theme active={false} />
-          <span>Theme</span>
-        </div>
         <div className="swl-nav-item" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
@@ -7646,7 +7376,7 @@ function LiveLeaveApprovalsScreen({ onNavigate, onOpenThemeModal }) {
 /* =========================================================================
    11. LIVE ADMIN REPORTS & CSV EXPORT SCREEN (SCREEN 13)
    ========================================================================= */
-function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeTiming, onOpenAttendanceModal, onOpenThemeModal }) {
+function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeTiming, onOpenAttendanceModal }) {
   const [reportTab, setReportTab] = useState('overview') // 'overview' | 'employees' | 'logs'
   const [timeframe, setTimeframe] = useState('Monthly') // 'Daily' | 'Weekly' | 'Monthly' | 'Yearly'
   const [search, setSearch] = useState('')
@@ -8108,10 +7838,6 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
           <Icons.Reports active={true} />
           <span>Reports</span>
         </div>
-        <div className="swl-nav-item" onClick={() => onOpenThemeModal && onOpenThemeModal()}>
-          <Icons.Theme active={false} />
-          <span>Theme</span>
-        </div>
         <div className="swl-nav-item" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
@@ -8124,7 +7850,7 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
 /* =========================================================================
    14. LIVE ADMIN PROFILE SCREEN
    ========================================================================= */
-function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTiming, onViewSelfie, officeConfig, officeTiming, onOpenThemeModal }) {
+function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTiming, onViewSelfie, officeConfig, officeTiming }) {
   const { user, profile } = useAuth()
   const [subView, setSubView] = useState(null) // null | 'personal_info' | 'contact_desk' | 'password' | 'rules'
 
@@ -8987,10 +8713,6 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
         <div className="swl-nav-item" onClick={() => onNavigate('adm_reports')}>
           <Icons.Reports active={false} />
           <span>Reports</span>
-        </div>
-        <div className="swl-nav-item" onClick={() => onOpenThemeModal && onOpenThemeModal()}>
-          <Icons.Theme active={false} />
-          <span>Theme</span>
         </div>
         <div className="swl-nav-item active" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={true} />

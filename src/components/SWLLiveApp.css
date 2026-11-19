@@ -3,21 +3,33 @@
    ========================================================================= */
 
 :root {
-  --swl-primary: #1E5AE6;
-  --swl-primary-hover: #1647B8;
-  --swl-primary-light: #EEF4FF;
+  --swl-primary: #059669;
+  --swl-primary-hover: #047857;
+  --swl-primary-dark: #065F46;
+  --swl-primary-light: #D1FAE5;
+  --swl-primary-subtle: #ECFDF5;
+  --swl-primary-gradient: linear-gradient(135deg, #059669 0%, #0D9488 100%);
+  --swl-theme-primary: #059669;
+  --swl-theme-gradient: linear-gradient(135deg, #059669 0%, #0D9488 100%);
+  --swl-theme-bg: #F0FDF4;
+  --swl-theme-card: #FFFFFF;
+  --swl-theme-text-primary: #064E3B;
+  --swl-theme-text-secondary: #475569;
+  --swl-theme-border: rgba(5, 150, 105, 0.12);
+  --swl-theme-pill-bg: #D1FAE5;
+  --swl-theme-pill-color: #065F46;
   --swl-success: #10B981;
   --swl-success-light: #ECFDF5;
   --swl-warning: #F59E0B;
   --swl-warning-light: #FEF3C7;
   --swl-danger: #EF4444;
   --swl-danger-light: #FEE2E2;
-  --swl-bg: #F7F8FC;
+  --swl-bg: #F0FDF4;
   --swl-card-bg: #FFFFFF;
-  --swl-text-primary: #0F172A;
-  --swl-text-secondary: #64748B;
+  --swl-text-primary: #064E3B;
+  --swl-text-secondary: #475569;
   --swl-text-muted: #94A3B8;
-  --swl-border: #E2E8F0;
+  --swl-border: rgba(5, 150, 105, 0.15);
   --swl-font: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
 }
 
@@ -1085,11 +1097,11 @@
   justify-content: center !important;
   gap: 2px !important;
   cursor: pointer !important;
-  padding: 4px 2px !important;
+  padding: 4px 6px !important;
   border-radius: 14px !important;
   flex: 1 !important;
   min-width: 0 !important;
-  max-width: 76px !important;
+  max-width: 82px !important;
   text-align: center !important;
   user-select: none !important;
   -webkit-tap-highlight-color: transparent !important;
@@ -1101,9 +1113,9 @@
 }
 
 .swl-nav-item svg {
-  width: 21px !important;
-  height: 21px !important;
-  padding: 4px 10px !important;
+  width: 22px !important;
+  height: 22px !important;
+  padding: 4px 12px !important;
   box-sizing: content-box !important;
   border-radius: 14px !important;
   transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease, transform 0.15s ease !important;
@@ -1111,12 +1123,12 @@
 }
 
 .swl-nav-item.active svg {
-  background-color: #DBEAFE !important;
-  color: #1E40AF !important;
+  background-color: var(--swl-theme-pill-bg, #D1FAE5) !important;
+  color: var(--swl-theme-pill-color, #065F46) !important;
 }
 
 .swl-nav-item span {
-  font-size: clamp(9.5px, 2.5vw, 11px) !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
   color: #64748B !important;
   line-height: 1.15 !important;
@@ -1128,7 +1140,7 @@
 }
 
 .swl-nav-item.active span {
-  color: #1E40AF !important;
+  color: var(--swl-theme-pill-color, #065F46) !important;
   font-weight: 800 !important;
 }
 
@@ -1261,52 +1273,10 @@ button:active {
 }
 
 /* =========================================================================
-   REAL MULTI-THEME ENGINE (Ocean Blue, Electric Violet, Material You, Emerald, Midnight Dark)
+   PERMANENT EMERALD FOREST & TEAL THEME DESIGN SYSTEM
    ========================================================================= */
 
-/* Theme 1: Ocean Blue (Default) */
-.swl-live-chassis-wrap.theme-ocean,
-[data-theme="theme-ocean"] {
-  --swl-theme-primary: #1E5AE6;
-  --swl-theme-gradient: linear-gradient(135deg, #1E5AE6 0%, #1D4ED8 100%);
-  --swl-theme-bg: #F0F4F8;
-  --swl-theme-card: #FFFFFF;
-  --swl-theme-text-primary: #0F172A;
-  --swl-theme-text-secondary: #64748B;
-  --swl-theme-border: rgba(15, 23, 42, 0.06);
-  --swl-theme-pill-bg: #DBEAFE;
-  --swl-theme-pill-color: #1E40AF;
-}
-
-/* Theme 2: Electric Indigo & Violet */
-.swl-live-chassis-wrap.theme-indigo,
-[data-theme="theme-indigo"] {
-  --swl-theme-primary: #7C3AED;
-  --swl-theme-gradient: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%);
-  --swl-theme-bg: #F5F3FF;
-  --swl-theme-card: #FFFFFF;
-  --swl-theme-text-primary: #1E1B4B;
-  --swl-theme-text-secondary: #6B7280;
-  --swl-theme-border: rgba(124, 58, 237, 0.12);
-  --swl-theme-pill-bg: #EDE9FE;
-  --swl-theme-pill-color: #6D28D9;
-}
-
-/* Theme 3: Material You Vibrant (Coral Rose) */
-.swl-live-chassis-wrap.theme-material-you,
-[data-theme="theme-material-you"] {
-  --swl-theme-primary: #E11D48;
-  --swl-theme-gradient: linear-gradient(135deg, #F43F5E 0%, #BE123C 100%);
-  --swl-theme-bg: #FFF1F2;
-  --swl-theme-card: #FFFFFF;
-  --swl-theme-text-primary: #1C1917;
-  --swl-theme-text-secondary: #57534E;
-  --swl-theme-border: rgba(225, 29, 72, 0.12);
-  --swl-theme-pill-bg: #FFE4E6;
-  --swl-theme-pill-color: #BE123C;
-}
-
-/* Theme 4: Emerald Forest & Teal */
+.swl-live-chassis-wrap,
 .swl-live-chassis-wrap.theme-emerald,
 [data-theme="theme-emerald"] {
   --swl-theme-primary: #059669;
@@ -1318,20 +1288,6 @@ button:active {
   --swl-theme-border: rgba(5, 150, 105, 0.12);
   --swl-theme-pill-bg: #D1FAE5;
   --swl-theme-pill-color: #065F46;
-}
-
-/* Theme 5: Midnight AMOLED Dark Mode */
-.swl-live-chassis-wrap.theme-midnight,
-[data-theme="theme-midnight"] {
-  --swl-theme-primary: #38BDF8;
-  --swl-theme-gradient: linear-gradient(135deg, #0284C7 0%, #2563EB 100%);
-  --swl-theme-bg: #0B0F19;
-  --swl-theme-card: #161F30;
-  --swl-theme-text-primary: #F8FAFC;
-  --swl-theme-text-secondary: #94A3B8;
-  --swl-theme-border: rgba(255, 255, 255, 0.08);
-  --swl-theme-pill-bg: rgba(56, 189, 248, 0.18);
-  --swl-theme-pill-color: #38BDF8;
 }
 
 /* Apply CSS Variables Across Chassis & Components */
