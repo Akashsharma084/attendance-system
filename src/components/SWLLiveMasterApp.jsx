@@ -860,6 +860,7 @@ export default function SWLLiveMasterApp() {
   const [officeTiming, setOfficeTiming] = useState(() => getLocalOfficeTiming())
   const [showGeofenceModal, setShowGeofenceModal] = useState(false)
   const [showTimingModal, setShowTimingModal] = useState(false)
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false)
   const [adminAttendanceModal, setAdminAttendanceModal] = useState(null)
 
   // Real-time listener for office geofence & timing settings
@@ -965,6 +966,13 @@ export default function SWLLiveMasterApp() {
         } catch (_) {}
         return
       }
+      if (showWhatsAppModal) {
+        setShowWhatsAppModal(false)
+        try {
+          window.history.pushState({ app: 'swl', screen: activeScreen }, '', SCREEN_PATH_MAP[activeScreen] || '/')
+        } catch (_) {}
+        return
+      }
 
       // Priority 2: If on Admin Employee Details view, go back to Employees list
       if (activeScreen === 'adm_details') {
@@ -1006,6 +1014,7 @@ export default function SWLLiveMasterApp() {
     selectedSelfieModal,
     showGeofenceModal,
     showTimingModal,
+    showWhatsAppModal,
     empDetailOrigin,
     location.pathname
   ])
@@ -1168,6 +1177,7 @@ export default function SWLLiveMasterApp() {
               onNavigate={handleNavigate}
               onOpenGeofence={() => setShowGeofenceModal(true)}
               onOpenTiming={() => setShowTimingModal(true)}
+              onOpenWhatsAppReport={() => setShowWhatsAppModal(true)}
               onOpenAttendanceModal={setAdminAttendanceModal}
               onViewSelfie={setSelectedSelfieModal}
               officeTiming={officeTiming}
@@ -1207,6 +1217,7 @@ export default function SWLLiveMasterApp() {
             <LiveReportsScreen
               onNavigate={handleNavigate}
               officeTiming={officeTiming}
+              onOpenWhatsAppReport={() => setShowWhatsAppModal(true)}
               onOpenAttendanceModal={setAdminAttendanceModal}
               onViewSelfie={setSelectedSelfieModal}
               onSelectEmployee={(emp) => {
@@ -1257,6 +1268,15 @@ export default function SWLLiveMasterApp() {
           officeConfig={officeConfig}
           adminName={profile?.name || user?.displayName || 'Admin'}
           onClose={() => setAdminAttendanceModal(null)}
+        />
+      )}
+
+      {/* WhatsApp Attendance Report Modal */}
+      {showWhatsAppModal && (
+        <LiveWhatsAppReportModal
+          officeTiming={officeTiming}
+          adminName={profile?.name || user?.displayName || 'Admin'}
+          onClose={() => setShowWhatsAppModal(false)}
         />
       )}
 
@@ -5440,7 +5460,7 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
 /* =========================================================================
    7. LIVE ADMIN DASHBOARD SCREEN (SCREEN 9)
    ========================================================================= */
-function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, onOpenAttendanceModal, onViewSelfie, officeTiming }) {
+function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, onOpenWhatsAppReport, onOpenAttendanceModal, onViewSelfie, officeTiming }) {
   const { user, profile } = useAuth()
   const { pushPermission, requestPushPermission } = useNotifications()
   const todayKey = todayDateKey()
@@ -5526,6 +5546,24 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
               title="Office Timings & Shift Setup"
             >
               ⏰
+            </div>
+            <div
+              onClick={onOpenWhatsAppReport}
+              style={{
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 26,
+                height: 26,
+                borderRadius: '50%',
+                background: '#DCFCE7',
+                color: '#16A34A',
+                border: '1px solid #BBF7D0'
+              }}
+              title="Share Attendance Report to WhatsApp"
+            >
+              <Icons.WhatsApp size={16} color="#16A34A" />
             </div>
           </div>
           <span>Admin Dashboard</span>
@@ -5664,6 +5702,13 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
         {/* Quick Actions */}
         <div style={{ margin: '14px 16px 8px 16px', fontSize: '0.82rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em' }}>Quick Actions</div>
         <div className="swl-quick-actions-grid">
+          <div className="swl-action-btn-card" onClick={onOpenWhatsAppReport} title="Generate & send attendance report to WhatsApp group">
+            <div className="swl-action-icon-wrap" style={{ background: '#DCFCE7', color: '#16A34A' }}>
+              <Icons.WhatsApp size={22} color="#16A34A" />
+            </div>
+            <span>WhatsApp Report</span>
+          </div>
+
           <div className="swl-action-btn-card" onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'add' })} title="Manual punch entry if employee forgot">
             <div className="swl-action-icon-wrap" style={{ background: '#EEF2FF', color: '#1E40AF' }}>⏱️</div>
             <span>Manual Punch</span>
@@ -7375,7 +7420,7 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
 /* =========================================================================
    11. LIVE ADMIN REPORTS & CSV EXPORT SCREEN (SCREEN 13)
    ========================================================================= */
-function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeTiming, onOpenAttendanceModal }) {
+function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeTiming, onOpenAttendanceModal, onOpenWhatsAppReport }) {
   const [reportTab, setReportTab] = useState('overview') // 'overview' | 'employees' | 'logs'
   const [timeframe, setTimeframe] = useState('Monthly') // 'Daily' | 'Weekly' | 'Monthly' | 'Yearly'
   const [search, setSearch] = useState('')
@@ -7521,7 +7566,27 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
             <Icons.BackArrow />
           </button>
           <span>Attendance Reports</span>
-          <div style={{ width: 18 }} />
+          <button
+            onClick={onOpenWhatsAppReport}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              background: '#25D366',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: 8,
+              padding: '4px 10px',
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 2px 5px rgba(37, 211, 102, 0.28)'
+            }}
+            title="Share Attendance Report to WhatsApp"
+          >
+            <Icons.WhatsApp size={15} color="#FFFFFF" />
+            <span>WhatsApp</span>
+          </button>
         </div>
 
         {/* 3 Report Subtabs */}
@@ -9456,6 +9521,744 @@ function LiveOfficeTimingModal({ officeTiming, onClose, adminName }) {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  )
+}
+
+/* =========================================================================
+   14B. LIVE WHATSAPP ATTENDANCE REPORT MODAL
+   ========================================================================= */
+function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
+  const [activeFilter, setActiveFilter] = useState('today') // 'today' | 'yesterday' | 'weekly' | 'monthly'
+  const [copied, setCopied] = useState(false)
+  const [users, setUsers] = useState([])
+  const [records, setRecords] = useState([])
+  const [leaves, setLeaves] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  // 1. Fetch Users (Workers only, non-admin)
+  useEffect(() => {
+    if (!isFirebaseConfigured || !db) return
+    const unsub = onSnapshot(collection(db, 'users'), (snap) => {
+      const all = snap.docs.map(d => ({ uid: d.id, ...d.data() }))
+      setUsers(all.filter(u => !isUserAdmin(u)))
+    })
+    return () => unsub()
+  }, [])
+
+  // 2. Fetch Leaves
+  useEffect(() => {
+    const unsub = subscribeLeaves({
+      onUpdate: (list) => setLeaves(list || []),
+      onError: (err) => console.warn('WhatsApp modal leaves stream err:', err)
+    })
+    return () => unsub && unsub()
+  }, [])
+
+  // 3. Fetch Attendance records: Current Month and Previous Month
+  useEffect(() => {
+    if (!isFirebaseConfigured || !db) return
+    const now = new Date()
+    const curMonth = monthKey(now)
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const prevMonth = monthKey(prevDate)
+
+    const q = query(collection(db, 'attendance'), where('month', 'in', [curMonth, prevMonth]))
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      setRecords(list)
+      setLoading(false)
+    }, (err) => {
+      console.warn('Attendance query err in WhatsApp modal, trying single month:', err)
+      const qSingle = query(collection(db, 'attendance'), where('month', '==', curMonth))
+      onSnapshot(qSingle, (snapSingle) => {
+        setRecords(snapSingle.docs.map(d => ({ id: d.id, ...d.data() })))
+        setLoading(false)
+      })
+    })
+    return () => unsub()
+  }, [])
+
+  const workerRecords = useMemo(() => records.filter(r => !isUserAdmin(r)), [records])
+
+  // Generate WhatsApp formatted text
+  const reportText = useMemo(() => {
+    const now = new Date()
+    const todayStr = todayDateKey(now)
+    const yesterdayDate = new Date(now.getTime() - 86400000)
+    const yesterdayStr = todayDateKey(yesterdayDate)
+
+    const genTimeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+    const divider = '━━━━━━━━━━━━━━━━━━━━━'
+
+    if (activeFilter === 'today') {
+      const dayFormatted = now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })
+      const todayRecords = workerRecords.filter(r => r.date === todayStr)
+      const presentUids = new Set(todayRecords.map(r => r.uid).filter(Boolean))
+      const presentEmails = new Set(todayRecords.map(r => r.email).filter(Boolean))
+
+      // Check approved leaves for today
+      const todayApprovedLeaves = (leaves || []).filter(l => 
+        l.status === 'approved' && l.startDate <= todayStr && l.endDate >= todayStr
+      )
+      const leaveUids = new Set(todayApprovedLeaves.map(l => l.uid).filter(Boolean))
+
+      // Absent employees (not present, not on approved leave)
+      const absentUsers = users.filter(u => !presentUids.has(u.uid) && !presentEmails.has(u.email) && !leaveUids.has(u.uid))
+
+      // Present list with timing & late status
+      const presentLines = todayRecords.map((r, idx) => {
+        const u = users.find(x => x.uid === r.uid || x.email === r.email)
+        const name = r.name || u?.name || r.email?.split('@')[0] || `Employee ${idx + 1}`
+        const inTime = r.checkInTime ? formatTime(r.checkInTime) : '—'
+        const outTime = r.checkOutTime ? formatTime(r.checkOutTime) : null
+        const lateInfo = getAttendanceLateInfo(r, officeTiming)
+        
+        let timingStr = `In: ${inTime}`
+        if (outTime) timingStr += ` | Out: ${outTime}`
+        else timingStr += ` (Active)`
+
+        let lateTag = ''
+        if (lateInfo.isLate) {
+          lateTag = ` ⚠️ [Late +${lateInfo.lateText || (lateInfo.lateMinutes + 'm')}]`
+        }
+        return `${idx + 1}. *${name}* — ${timingStr}${lateTag}`
+      })
+
+      // Leave lines
+      const leaveLines = todayApprovedLeaves.map((l) => {
+        const u = users.find(x => x.uid === l.uid)
+        const name = l.employeeName || u?.name || 'Employee'
+        const typeStr = (l.type || 'Leave').toUpperCase()
+        return `• *${name}* (${typeStr} - Approved)`
+      })
+
+      // Absent lines
+      const absentLines = absentUsers.map(u => `• *${u.name || u.email?.split('@')[0] || 'Employee'}*`)
+
+      const totalEmp = users.length
+      const presentCount = todayRecords.length
+      const lateCount = todayRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+      const leaveCount = todayApprovedLeaves.length
+      const absentCount = absentUsers.length
+      const pct = totalEmp > 0 ? Math.round((presentCount / totalEmp) * 100) : 0
+
+      let text = `🏢 *SOFTWIND LABS - DAILY ATTENDANCE REPORT*\n`
+      text += `📅 *Date:* ${dayFormatted}\n`
+      text += `⏰ *Generated:* ${genTimeStr} by ${adminName}\n`
+      text += `${divider}\n`
+      text += `📊 *Summary Overview:*\n`
+      text += `• Total Employees: *${totalEmp}*\n`
+      text += `• Present: *${presentCount}* (${pct}%)\n`
+      text += `• Late Arrivals: *${lateCount}* ⚠️\n`
+      text += `• On Approved Leave: *${leaveCount}* 🌴\n`
+      text += `• Absent / Pending: *${absentCount}* ❌\n`
+      text += `${divider}\n`
+
+      text += `🟢 *PRESENT EMPLOYEES (${presentCount}):*\n`
+      if (presentLines.length > 0) {
+        text += presentLines.join('\n') + '\n'
+      } else {
+        text += `_No punches recorded yet today._\n`
+      }
+
+      if (leaveLines.length > 0) {
+        text += `\n🌴 *ON APPROVED LEAVE (${leaveCount}):*\n`
+        text += leaveLines.join('\n') + '\n'
+      }
+
+      if (absentLines.length > 0) {
+        text += `\n❌ *ABSENT / NOT PUNCHED (${absentCount}):*\n`
+        text += absentLines.join('\n') + '\n'
+      }
+
+      text += `${divider}\n`
+      text += `_Generated via Softwind Attendance Portal_`
+      return text
+    }
+
+    if (activeFilter === 'yesterday') {
+      const dayFormatted = yesterdayDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })
+      const yesterdayRecords = workerRecords.filter(r => r.date === yesterdayStr)
+      const presentUids = new Set(yesterdayRecords.map(r => r.uid).filter(Boolean))
+      const presentEmails = new Set(yesterdayRecords.map(r => r.email).filter(Boolean))
+
+      const yApprovedLeaves = (leaves || []).filter(l => 
+        l.status === 'approved' && l.startDate <= yesterdayStr && l.endDate >= yesterdayStr
+      )
+      const leaveUids = new Set(yApprovedLeaves.map(l => l.uid).filter(Boolean))
+      const absentUsers = users.filter(u => !presentUids.has(u.uid) && !presentEmails.has(u.email) && !leaveUids.has(u.uid))
+
+      const presentLines = yesterdayRecords.map((r, idx) => {
+        const u = users.find(x => x.uid === r.uid || x.email === r.email)
+        const name = r.name || u?.name || r.email?.split('@')[0] || `Employee ${idx + 1}`
+        const inTime = r.checkInTime ? formatTime(r.checkInTime) : '—'
+        const outTime = r.checkOutTime ? formatTime(r.checkOutTime) : '—'
+        
+        let hrsStr = ''
+        if (r.checkInTime && r.checkOutTime) {
+          const inSec = r.checkInTime.seconds || (new Date(r.checkInTime).getTime() / 1000)
+          const outSec = r.checkOutTime.seconds || (new Date(r.checkOutTime).getTime() / 1000)
+          const diffHrs = Math.max(0, (outSec - inSec) / 3600).toFixed(1)
+          hrsStr = ` (${diffHrs} hrs)`
+        }
+
+        const lateInfo = getAttendanceLateInfo(r, officeTiming)
+        let lateTag = ''
+        if (lateInfo.isLate) {
+          lateTag = ` ⚠️ [Late +${lateInfo.lateText || (lateInfo.lateMinutes + 'm')}]`
+        }
+        return `${idx + 1}. *${name}* — In: ${inTime} | Out: ${outTime}${hrsStr}${lateTag}`
+      })
+
+      const absentLines = absentUsers.map(u => `• *${u.name || u.email?.split('@')[0] || 'Employee'}*`)
+      const leaveLines = yApprovedLeaves.map(l => {
+        const u = users.find(x => x.uid === l.uid)
+        return `• *${l.employeeName || u?.name || 'Employee'}* (${(l.type || 'Leave').toUpperCase()})`
+      })
+
+      const totalEmp = users.length
+      const presentCount = yesterdayRecords.length
+      const lateCount = yesterdayRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+      const pct = totalEmp > 0 ? Math.round((presentCount / totalEmp) * 100) : 0
+
+      let text = `🏢 *SOFTWIND LABS - YESTERDAY ATTENDANCE REPORT*\n`
+      text += `📅 *Date:* ${dayFormatted}\n`
+      text += `⏰ *Generated:* ${genTimeStr} by ${adminName}\n`
+      text += `${divider}\n`
+      text += `📊 *Summary Overview:*\n`
+      text += `• Total Employees: *${totalEmp}*\n`
+      text += `• Present: *${presentCount}* (${pct}%)\n`
+      text += `• Late Arrivals: *${lateCount}* ⚠️\n`
+      text += `• On Leave: *${leaveLines.length}* 🌴\n`
+      text += `• Absent: *${absentLines.length}* ❌\n`
+      text += `${divider}\n`
+
+      text += `🟢 *ATTENDANCE LOGS (${presentCount}):*\n`
+      if (presentLines.length > 0) {
+        text += presentLines.join('\n') + '\n'
+      } else {
+        text += `_No punches recorded for yesterday._\n`
+      }
+
+      if (leaveLines.length > 0) {
+        text += `\n🌴 *ON LEAVE (${leaveLines.length}):*\n`
+        text += leaveLines.join('\n') + '\n'
+      }
+
+      if (absentLines.length > 0) {
+        text += `\n❌ *ABSENT (${absentLines.length}):*\n`
+        text += absentLines.join('\n') + '\n'
+      }
+
+      text += `${divider}\n`
+      text += `_Generated via Softwind Attendance Portal_`
+      return text
+    }
+
+    if (activeFilter === 'weekly') {
+      const last7Keys = []
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 86400000)
+        last7Keys.push(todayDateKey(d))
+      }
+      const startDayStr = new Date(now.getTime() - 6 * 86400000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+      const endDayStr = now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+
+      const weeklyRecords = workerRecords.filter(r => last7Keys.includes(r.date))
+      const totalPunches = weeklyRecords.length
+      const totalLate = weeklyRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+
+      let workingDaysCount = 0
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 86400000)
+        if (d.getDay() !== 0) workingDaysCount++
+      }
+      if (workingDaysCount === 0) workingDaysCount = 6
+
+      const empBreakdown = users.map((u, idx) => {
+        const uRecs = weeklyRecords.filter(r => r.uid === u.uid || r.email === u.email)
+        const daysPresent = uRecs.length
+        const uLate = uRecs.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+        
+        let totalMins = 0
+        uRecs.forEach(r => {
+          if (r.checkInTime && r.checkOutTime) {
+            const inM = r.checkInTime.seconds ? r.checkInTime.seconds : new Date(r.checkInTime).getTime() / 1000
+            const outM = r.checkOutTime.seconds ? r.checkOutTime.seconds : new Date(r.checkOutTime).getTime() / 1000
+            totalMins += Math.max(0, (outM - inM) / 60)
+          } else if (r.checkInTime) {
+            totalMins += 480
+          }
+        })
+        const totalHrs = (totalMins / 60).toFixed(1)
+        const pct = Math.min(100, Math.round((daysPresent / workingDaysCount) * 100))
+        const name = u.name || u.email?.split('@')[0] || `Employee ${idx + 1}`
+
+        return `${idx + 1}. *${name}*: ${daysPresent}/${workingDaysCount} days (${pct}%) | ${totalHrs} hrs${uLate > 0 ? ` | ${uLate} late ⚠️` : ''}`
+      })
+
+      const avgPct = users.length > 0
+        ? Math.round((totalPunches / (users.length * workingDaysCount)) * 100)
+        : 0
+
+      let text = `🏢 *SOFTWIND LABS - WEEKLY ATTENDANCE REPORT*\n`
+      text += `📅 *Period:* ${startDayStr} – ${endDayStr} (Last 7 Days)\n`
+      text += `⏰ *Generated:* ${genTimeStr} by ${adminName}\n`
+      text += `${divider}\n`
+      text += `📊 *Weekly Overview:*\n`
+      text += `• Total Team Members: *${users.length}*\n`
+      text += `• Total Punches Recorded: *${totalPunches}*\n`
+      text += `• Working Days in Period: *${workingDaysCount} days*\n`
+      text += `• Average Attendance Rate: *${avgPct}%*\n`
+      text += `• Late Arrivals: *${totalLate}* ⚠️\n`
+      text += `${divider}\n`
+      text += `👥 *Employee-wise Breakdown:*\n`
+      text += empBreakdown.join('\n') + '\n'
+      text += `${divider}\n`
+      text += `_Generated via Softwind Attendance Portal_`
+      return text
+    }
+
+    if (activeFilter === 'monthly') {
+      const curMonthKey = monthKey(now)
+      const monthDisplay = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+      const monthlyRecords = workerRecords.filter(r => r.month === curMonthKey || (r.date && r.date.startsWith(curMonthKey)))
+      const totalPunches = monthlyRecords.length
+      const totalLate = monthlyRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+      const standardWorkingDays = 24
+
+      const empBreakdown = users.map((u, idx) => {
+        const uRecs = monthlyRecords.filter(r => r.uid === u.uid || r.email === u.email)
+        const daysPresent = uRecs.length
+        const uLate = uRecs.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+
+        let totalMins = 0
+        uRecs.forEach(r => {
+          if (r.checkInTime && r.checkOutTime) {
+            const inM = r.checkInTime.seconds ? r.checkInTime.seconds : new Date(r.checkInTime).getTime() / 1000
+            const outM = r.checkOutTime.seconds ? r.checkOutTime.seconds : new Date(r.checkOutTime).getTime() / 1000
+            totalMins += Math.max(0, (outM - inM) / 60)
+          } else if (r.checkInTime) {
+            totalMins += 480
+          }
+        })
+        const totalHrs = (totalMins / 60).toFixed(1)
+        const rate = Math.min(100, Math.round((daysPresent / standardWorkingDays) * 100))
+        const name = u.name || u.email?.split('@')[0] || `Employee ${idx + 1}`
+
+        return `${idx + 1}. *${name}*: ${daysPresent}/${standardWorkingDays} days (${rate}%) | ${totalHrs} hrs | ${uLate} late`
+      })
+
+      const teamAvgRate = users.length > 0
+        ? Math.round((totalPunches / (users.length * standardWorkingDays)) * 100)
+        : 0
+
+      let text = `🏢 *SOFTWIND LABS - MONTHLY ATTENDANCE REPORT*\n`
+      text += `🗓️ *Month:* ${monthDisplay}\n`
+      text += `⏰ *Generated:* ${genTimeStr} by ${adminName}\n`
+      text += `${divider}\n`
+      text += `📊 *Monthly Performance Summary:*\n`
+      text += `• Total Employees: *${users.length}*\n`
+      text += `• Standard Working Days: *${standardWorkingDays}*\n`
+      text += `• Total Punches: *${totalPunches}*\n`
+      text += `• Team Avg Attendance Rate: *${teamAvgRate}%*\n`
+      text += `• Total Late Arrivals: *${totalLate}* ⚠️\n`
+      text += `${divider}\n`
+      text += `👥 *Employee Monthly Records:*\n`
+      text += empBreakdown.join('\n') + '\n'
+      text += `${divider}\n`
+      text += `_Generated via Softwind Attendance Portal_`
+      return text
+    }
+
+    return ''
+  }, [activeFilter, workerRecords, users, leaves, officeTiming, adminName])
+
+  // Mini summary stats for header badges
+  const summaryBadges = useMemo(() => {
+    const now = new Date()
+    const todayStr = todayDateKey(now)
+    const yesterdayStr = todayDateKey(new Date(now.getTime() - 86400000))
+    const curMonthKey = monthKey(now)
+
+    if (activeFilter === 'today') {
+      const recs = workerRecords.filter(r => r.date === todayStr)
+      const late = recs.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+      const lvs = (leaves || []).filter(l => l.status === 'approved' && l.startDate <= todayStr && l.endDate >= todayStr).length
+      return [
+        { label: 'Staff', val: users.length, color: '#3B82F6' },
+        { label: 'Present', val: recs.length, color: '#10B981' },
+        { label: 'Late', val: late, color: '#F59E0B' },
+        { label: 'Leave', val: lvs, color: '#8B5CF6' }
+      ]
+    }
+    if (activeFilter === 'yesterday') {
+      const recs = workerRecords.filter(r => r.date === yesterdayStr)
+      const late = recs.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+      return [
+        { label: 'Staff', val: users.length, color: '#3B82F6' },
+        { label: 'Present', val: recs.length, color: '#10B981' },
+        { label: 'Late', val: late, color: '#F59E0B' },
+        { label: 'Absent', val: Math.max(0, users.length - recs.length), color: '#EF4444' }
+      ]
+    }
+    if (activeFilter === 'weekly') {
+      const last7Keys = []
+      for (let i = 6; i >= 0; i--) {
+        last7Keys.push(todayDateKey(new Date(now.getTime() - i * 86400000)))
+      }
+      const recs = workerRecords.filter(r => last7Keys.includes(r.date))
+      const late = recs.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+      return [
+        { label: 'Period', val: '7 Days', color: '#3B82F6' },
+        { label: 'Punches', val: recs.length, color: '#10B981' },
+        { label: 'Late', val: late, color: '#F59E0B' },
+        { label: 'Staff', val: users.length, color: '#6366F1' }
+      ]
+    }
+    if (activeFilter === 'monthly') {
+      const recs = workerRecords.filter(r => r.month === curMonthKey || (r.date && r.date.startsWith(curMonthKey)))
+      const late = recs.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+      return [
+        { label: 'Work Days', val: 24, color: '#3B82F6' },
+        { label: 'Punches', val: recs.length, color: '#10B981' },
+        { label: 'Late', val: late, color: '#F59E0B' },
+        { label: 'Staff', val: users.length, color: '#6366F1' }
+      ]
+    }
+    return []
+  }, [activeFilter, workerRecords, users, leaves, officeTiming])
+
+  const handleShareWhatsApp = () => {
+    const text = reportText
+    const encoded = encodeURIComponent(text)
+    const waUrl = `https://api.whatsapp.com/send?text=${encoded}`
+
+    // Use native Web Share API on mobile devices if supported
+    if (navigator.share && /mobile|android|iphone|ipad/i.test(navigator.userAgent)) {
+      navigator.share({
+        title: 'SWL Attendance Report',
+        text: text
+      }).catch((err) => {
+        if (err.name !== 'AbortError') {
+          window.open(waUrl, '_blank')
+        }
+      })
+    } else {
+      window.open(waUrl, '_blank')
+    }
+  }
+
+  const handleCopy = () => {
+    const text = reportText
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2200)
+      }).catch(() => fallbackCopy(text))
+    } else {
+      fallbackCopy(text)
+    }
+  }
+
+  const fallbackCopy = (text) => {
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2200)
+    } catch (_) {
+      alert('Could not copy automatically. Please select the text inside preview and copy.')
+    }
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        background: 'rgba(15, 23, 42, 0.72)',
+        backdropFilter: 'blur(5px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px'
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '520px',
+          maxHeight: '92vh',
+          background: '#FFFFFF',
+          borderRadius: 20,
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          animation: 'swlModalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}
+      >
+        {/* Top Header */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #075E54 0%, #128C7E 100%)',
+            color: '#FFFFFF',
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Icons.WhatsApp size={22} color="#FFFFFF" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.96rem', fontWeight: 800, letterSpacing: '-0.01em' }}>
+                WhatsApp Attendance Report
+              </div>
+              <div style={{ fontSize: '0.72rem', opacity: 0.88 }}>
+                Generate & share updates with company group
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: '50%',
+              background: 'rgba(255, 255, 255, 0.18)',
+              border: 'none',
+              color: '#FFFFFF',
+              fontSize: '1rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Filter Selection Tabs */}
+        <div style={{ padding: '14px 18px 8px 18px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+          <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#475569', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Select Report Timeframe:
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+            {[
+              { id: 'today', label: 'Today', icon: '🟢', desc: 'Real-time' },
+              { id: 'yesterday', label: 'Yesterday', icon: '⏪', desc: 'Full log' },
+              { id: 'weekly', label: 'Weekly', icon: '📊', desc: 'Last 7D' },
+              { id: 'monthly', label: 'Monthly', icon: '🗓️', desc: 'Current' }
+            ].map(f => {
+              const active = activeFilter === f.id
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setActiveFilter(f.id)}
+                  style={{
+                    padding: '8px 4px',
+                    borderRadius: 10,
+                    border: active ? '2px solid #128C7E' : '1px solid #CBD5E1',
+                    background: active ? '#F0FDF4' : '#FFFFFF',
+                    color: active ? '#065F46' : '#475569',
+                    fontWeight: active ? 800 : 600,
+                    fontSize: '0.74rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 2,
+                    boxShadow: active ? '0 2px 6px rgba(18, 140, 126, 0.2)' : 'none',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <span style={{ fontSize: '0.85rem' }}>{f.icon}</span>
+                  <span>{f.label}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Quick Metrics Badges */}
+          <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+            {summaryBadges.map((b, idx) => (
+              <div
+                key={idx}
+                style={{
+                  flex: 1,
+                  background: '#FFFFFF',
+                  borderRadius: 8,
+                  border: '1px solid #E2E8F0',
+                  padding: '5px 4px',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ fontSize: '0.62rem', color: '#64748B', fontWeight: 600 }}>{b.label}</div>
+                <div style={{ fontSize: '0.86rem', fontWeight: 800, color: b.color, marginTop: 1 }}>{b.val}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* WhatsApp Preview Body */}
+        <div
+          className="no-scrollbar"
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '14px 18px',
+            background: '#EFEAE2',
+            position: 'relative'
+          }}
+        >
+          <div
+            style={{
+              fontSize: '0.68rem',
+              color: '#54656F',
+              textAlign: 'center',
+              marginBottom: 8,
+              fontWeight: 700
+            }}
+          >
+            💬 LIVE WHATSAPP MESSAGE PREVIEW
+          </div>
+
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: '8px 8px 8px 2px',
+              padding: '12px 14px',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
+              position: 'relative',
+              maxWidth: '100%',
+              border: '1px solid #E2D9C8'
+            }}
+          >
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '24px 0', color: '#64748B', fontSize: '0.78rem' }}>
+                Fetching attendance records…
+              </div>
+            ) : (
+              <pre
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  fontFamily: 'SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace',
+                  fontSize: '0.73rem',
+                  lineHeight: 1.48,
+                  color: '#111B21',
+                  margin: 0
+                }}
+              >
+                {reportText}
+              </pre>
+            )}
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: 4,
+                marginTop: 8,
+                fontSize: '0.64rem',
+                color: '#667781'
+              }}
+            >
+              <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              <span style={{ color: '#53BDEB', fontWeight: 'bold' }}>✓✓</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Actions */}
+        <div
+          style={{
+            padding: '12px 18px',
+            background: '#FFFFFF',
+            borderTop: '1px solid #E2E8F0',
+            display: 'flex',
+            gap: 10,
+            alignItems: 'center'
+          }}
+        >
+          <button
+            type="button"
+            onClick={handleCopy}
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              padding: '10px 14px',
+              borderRadius: 10,
+              background: copied ? '#ECFDF5' : '#F1F5F9',
+              border: copied ? '1.5px solid #10B981' : '1px solid #E2E8F0',
+              color: copied ? '#059669' : '#334155',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span>{copied ? '✓ Copied!' : '📋 Copy Text'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleShareWhatsApp}
+            style={{
+              flex: 1.6,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '10px 16px',
+              borderRadius: 10,
+              background: '#25D366',
+              border: 'none',
+              color: '#FFFFFF',
+              fontSize: '0.82rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(37, 211, 102, 0.35)',
+              transition: 'transform 0.15s ease'
+            }}
+          >
+            <Icons.WhatsApp size={18} color="#FFFFFF" />
+            <span>Send to WhatsApp Group</span>
+          </button>
+        </div>
       </div>
     </div>
   )
