@@ -7764,17 +7764,6 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
                 <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#06B6D4' }}>{users.length}</div>
               </div>
             </div>
-
-            <div style={{ margin: '14px 16px' }}>
-              <button
-                className="swl-btn-login"
-                onClick={exportCSV}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-              >
-                <Icons.Download />
-                <span>Download Full CSV Report</span>
-              </button>
-            </div>
           </div>
         )}
 
