@@ -100,7 +100,7 @@ const Icons = {
     </svg>
   ))
 }
-import { todayDateKey, monthKey, formatTime, buildEmployeeSchedule } from '../utils/dateHelpers'
+import { todayDateKey, monthKey, formatTime, buildEmployeeSchedule, getMonthWorkingDays } from '../utils/dateHelpers'
 import {
   subscribeLeaves,
   submitLeaveRequest,
@@ -7479,7 +7479,11 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
   const lateCount = useMemo(() => {
     return workerRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
   }, [workerRecords, officeTiming])
-  const absentCount = Math.max(0, (users.length * 24) - presentCount)
+
+  // Real working days elapsed in the month (excluding Sundays / holidays)
+  const monthDaysList = useMemo(() => getMonthWorkingDays(curMonth), [curMonth])
+  const workingDaysTarget = Math.max(1, monthDaysList.length)
+  const absentCount = Math.max(0, (users.length * workingDaysTarget) - presentCount)
 
   // Per-employee analytics (employees only)
   const employeeSummaries = useMemo(() => {
@@ -7487,7 +7491,6 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
       const uRecords = workerRecords.filter(r => r.uid === u.uid || r.email === u.email)
       const uPresent = uRecords.length
       const uLate = uRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
-      const workingDaysTarget = 24
       const uAbsent = Math.max(0, workingDaysTarget - uPresent)
       const uRate = workingDaysTarget > 0 ? Math.min(100, Math.round((uPresent / workingDaysTarget) * 100)) : 0
       
@@ -9551,6 +9554,7 @@ function generateAttendancePDF({ activeFilter, users, workerRecords, leaves, off
   const yesterdayDate = new Date(now.getTime() - 86400000)
   const yesterdayStr = todayDateKey(yesterdayDate)
   const curMonthKey = monthKey(now)
+  const elapsedWorkingDays = Math.max(1, getMonthWorkingDays(curMonthKey).length)
 
   // Softwind Brand Colors
   const primaryColor = [18, 140, 126] // #128C7E Teal
@@ -9609,7 +9613,7 @@ function generateAttendancePDF({ activeFilter, users, workerRecords, leaves, off
     sortedEmployees = users.map(u => {
       const rec = todayRecords.find(r => r.uid === u.uid || r.email === u.email)
       const uMonthRecs = workerRecords.filter(r => (r.uid === u.uid || r.email === u.email) && r.month === curMonthKey)
-      const rate = Math.min(100, Math.round((uMonthRecs.length / 24) * 100))
+      const rate = Math.min(100, Math.round((uMonthRecs.length / elapsedWorkingDays) * 100))
       const isPresent = Boolean(rec)
       const lateInfo = rec ? getAttendanceLateInfo(rec, officeTiming) : { isLate: false }
       
@@ -9641,7 +9645,7 @@ function generateAttendancePDF({ activeFilter, users, workerRecords, leaves, off
     sortedEmployees = users.map(u => {
       const rec = yesterdayRecords.find(r => r.uid === u.uid || r.email === u.email)
       const uMonthRecs = workerRecords.filter(r => (r.uid === u.uid || r.email === u.email) && r.month === curMonthKey)
-      const rate = Math.min(100, Math.round((uMonthRecs.length / 24) * 100))
+      const rate = Math.min(100, Math.round((uMonthRecs.length / elapsedWorkingDays) * 100))
       const isPresent = Boolean(rec)
       const lateInfo = rec ? getAttendanceLateInfo(rec, officeTiming) : { isLate: false }
       
@@ -9705,7 +9709,7 @@ function generateAttendancePDF({ activeFilter, users, workerRecords, leaves, off
   } else {
     // Monthly
     const monthlyRecords = workerRecords.filter(r => r.month === curMonthKey || (r.date && r.date.startsWith(curMonthKey)))
-    const standardDays = 24
+    const standardDays = elapsedWorkingDays
     kpiStats.present = monthlyRecords.length
     kpiStats.late = monthlyRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
     kpiStats.rate = users.length > 0 ? Math.round((monthlyRecords.length / (users.length * standardDays)) * 100) : 0
@@ -9921,7 +9925,7 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
 
   const workerRecords = useMemo(() => records.filter(r => !isUserAdmin(r)), [records])
 
-  // Generate WhatsApp formatted text (Employees Sorted by Attendance % Descending)
+  // Generate WhatsApp Plain Text formatted text (Employees Ranked by Attendance % Highest to Lowest)
   const reportText = useMemo(() => {
     const now = new Date()
     const todayStr = todayDateKey(now)
@@ -9930,7 +9934,11 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
     const curMonthKey = monthKey(now)
 
     const genTimeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
-    const divider = '━━━━━━━━━━━━━━━━━━━━━'
+    const divider = '----------------------------------------'
+
+    // Calculate actual working days elapsed in the month so far (excluding Sundays / holidays)
+    const monthWorkingDaysList = getMonthWorkingDays(curMonthKey)
+    const elapsedWorkingDays = Math.max(1, monthWorkingDaysList.length)
 
     if (activeFilter === 'today') {
       const dayFormatted = now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })
@@ -9955,35 +9963,34 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
         const outTime = r.checkOutTime ? formatTime(r.checkOutTime) : null
         const lateInfo = getAttendanceLateInfo(r, officeTiming)
 
-        // Monthly attendance rate for ranking
+        // Real attendance percentage based on elapsed working days
         const uMonthRecs = workerRecords.filter(x => (x.uid === r.uid || x.email === r.email) && x.month === curMonthKey)
-        const rate = Math.min(100, Math.round((uMonthRecs.length / 24) * 100))
+        const rate = Math.min(100, Math.round((uMonthRecs.length / elapsedWorkingDays) * 100))
 
         let timingStr = `In: ${inTime}`
         if (outTime) timingStr += ` | Out: ${outTime}`
-        else timingStr += ` (Active)`
+        else timingStr += ` (Active Shift)`
 
         let lateTag = ''
         if (lateInfo.isLate) {
-          lateTag = ` ⚠️ [Late +${lateInfo.lateText || (lateInfo.lateMinutes + 'm')}]`
+          lateTag = ` [Late +${lateInfo.lateText || (lateInfo.lateMinutes + 'm')}]`
         }
 
         return { name, rate, timingStr, lateTag }
       }).sort((a, b) => b.rate - a.rate)
 
       const presentLines = presentStats.map((p, idx) => {
-        const medal = idx === 0 ? '🥇 ' : idx === 1 ? '🥈 ' : idx === 2 ? '🥉 ' : ''
-        return `${idx + 1}. ${medal}*${p.name}* (${p.rate}% att.) — ${p.timingStr}${p.lateTag}`
+        return `${idx + 1}. ${p.name} — ${p.rate}% att. (${p.timingStr})${p.lateTag}`
       })
 
       const leaveLines = todayApprovedLeaves.map((l) => {
         const u = users.find(x => x.uid === l.uid)
         const name = l.employeeName || u?.name || 'Employee'
         const typeStr = (l.type || 'Leave').toUpperCase()
-        return `• *${name}* (${typeStr} - Approved)`
+        return `• ${name} (${typeStr} - Approved)`
       })
 
-      const absentLines = absentUsers.map(u => `• *${u.name || u.email?.split('@')[0] || 'Employee'}*`)
+      const absentLines = absentUsers.map(u => `• ${u.name || u.email?.split('@')[0] || 'Employee'}`)
 
       const totalEmp = users.length
       const presentCount = todayRecords.length
@@ -9992,37 +9999,37 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       const absentCount = absentUsers.length
       const pct = totalEmp > 0 ? Math.round((presentCount / totalEmp) * 100) : 0
 
-      let text = `🏢 *SOFTWIND LABS - DAILY ATTENDANCE REPORT*\n`
-      text += `📅 *Date:* ${dayFormatted}\n`
-      text += `⏰ *Generated:* ${genTimeStr} by ${adminName}\n`
+      let text = `SOFTWIND LABS - DAILY ATTENDANCE REPORT\n`
+      text += `Date: ${dayFormatted}\n`
+      text += `Generated: ${genTimeStr} by ${adminName}\n`
       text += `${divider}\n`
-      text += `📊 *Summary Overview:*\n`
-      text += `• Total Employees: *${totalEmp}*\n`
-      text += `• Present Today: *${presentCount}* (${pct}%)\n`
-      text += `• Late Arrivals: *${lateCount}* ⚠️\n`
-      text += `• On Approved Leave: *${leaveCount}* 🌴\n`
-      text += `• Absent / Pending: *${absentCount}* ❌\n`
+      text += `SUMMARY OVERVIEW:\n`
+      text += `• Total Employees: ${totalEmp}\n`
+      text += `• Present Today: ${presentCount} (${pct}%)\n`
+      text += `• Late Arrivals: ${lateCount}\n`
+      text += `• On Approved Leave: ${leaveCount}\n`
+      text += `• Absent / Pending: ${absentCount}\n`
       text += `${divider}\n`
 
-      text += `🟢 *PRESENT EMPLOYEES (Sorted by Att. %):*\n`
+      text += `PRESENT EMPLOYEES (HIGHEST TO LOWEST ATTENDANCE %):\n`
       if (presentLines.length > 0) {
         text += presentLines.join('\n') + '\n'
       } else {
-        text += `_No punches recorded yet today._\n`
+        text += `No punches recorded yet today.\n`
       }
 
       if (leaveLines.length > 0) {
-        text += `\n🌴 *ON APPROVED LEAVE (${leaveCount}):*\n`
+        text += `\nON APPROVED LEAVE (${leaveCount}):\n`
         text += leaveLines.join('\n') + '\n'
       }
 
       if (absentLines.length > 0) {
-        text += `\n❌ *ABSENT / NOT PUNCHED (${absentCount}):*\n`
+        text += `\nABSENT / NOT PUNCHED (${absentCount}):\n`
         text += absentLines.join('\n') + '\n'
       }
 
       text += `${divider}\n`
-      text += `_Generated via Softwind Attendance Portal_`
+      text += `Generated via Softwind Attendance Portal`
       return text
     }
 
@@ -10054,24 +10061,23 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
         const lateInfo = getAttendanceLateInfo(r, officeTiming)
         let lateTag = ''
         if (lateInfo.isLate) {
-          lateTag = ` ⚠️ [Late +${lateInfo.lateText || (lateInfo.lateMinutes + 'm')}]`
+          lateTag = ` [Late +${lateInfo.lateText || (lateInfo.lateMinutes + 'm')}]`
         }
 
         const uMonthRecs = workerRecords.filter(x => (x.uid === r.uid || x.email === r.email) && x.month === curMonthKey)
-        const rate = Math.min(100, Math.round((uMonthRecs.length / 24) * 100))
+        const rate = Math.min(100, Math.round((uMonthRecs.length / elapsedWorkingDays) * 100))
 
         return { name, rate, inTime, outTime, hrsStr, lateTag }
       }).sort((a, b) => b.rate - a.rate)
 
       const presentLines = presentStats.map((p, idx) => {
-        const medal = idx === 0 ? '🥇 ' : idx === 1 ? '🥈 ' : idx === 2 ? '🥉 ' : ''
-        return `${idx + 1}. ${medal}*${p.name}* (${p.rate}% att.) — In: ${p.inTime} | Out: ${p.outTime}${p.hrsStr}${p.lateTag}`
+        return `${idx + 1}. ${p.name} — ${p.rate}% att. (In: ${p.inTime} | Out: ${p.outTime}${p.hrsStr})${p.lateTag}`
       })
 
-      const absentLines = absentUsers.map(u => `• *${u.name || u.email?.split('@')[0] || 'Employee'}*`)
+      const absentLines = absentUsers.map(u => `• ${u.name || u.email?.split('@')[0] || 'Employee'}`)
       const leaveLines = yApprovedLeaves.map(l => {
         const u = users.find(x => x.uid === l.uid)
-        return `• *${l.employeeName || u?.name || 'Employee'}* (${(l.type || 'Leave').toUpperCase()})`
+        return `• ${l.employeeName || u?.name || 'Employee'} (${(l.type || 'Leave').toUpperCase()})`
       })
 
       const totalEmp = users.length
@@ -10079,37 +10085,37 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       const lateCount = yesterdayRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
       const pct = totalEmp > 0 ? Math.round((presentCount / totalEmp) * 100) : 0
 
-      let text = `🏢 *SOFTWIND LABS - YESTERDAY ATTENDANCE REPORT*\n`
-      text += `📅 *Date:* ${dayFormatted}\n`
-      text += `⏰ *Generated:* ${genTimeStr} by ${adminName}\n`
+      let text = `SOFTWIND LABS - YESTERDAY ATTENDANCE REPORT\n`
+      text += `Date: ${dayFormatted}\n`
+      text += `Generated: ${genTimeStr} by ${adminName}\n`
       text += `${divider}\n`
-      text += `📊 *Summary Overview:*\n`
-      text += `• Total Employees: *${totalEmp}*\n`
-      text += `• Present: *${presentCount}* (${pct}%)\n`
-      text += `• Late Arrivals: *${lateCount}* ⚠️\n`
-      text += `• On Leave: *${leaveLines.length}* 🌴\n`
-      text += `• Absent: *${absentLines.length}* ❌\n`
+      text += `SUMMARY OVERVIEW:\n`
+      text += `• Total Employees: ${totalEmp}\n`
+      text += `• Present: ${presentCount} (${pct}%)\n`
+      text += `• Late Arrivals: ${lateCount}\n`
+      text += `• On Leave: ${leaveLines.length}\n`
+      text += `• Absent: ${absentLines.length}\n`
       text += `${divider}\n`
 
-      text += `🟢 *ATTENDANCE LOGS (Sorted by Att. %):*\n`
+      text += `ATTENDANCE LOGS (RANKED BY ATTENDANCE %):\n`
       if (presentLines.length > 0) {
         text += presentLines.join('\n') + '\n'
       } else {
-        text += `_No punches recorded for yesterday._\n`
+        text += `No punches recorded for yesterday.\n`
       }
 
       if (leaveLines.length > 0) {
-        text += `\n🌴 *ON LEAVE (${leaveLines.length}):*\n`
+        text += `\nON LEAVE (${leaveLines.length}):\n`
         text += leaveLines.join('\n') + '\n'
       }
 
       if (absentLines.length > 0) {
-        text += `\n❌ *ABSENT (${absentLines.length}):*\n`
+        text += `\nABSENT (${absentLines.length}):\n`
         text += absentLines.join('\n') + '\n'
       }
 
       text += `${divider}\n`
-      text += `_Generated via Softwind Attendance Portal_`
+      text += `Generated via Softwind Attendance Portal`
       return text
     }
 
@@ -10133,7 +10139,7 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       }
       if (workingDaysCount === 0) workingDaysCount = 6
 
-      // SORT EMPLOYEES BY WEEKLY ATTENDANCE PERCENTAGE DESCENDING
+      // SORT EMPLOYEES BY WEEKLY ATTENDANCE PERCENTAGE DESCENDING (HIGHEST TO LOWEST)
       const empStats = users.map(u => {
         const uRecs = weeklyRecords.filter(r => r.uid === u.uid || r.email === u.email)
         const daysPresent = uRecs.length
@@ -10157,29 +10163,28 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       }).sort((a, b) => b.pct - a.pct || b.daysPresent - a.daysPresent || b.totalMins - a.totalMins)
 
       const empBreakdown = empStats.map((e, idx) => {
-        const medal = idx === 0 ? '🥇 ' : idx === 1 ? '🥈 ' : idx === 2 ? '🥉 ' : ''
-        return `${idx + 1}. ${medal}*${e.name}*: *${e.pct}%* (${e.daysPresent}/${workingDaysCount} days) | ${e.totalHrs} hrs${e.uLate > 0 ? ` | ${e.uLate} late ⚠️` : ''}`
+        return `${idx + 1}. ${e.name} — ${e.pct}% (${e.daysPresent}/${workingDaysCount} days) | ${e.totalHrs} hrs${e.uLate > 0 ? ` | ${e.uLate} late` : ''}`
       })
 
       const avgPct = users.length > 0
         ? Math.round((totalPunches / (users.length * workingDaysCount)) * 100)
         : 0
 
-      let text = `🏢 *SOFTWIND LABS - WEEKLY ATTENDANCE REPORT*\n`
-      text += `📅 *Period:* ${startDayStr} – ${endDayStr} (Last 7 Days)\n`
-      text += `⏰ *Generated:* ${genTimeStr} by ${adminName}\n`
+      let text = `SOFTWIND LABS - WEEKLY ATTENDANCE REPORT\n`
+      text += `Period: ${startDayStr} – ${endDayStr} (Last 7 Days)\n`
+      text += `Generated: ${genTimeStr} by ${adminName}\n`
       text += `${divider}\n`
-      text += `📊 *Weekly Overview:*\n`
-      text += `• Total Team Members: *${users.length}*\n`
-      text += `• Total Punches Recorded: *${totalPunches}*\n`
-      text += `• Working Days in Period: *${workingDaysCount} days*\n`
-      text += `• Average Attendance Rate: *${avgPct}%*\n`
-      text += `• Late Arrivals: *${totalLate}* ⚠️\n`
+      text += `WEEKLY OVERVIEW:\n`
+      text += `• Total Team Members: ${users.length}\n`
+      text += `• Total Punches: ${totalPunches}\n`
+      text += `• Working Days in Period: ${workingDaysCount} days\n`
+      text += `• Team Avg Attendance: ${avgPct}%\n`
+      text += `• Late Arrivals: ${totalLate}\n`
       text += `${divider}\n`
-      text += `👥 *Employee Breakdown (Sorted by Att. %):*\n`
+      text += `EMPLOYEE RANKING (HIGHEST TO LOWEST ATTENDANCE):\n`
       text += empBreakdown.join('\n') + '\n'
       text += `${divider}\n`
-      text += `_Generated via Softwind Attendance Portal_`
+      text += `Generated via Softwind Attendance Portal`
       return text
     }
 
@@ -10188,9 +10193,8 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       const monthlyRecords = workerRecords.filter(r => r.month === curMonthKey || (r.date && r.date.startsWith(curMonthKey)))
       const totalPunches = monthlyRecords.length
       const totalLate = monthlyRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
-      const standardWorkingDays = 24
 
-      // SORT EMPLOYEES BY MONTHLY ATTENDANCE PERCENTAGE DESCENDING
+      // SORT EMPLOYEES BY MONTHLY ATTENDANCE PERCENTAGE DESCENDING (HIGHEST TO LOWEST)
       const empStats = users.map(u => {
         const uRecs = monthlyRecords.filter(r => r.uid === u.uid || r.email === u.email)
         const daysPresent = uRecs.length
@@ -10207,36 +10211,35 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
           }
         })
         const totalHrs = (totalMins / 60).toFixed(1)
-        const rate = Math.min(100, Math.round((daysPresent / standardWorkingDays) * 100))
+        const rate = Math.min(100, Math.round((daysPresent / elapsedWorkingDays) * 100))
         const name = u.name || u.email?.split('@')[0] || 'Employee'
 
         return { name, daysPresent, uLate, totalHrs, totalMins, rate }
       }).sort((a, b) => b.rate - a.rate || b.daysPresent - a.daysPresent || b.totalMins - a.totalMins)
 
       const empBreakdown = empStats.map((e, idx) => {
-        const medal = idx === 0 ? '🥇 ' : idx === 1 ? '🥈 ' : idx === 2 ? '🥉 ' : ''
-        return `${idx + 1}. ${medal}*${e.name}*: *${e.rate}%* (${e.daysPresent}/${standardWorkingDays} days) | ${e.totalHrs} hrs | ${e.uLate} late`
+        return `${idx + 1}. ${e.name} — ${e.rate}% (${e.daysPresent}/${elapsedWorkingDays} days) | ${e.totalHrs} hrs | ${e.uLate} late`
       })
 
       const teamAvgRate = users.length > 0
-        ? Math.round((totalPunches / (users.length * standardWorkingDays)) * 100)
+        ? Math.round((totalPunches / (users.length * elapsedWorkingDays)) * 100)
         : 0
 
-      let text = `🏢 *SOFTWIND LABS - MONTHLY ATTENDANCE REPORT*\n`
-      text += `🗓️ *Month:* ${monthDisplay}\n`
-      text += `⏰ *Generated:* ${genTimeStr} by ${adminName}\n`
+      let text = `SOFTWIND LABS - MONTHLY ATTENDANCE REPORT\n`
+      text += `Month: ${monthDisplay} (Month-to-Date)\n`
+      text += `Generated: ${genTimeStr} by ${adminName}\n`
       text += `${divider}\n`
-      text += `📊 *Monthly Performance Summary:*\n`
-      text += `• Total Employees: *${users.length}*\n`
-      text += `• Standard Working Days: *${standardWorkingDays}*\n`
-      text += `• Total Punches: *${totalPunches}*\n`
-      text += `• Team Avg Attendance Rate: *${teamAvgRate}%*\n`
-      text += `• Total Late Arrivals: *${totalLate}* ⚠️\n`
+      text += `TEAM SUMMARY:\n`
+      text += `• Total Employees: ${users.length}\n`
+      text += `• Working Days Elapsed: ${elapsedWorkingDays} days\n`
+      text += `• Total Punches: ${totalPunches}\n`
+      text += `• Team Avg Attendance: ${teamAvgRate}%\n`
+      text += `• Total Late Arrivals: ${totalLate}\n`
       text += `${divider}\n`
-      text += `👥 *Employee Monthly Records (Sorted by Att. %):*\n`
+      text += `EMPLOYEE RANKING (HIGHEST TO LOWEST ATTENDANCE):\n`
       text += empBreakdown.join('\n') + '\n'
       text += `${divider}\n`
-      text += `_Generated via Softwind Attendance Portal_`
+      text += `Generated via Softwind Attendance Portal`
       return text
     }
 
@@ -10288,8 +10291,9 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
     if (activeFilter === 'monthly') {
       const recs = workerRecords.filter(r => r.month === curMonthKey || (r.date && r.date.startsWith(curMonthKey)))
       const late = recs.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+      const mWorkingDays = Math.max(1, getMonthWorkingDays(curMonthKey).length)
       return [
-        { label: 'Work Days', val: 24, color: '#3B82F6' },
+        { label: 'Work Days', val: mWorkingDays, color: '#3B82F6' },
         { label: 'Punches', val: recs.length, color: '#10B981' },
         { label: 'Late', val: late, color: '#F59E0B' },
         { label: 'Staff', val: users.length, color: '#6366F1' }
@@ -10629,7 +10633,7 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
           </div>
         </div>
 
-        {/* Bottom Actions: Both Message & PDF Options */}
+        {/* Bottom Actions: Plain Text WhatsApp Message (Primary) */}
         <div
           style={{
             padding: '12px 18px',
@@ -10640,8 +10644,8 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
             gap: 8
           }}
         >
-          {/* Row 1: WhatsApp Message vs PDF Share */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+          {/* Row 1: Primary Action - Send to WhatsApp & Copy Text */}
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr', gap: 8 }}>
             <button
               type="button"
               onClick={handleShareWhatsApp}
@@ -10649,52 +10653,24 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 6,
-                padding: '10px 12px',
+                gap: 8,
+                padding: '11px 16px',
                 borderRadius: 10,
                 background: '#25D366',
                 border: 'none',
                 color: '#FFFFFF',
-                fontSize: '0.78rem',
+                fontSize: '0.82rem',
                 fontWeight: 800,
                 cursor: 'pointer',
                 boxShadow: '0 3px 8px rgba(37, 211, 102, 0.35)',
                 transition: 'transform 0.15s ease'
               }}
-              title="Send report as WhatsApp message text"
+              title="Send report directly to WhatsApp Group as Plain Text"
             >
-              <Icons.WhatsApp size={16} color="#FFFFFF" />
-              <span>💬 Send Message</span>
+              <Icons.WhatsApp size={18} color="#FFFFFF" />
+              <span>Send to WhatsApp Group</span>
             </button>
 
-            <button
-              type="button"
-              onClick={handleSharePDF}
-              disabled={generatingPdf}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                padding: '10px 12px',
-                borderRadius: 10,
-                background: 'linear-gradient(135deg, #075E54 0%, #128C7E 100%)',
-                border: 'none',
-                color: '#FFFFFF',
-                fontSize: '0.78rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-                boxShadow: '0 3px 8px rgba(18, 140, 126, 0.35)',
-                transition: 'transform 0.15s ease'
-              }}
-              title="Share as PDF Document directly to WhatsApp"
-            >
-              <span>{generatingPdf ? 'Generating…' : '📄 Share as PDF'}</span>
-            </button>
-          </div>
-
-          {/* Row 2: Copy Text & Download PDF */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
             <button
               type="button"
               onClick={handleCopy}
@@ -10703,42 +10679,65 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 5,
-                padding: '8px 10px',
-                borderRadius: 8,
+                padding: '11px 12px',
+                borderRadius: 10,
                 background: copied ? '#ECFDF5' : '#F1F5F9',
-                border: copied ? '1.5px solid #10B981' : '1px solid #E2E8F0',
+                border: copied ? '1.5px solid #10B981' : '1px solid #CBD5E1',
                 color: copied ? '#059669' : '#334155',
-                fontSize: '0.74rem',
+                fontSize: '0.78rem',
                 fontWeight: 700,
                 cursor: 'pointer',
                 transition: 'all 0.15s ease'
               }}
+              title="Copy plain text message to clipboard"
             >
               <span>{copied ? '✓ Copied Text!' : '📋 Copy Text'}</span>
             </button>
+          </div>
 
-            <button
-              type="button"
-              onClick={handleDownloadPDF}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 5,
-                padding: '8px 10px',
-                borderRadius: 8,
-                background: '#FFFFFF',
-                border: '1.5px solid #CBD5E1',
-                color: '#1E293B',
-                fontSize: '0.74rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-              title="Download PDF document to your device"
-            >
-              <span>📥 Download PDF</span>
-            </button>
+          {/* Row 2: Secondary / Backup PDF Options */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 2 }}>
+            <span style={{ fontSize: '0.66rem', color: '#64748B' }}>
+              ✓ Plain text message • Ranked highest to lowest att. %
+            </span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                type="button"
+                onClick={handleDownloadPDF}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#64748B',
+                  fontSize: '0.68rem',
+                  fontWeight: 600,
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  padding: '2px 4px'
+                }}
+                title="Download PDF backup"
+              >
+                📥 Download PDF
+              </button>
+              <span style={{ color: '#CBD5E1', fontSize: '0.68rem' }}>•</span>
+              <button
+                type="button"
+                onClick={handleSharePDF}
+                disabled={generatingPdf}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#64748B',
+                  fontSize: '0.68rem',
+                  fontWeight: 600,
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  padding: '2px 4px'
+                }}
+                title="Share as PDF"
+              >
+                {generatingPdf ? 'Generating PDF…' : 'Share PDF'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
