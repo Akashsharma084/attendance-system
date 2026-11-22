@@ -100,7 +100,7 @@ const Icons = {
     </svg>
   ))
 }
-import { todayDateKey, monthKey, formatTime, buildEmployeeSchedule, getMonthWorkingDays } from '../utils/dateHelpers'
+import { todayDateKey, monthKey, formatTime, buildEmployeeSchedule, getMonthWorkingDays, getDateRangeWorkingDays, formatMonthLabel, getAvailableMonthKeys } from '../utils/dateHelpers'
 import {
   subscribeLeaves,
   submitLeaveRequest,
@@ -1198,6 +1198,7 @@ export default function SWLLiveMasterApp() {
             <LiveAdminEmployeesScreen
               onNavigate={handleNavigate}
               officeTiming={officeTiming}
+              onOpenWhatsAppReport={() => setShowWhatsAppModal(true)}
               onSelectEmployee={(emp) => {
                 setSelectedEmp(emp)
                 setEmpDetailOrigin('adm_employees')
@@ -1214,12 +1215,14 @@ export default function SWLLiveMasterApp() {
               onOpenAttendanceModal={setAdminAttendanceModal}
               onViewSelfie={setSelectedSelfieModal}
               officeTiming={officeTiming}
+              onOpenWhatsAppReport={() => setShowWhatsAppModal(true)}
             />
           )}
 
           {isAdmin && effectiveScreen === 'adm_approvals' && (
             <LiveLeaveApprovalsScreen
               onNavigate={handleNavigate}
+              onOpenWhatsAppReport={() => setShowWhatsAppModal(true)}
             />
           )}
 
@@ -1247,6 +1250,7 @@ export default function SWLLiveMasterApp() {
               onViewSelfie={setSelectedSelfieModal}
               officeConfig={officeConfig}
               officeTiming={officeTiming}
+              onOpenWhatsAppReport={() => setShowWhatsAppModal(true)}
             />
           )}
         </div>
@@ -5939,6 +5943,10 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
           <Icons.Reports active={false} />
           <span>Reports</span>
         </div>
+        <div className="swl-nav-item" onClick={onOpenWhatsAppReport} title="WhatsApp Report">
+          <Icons.WhatsApp size={22} color="#16A34A" />
+          <span style={{ color: '#16A34A', fontWeight: 700 }}>WhatsApp</span>
+        </div>
         <div className="swl-nav-item" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
@@ -5951,7 +5959,7 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
 /* =========================================================================
    8. LIVE ADMIN EMPLOYEES SCREEN (SCREEN 10) - LIST, SEARCH & ADD MEMBER
    ========================================================================= */
-function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee, officeTiming }) {
+function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee, officeTiming, onOpenWhatsAppReport }) {
   const todayKey = todayDateKey()
   const [users, setUsers] = useState([])
   const [todayAtt, setTodayAtt] = useState([])
@@ -6264,6 +6272,10 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee, officeTiming }
           <Icons.Reports active={false} />
           <span>Reports</span>
         </div>
+        <div className="swl-nav-item" onClick={onOpenWhatsAppReport} title="WhatsApp Report">
+          <Icons.WhatsApp size={22} color="#16A34A" />
+          <span style={{ color: '#16A34A', fontWeight: 700 }}>WhatsApp</span>
+        </div>
         <div className="swl-nav-item" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
@@ -6359,7 +6371,7 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee, officeTiming }
 /* =========================================================================
    9. LIVE ADMIN EMPLOYEE DETAILS (SCREEN 11) - PROFILE, ACCESS CONTROL & RECORDS
    ========================================================================= */
-function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin, officeTiming, onOpenAttendanceModal }) {
+function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin, officeTiming, onOpenAttendanceModal, onOpenWhatsAppReport }) {
   const { resetEmployeeDeviceBinding } = useAuth()
   const [deviceResetting, setDeviceResetting] = useState(false)
   const [empPhotoUploading, setEmpPhotoUploading] = useState(false)
@@ -6900,6 +6912,10 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
           <Icons.Reports active={false} />
           <span>Reports</span>
         </div>
+        <div className="swl-nav-item" onClick={onOpenWhatsAppReport} title="WhatsApp Report">
+          <Icons.WhatsApp size={22} color="#16A34A" />
+          <span style={{ color: '#16A34A', fontWeight: 700 }}>WhatsApp</span>
+        </div>
         <div className="swl-nav-item" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
@@ -6990,7 +7006,7 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
 /* =========================================================================
    10. LIVE ADMIN LEAVE APPROVALS SCREEN (SCREEN 12)
    ========================================================================= */
-function LiveLeaveApprovalsScreen({ onNavigate }) {
+function LiveLeaveApprovalsScreen({ onNavigate, onOpenWhatsAppReport }) {
   const { user, profile } = useAuth()
   const [tab, setTab] = useState('Pending')
   const [leaves, setLeaves] = useState([])
@@ -7262,6 +7278,10 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
           <Icons.Reports active={false} />
           <span>Reports</span>
         </div>
+        <div className="swl-nav-item" onClick={onOpenWhatsAppReport} title="WhatsApp Report">
+          <Icons.WhatsApp size={22} color="#16A34A" />
+          <span style={{ color: '#16A34A', fontWeight: 700 }}>WhatsApp</span>
+        </div>
         <div className="swl-nav-item" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
@@ -7432,11 +7452,17 @@ function LiveLeaveApprovalsScreen({ onNavigate }) {
    ========================================================================= */
 function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeTiming, onOpenAttendanceModal, onOpenWhatsAppReport }) {
   const [reportTab, setReportTab] = useState('overview') // 'overview' | 'employees' | 'logs'
-  const [timeframe, setTimeframe] = useState('Monthly') // 'Daily' | 'Weekly' | 'Monthly' | 'Yearly'
+  const [timeframe, setTimeframe] = useState('Monthly') // 'Daily' | 'Weekly' | 'Monthly' | 'Custom' | 'Yearly'
   const [search, setSearch] = useState('')
   const [records, setRecords] = useState([])
   const [users, setUsers] = useState([])
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [customStart, setCustomStart] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 14)
+    return todayDateKey(d)
+  })
+  const [customEnd, setCustomEnd] = useState(() => todayDateKey(new Date()))
 
   const curMonth = useMemo(() => {
     const y = currentDate.getFullYear()
@@ -7467,22 +7493,47 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
   // Subscribe to attendance records
   useEffect(() => {
     if (!isFirebaseConfigured || !db) return
-    const q = query(collection(db, 'attendance'), where('month', '==', curMonth))
+    let q
+    if (timeframe === 'Custom') {
+      const sM = (customStart || '').slice(0, 7)
+      const eM = (customEnd || '').slice(0, 7)
+      const mList = Array.from(new Set([sM, eM])).filter(Boolean)
+      q = query(collection(db, 'attendance'), where('month', 'in', mList.length ? mList : [curMonth]))
+    } else {
+      q = query(collection(db, 'attendance'), where('month', '==', curMonth))
+    }
     const unsub = onSnapshot(q, (snap) => {
       setRecords(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     })
     return () => unsub()
-  }, [curMonth])
+  }, [curMonth, timeframe, customStart, customEnd])
 
-  const workerRecords = useMemo(() => records.filter(r => !isUserAdmin(r)), [records])
+  const workerRecords = useMemo(() => {
+    const base = records.filter(r => !isUserAdmin(r))
+    if (timeframe === 'Custom') {
+      const s = customStart <= customEnd ? customStart : customEnd
+      const e = customStart <= customEnd ? customEnd : customStart
+      return base.filter(r => r.date && r.date >= s && r.date <= e)
+    }
+    return base
+  }, [records, timeframe, customStart, customEnd])
+
   const presentCount = workerRecords.length
   const lateCount = useMemo(() => {
     return workerRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
   }, [workerRecords, officeTiming])
 
-  // Real working days elapsed in the month (excluding Sundays / holidays)
+  // Real working days in selected month or custom range
   const monthDaysList = useMemo(() => getMonthWorkingDays(curMonth), [curMonth])
-  const workingDaysTarget = Math.max(1, monthDaysList.length)
+  const workingDaysTarget = useMemo(() => {
+    if (timeframe === 'Custom') {
+      const s = customStart <= customEnd ? customStart : customEnd
+      const e = customStart <= customEnd ? customEnd : customStart
+      return Math.max(1, getDateRangeWorkingDays(s, e).length)
+    }
+    return Math.max(1, monthDaysList.length)
+  }, [timeframe, customStart, customEnd, monthDaysList])
+
   const absentCount = Math.max(0, (users.length * workingDaysTarget) - presentCount)
 
   // Per-employee analytics (employees only)
@@ -7565,7 +7616,7 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n')
     const link = document.createElement('a')
     link.setAttribute('href', encodeURI(csvContent))
-    link.setAttribute('download', `SWL_Attendance_Report_${curMonth}.csv`)
+    link.setAttribute('download', timeframe === 'Custom' ? `SWL_Attendance_Report_${customStart}_to_${customEnd}.csv` : `SWL_Attendance_Report_${curMonth}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -7579,27 +7630,7 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
             <Icons.BackArrow />
           </button>
           <span>Attendance Reports</span>
-          <button
-            onClick={onOpenWhatsAppReport}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              background: '#25D366',
-              color: '#FFFFFF',
-              border: 'none',
-              borderRadius: 8,
-              padding: '4px 10px',
-              fontSize: '0.74rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: '0 2px 5px rgba(37, 211, 102, 0.28)'
-            }}
-            title="Share Attendance Report to WhatsApp"
-          >
-            <Icons.WhatsApp size={15} color="#FFFFFF" />
-            <span>WhatsApp</span>
-          </button>
+          <div style={{ width: 34 }} />
         </div>
 
         {/* 3 Report Subtabs */}
@@ -7626,23 +7657,87 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
 
         {/* Timeframe pill tabs */}
         <div className="swl-tab-pill-row" style={{ margin: '4px 16px 8px 16px' }}>
-          {['Daily', 'Weekly', 'Monthly', 'Yearly'].map(t => (
+          {['Daily', 'Weekly', 'Monthly', 'Custom', 'Yearly'].map(t => (
             <button
               key={t}
               className={`swl-tab-pill ${timeframe === t ? 'active' : ''}`}
               onClick={() => setTimeframe(t)}
             >
-              {t}
+              {t === 'Custom' ? '📅 Range' : t}
             </button>
           ))}
         </div>
 
-        {/* Month Selector Header */}
-        <div className="swl-month-header" style={{ fontSize: '0.85rem', margin: '4px 0 10px 0' }}>
-          <span style={{ cursor: 'pointer' }} onClick={() => changeMonth(-1)}>&lt;</span>
-          <span>{monthLabel}</span>
-          <span style={{ cursor: 'pointer' }} onClick={() => changeMonth(1)}>&gt;</span>
-        </div>
+        {/* Month Selector Header / Custom Range Header */}
+        {timeframe === 'Custom' ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, margin: '4px 16px 10px 16px', background: '#FFFFFF', padding: '8px 12px', borderRadius: 10, border: '1px solid #E2E8F0' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ fontSize: '0.62rem', color: '#64748B', fontWeight: 700 }}>FROM</span>
+              <input
+                type="date"
+                value={customStart}
+                min="2026-08-07"
+                max={customEnd || todayDateKey(new Date())}
+                onChange={(e) => e.target.value && setCustomStart(e.target.value)}
+                style={{ fontSize: '0.74rem', padding: '3px 6px', borderRadius: 6, border: '1px solid #CBD5E1', fontWeight: 600 }}
+              />
+            </div>
+            <span style={{ color: '#94A3B8', fontWeight: 800, marginTop: 12 }}>➔</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ fontSize: '0.62rem', color: '#64748B', fontWeight: 700 }}>TO</span>
+              <input
+                type="date"
+                value={customEnd}
+                min={customStart || '2026-08-07'}
+                max={todayDateKey(new Date())}
+                onChange={(e) => e.target.value && setCustomEnd(e.target.value)}
+                style={{ fontSize: '0.74rem', padding: '3px 6px', borderRadius: 6, border: '1px solid #CBD5E1', fontWeight: 600 }}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="swl-month-header" style={{ fontSize: '0.85rem', margin: '4px 16px 10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFFFFF', padding: '6px 12px', borderRadius: 10, border: '1px solid #E2E8F0' }}>
+            <button
+              type="button"
+              onClick={() => changeMonth(-1)}
+              style={{ background: '#F1F5F9', border: 'none', borderRadius: 6, padding: '4px 10px', fontWeight: 800, cursor: 'pointer' }}
+            >
+              ◀
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontWeight: 800, color: '#0F172A' }}>{monthLabel}</span>
+              <input
+                type="month"
+                value={curMonth}
+                min="2026-08"
+                max={monthKey(new Date())}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const [y, m] = e.target.value.split('-').map(Number)
+                    setCurrentDate(new Date(y, m - 1, 1))
+                  }
+                }}
+                style={{ fontSize: '0.74rem', padding: '2px 4px', borderRadius: 6, border: '1px solid #CBD5E1', fontWeight: 600, cursor: 'pointer' }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => changeMonth(1)}
+              disabled={curMonth >= monthKey(new Date())}
+              style={{
+                background: curMonth >= monthKey(new Date()) ? '#F8FAFC' : '#F1F5F9',
+                border: 'none',
+                borderRadius: 6,
+                padding: '4px 10px',
+                fontWeight: 800,
+                cursor: curMonth >= monthKey(new Date()) ? 'not-allowed' : 'pointer',
+                color: curMonth >= monthKey(new Date()) ? '#CBD5E1' : '#0F172A'
+              }}
+            >
+              ▶
+            </button>
+          </div>
+        )}
 
         {/* SUBTAB 1: OVERVIEW */}
         {reportTab === 'overview' && (
@@ -7915,6 +8010,10 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
           <Icons.Reports active={true} />
           <span>Reports</span>
         </div>
+        <div className="swl-nav-item" onClick={onOpenWhatsAppReport} title="WhatsApp Report">
+          <Icons.WhatsApp size={22} color="#16A34A" />
+          <span style={{ color: '#16A34A', fontWeight: 700 }}>WhatsApp</span>
+        </div>
         <div className="swl-nav-item" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
@@ -7927,7 +8026,7 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
 /* =========================================================================
    14. LIVE ADMIN PROFILE SCREEN
    ========================================================================= */
-function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTiming, onViewSelfie, officeConfig, officeTiming }) {
+function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTiming, onViewSelfie, officeConfig, officeTiming, onOpenWhatsAppReport }) {
   const { user, profile } = useAuth()
   const [subView, setSubView] = useState(null) // null | 'personal_info' | 'contact_desk' | 'password' | 'rules'
 
@@ -8791,6 +8890,10 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
           <Icons.Reports active={false} />
           <span>Reports</span>
         </div>
+        <div className="swl-nav-item" onClick={onOpenWhatsAppReport} title="WhatsApp Report">
+          <Icons.WhatsApp size={22} color="#16A34A" />
+          <span style={{ color: '#16A34A', fontWeight: 700 }}>WhatsApp</span>
+        </div>
         <div className="swl-nav-item active" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={true} />
           <span>Profile</span>
@@ -9542,7 +9645,7 @@ function LiveOfficeTimingModal({ officeTiming, onClose, adminName }) {
 /* =========================================================================
    14B. LIVE WHATSAPP ATTENDANCE REPORT & PDF EXPORT MODAL
    ========================================================================= */
-function generateAttendancePDF({ activeFilter, users, workerRecords, leaves, officeTiming, adminName }) {
+function generateAttendancePDF({ activeFilter, users, workerRecords, leaves, officeTiming, adminName, selectedMonth, customStart, customEnd }) {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -9554,7 +9657,8 @@ function generateAttendancePDF({ activeFilter, users, workerRecords, leaves, off
   const yesterdayDate = new Date(now.getTime() - 86400000)
   const yesterdayStr = todayDateKey(yesterdayDate)
   const curMonthKey = monthKey(now)
-  const elapsedWorkingDays = Math.max(1, getMonthWorkingDays(curMonthKey).length)
+  const activeMonthKey = selectedMonth || curMonthKey
+  const elapsedWorkingDays = Math.max(1, getMonthWorkingDays(activeMonthKey).length)
 
   // Softwind Brand Colors
   const primaryColor = [18, 140, 126] // #128C7E Teal
@@ -9590,7 +9694,8 @@ function generateAttendancePDF({ activeFilter, users, workerRecords, leaves, off
   if (activeFilter === 'today') periodTitle = `DAILY ATTENDANCE • ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`
   else if (activeFilter === 'yesterday') periodTitle = `YESTERDAY ATTENDANCE • ${yesterdayDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`
   else if (activeFilter === 'weekly') periodTitle = `WEEKLY ATTENDANCE SUMMARY • LAST 7 DAYS`
-  else periodTitle = `MONTHLY PERFORMANCE SUMMARY • ${now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }).toUpperCase()}`
+  else if (activeFilter === 'custom') periodTitle = `CUSTOM DATE RANGE • ${customStart} TO ${customEnd}`
+  else periodTitle = `MONTHLY PERFORMANCE SUMMARY • ${formatMonthLabel(activeMonthKey).toUpperCase()}`
 
   let currentY = 41
   doc.setTextColor(...darkColor)
@@ -9706,9 +9811,43 @@ function generateAttendancePDF({ activeFilter, users, workerRecords, leaves, off
         totalMins
       }
     }).sort((a, b) => b.rate - a.rate || b.totalMins - a.totalMins)
+  } else if (activeFilter === 'custom') {
+    const s = customStart <= customEnd ? customStart : customEnd
+    const e = customStart <= customEnd ? customEnd : customStart
+    const rangeWorkingDays = Math.max(1, getDateRangeWorkingDays(s, e).length)
+    const rangeRecords = workerRecords.filter(r => r.date && r.date >= s && r.date <= e)
+    kpiStats.present = rangeRecords.length
+    kpiStats.late = rangeRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+    kpiStats.rate = users.length > 0 ? Math.round((rangeRecords.length / (users.length * rangeWorkingDays)) * 100) : 0
+
+    sortedEmployees = users.map(u => {
+      const uRecs = rangeRecords.filter(r => r.uid === u.uid || r.email === u.email)
+      const daysPresent = uRecs.length
+      const uLate = uRecs.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+      let totalMins = 0
+      uRecs.forEach(r => {
+        if (r.checkInTime && r.checkOutTime) {
+          const inM = r.checkInTime.seconds ? r.checkInTime.seconds : new Date(r.checkInTime).getTime() / 1000
+          const outM = r.checkOutTime.seconds ? r.checkOutTime.seconds : new Date(r.checkOutTime).getTime() / 1000
+          totalMins += Math.max(0, (outM - inM) / 60)
+        } else if (r.checkInTime) {
+          totalMins += 480
+        }
+      })
+      const totalHrs = (totalMins / 60).toFixed(1)
+      const rate = Math.min(100, Math.round((daysPresent / rangeWorkingDays) * 100))
+      return {
+        name: u.name || u.email?.split('@')[0] || 'Employee',
+        rate,
+        daysPresent: `${daysPresent}/${rangeWorkingDays}`,
+        totalHrs: `${totalHrs} hrs`,
+        uLate,
+        totalMins
+      }
+    }).sort((a, b) => b.rate - a.rate || b.totalMins - a.totalMins)
   } else {
     // Monthly
-    const monthlyRecords = workerRecords.filter(r => r.month === curMonthKey || (r.date && r.date.startsWith(curMonthKey)))
+    const monthlyRecords = workerRecords.filter(r => r.month === activeMonthKey || (r.date && r.date.startsWith(activeMonthKey)))
     const standardDays = elapsedWorkingDays
     kpiStats.present = monthlyRecords.length
     kpiStats.late = monthlyRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
@@ -9872,7 +10011,14 @@ function generateAttendancePDF({ activeFilter, users, workerRecords, leaves, off
 }
 
 function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
-  const [activeFilter, setActiveFilter] = useState('today') // 'today' | 'yesterday' | 'weekly' | 'monthly'
+  const [activeFilter, setActiveFilter] = useState('today') // 'today' | 'yesterday' | 'weekly' | 'monthly' | 'custom'
+  const [selectedMonth, setSelectedMonth] = useState(() => monthKey(new Date()))
+  const [customStart, setCustomStart] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 14)
+    return todayDateKey(d)
+  })
+  const [customEnd, setCustomEnd] = useState(() => todayDateKey(new Date()))
   const [copied, setCopied] = useState(false)
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [users, setUsers] = useState([])
@@ -9899,29 +10045,34 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
     return () => unsub && unsub()
   }, [])
 
-  // 3. Fetch Attendance records: Current Month and Previous Month
-  useEffect(() => {
-    if (!isFirebaseConfigured || !db) return
-    const now = new Date()
-    const curMonth = monthKey(now)
-    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const prevMonth = monthKey(prevDate)
+  // 3. Collect needed months across filters
+  const neededMonths = useMemo(() => {
+    const s = new Set()
+    s.add(monthKey(new Date()))
+    if (selectedMonth) s.add(selectedMonth)
+    if (customStart) s.add(customStart.slice(0, 7))
+    if (customEnd) s.add(customEnd.slice(0, 7))
+    return Array.from(s).filter(Boolean)
+  }, [selectedMonth, customStart, customEnd])
 
-    const q = query(collection(db, 'attendance'), where('month', 'in', [curMonth, prevMonth]))
+  // 4. Fetch Attendance records
+  useEffect(() => {
+    if (!isFirebaseConfigured || !db || neededMonths.length === 0) return
+    setLoading(true)
+    const q = query(collection(db, 'attendance'), where('month', 'in', neededMonths.slice(0, 10)))
     const unsub = onSnapshot(q, (snap) => {
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      setRecords(list)
+      setRecords(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       setLoading(false)
     }, (err) => {
       console.warn('Attendance query err in WhatsApp modal, trying single month:', err)
-      const qSingle = query(collection(db, 'attendance'), where('month', '==', curMonth))
+      const qSingle = query(collection(db, 'attendance'), where('month', '==', selectedMonth))
       onSnapshot(qSingle, (snapSingle) => {
         setRecords(snapSingle.docs.map(d => ({ id: d.id, ...d.data() })))
         setLoading(false)
       })
     })
     return () => unsub()
-  }, [])
+  }, [neededMonths, selectedMonth])
 
   const workerRecords = useMemo(() => records.filter(r => !isUserAdmin(r)), [records])
 
@@ -10189,8 +10340,11 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
     }
 
     if (activeFilter === 'monthly') {
-      const monthDisplay = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
-      const monthlyRecords = workerRecords.filter(r => r.month === curMonthKey || (r.date && r.date.startsWith(curMonthKey)))
+      const monthDisplay = formatMonthLabel(selectedMonth)
+      const isCur = selectedMonth === curMonthKey
+      const monthWorkingDaysList = getMonthWorkingDays(selectedMonth)
+      const workingDaysCount = Math.max(1, monthWorkingDaysList.length)
+      const monthlyRecords = workerRecords.filter(r => r.month === selectedMonth || (r.date && r.date.startsWith(selectedMonth)))
       const totalPunches = monthlyRecords.length
       const totalLate = monthlyRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
 
@@ -10211,27 +10365,90 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
           }
         })
         const totalHrs = (totalMins / 60).toFixed(1)
-        const rate = Math.min(100, Math.round((daysPresent / elapsedWorkingDays) * 100))
+        const rate = Math.min(100, Math.round((daysPresent / workingDaysCount) * 100))
         const name = u.name || u.email?.split('@')[0] || 'Employee'
 
         return { name, daysPresent, uLate, totalHrs, totalMins, rate }
       }).sort((a, b) => b.rate - a.rate || b.daysPresent - a.daysPresent || b.totalMins - a.totalMins)
 
       const empBreakdown = empStats.map((e, idx) => {
-        return `${idx + 1}. ${e.name} — ${e.rate}% (${e.daysPresent}/${elapsedWorkingDays} days) | ${e.totalHrs} hrs | ${e.uLate} late`
+        return `${idx + 1}. ${e.name} — ${e.rate}% (${e.daysPresent}/${workingDaysCount} days) | ${e.totalHrs} hrs | ${e.uLate} late`
       })
 
       const teamAvgRate = users.length > 0
-        ? Math.round((totalPunches / (users.length * elapsedWorkingDays)) * 100)
+        ? Math.round((totalPunches / (users.length * workingDaysCount)) * 100)
         : 0
 
       let text = `SOFTWIND LABS - MONTHLY ATTENDANCE REPORT\n`
-      text += `Month: ${monthDisplay} (Month-to-Date)\n`
+      text += `Month: ${monthDisplay}${isCur ? ' (Month-to-Date)' : ''}\n`
       text += `Generated: ${genTimeStr} by ${adminName}\n`
       text += `${divider}\n`
       text += `TEAM SUMMARY:\n`
       text += `• Total Employees: ${users.length}\n`
-      text += `• Working Days Elapsed: ${elapsedWorkingDays} days\n`
+      text += `• Working Days: ${workingDaysCount} days\n`
+      text += `• Total Punches: ${totalPunches}\n`
+      text += `• Team Avg Attendance: ${teamAvgRate}%\n`
+      text += `• Total Late Arrivals: ${totalLate}\n`
+      text += `${divider}\n`
+      text += `EMPLOYEE RANKING (HIGHEST TO LOWEST ATTENDANCE):\n`
+      text += empBreakdown.join('\n') + '\n'
+      text += `${divider}\n`
+      text += `Generated via Softwind Attendance Portal`
+      return text
+    }
+
+    if (activeFilter === 'custom') {
+      const sDate = customStart <= customEnd ? customStart : customEnd
+      const eDate = customStart <= customEnd ? customEnd : customStart
+      const rangeWorkingDaysList = getDateRangeWorkingDays(sDate, eDate)
+      const workingDaysCount = Math.max(1, rangeWorkingDaysList.length)
+
+      const rangeRecords = workerRecords.filter(r => r.date && r.date >= sDate && r.date <= eDate)
+      const totalPunches = rangeRecords.length
+      const totalLate = rangeRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+
+      const empStats = users.map(u => {
+        const uRecs = rangeRecords.filter(r => r.uid === u.uid || r.email === u.email)
+        const daysPresent = uRecs.length
+        const uLate = uRecs.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+
+        let totalMins = 0
+        uRecs.forEach(r => {
+          if (r.checkInTime && r.checkOutTime) {
+            const inM = r.checkInTime.seconds ? r.checkInTime.seconds : new Date(r.checkInTime).getTime() / 1000
+            const outM = r.checkOutTime.seconds ? r.checkOutTime.seconds : new Date(r.checkOutTime).getTime() / 1000
+            totalMins += Math.max(0, (outM - inM) / 60)
+          } else if (r.checkInTime) {
+            totalMins += 480
+          }
+        })
+        const totalHrs = (totalMins / 60).toFixed(1)
+        const rate = Math.min(100, Math.round((daysPresent / workingDaysCount) * 100))
+        const name = u.name || u.email?.split('@')[0] || 'Employee'
+
+        return { name, daysPresent, uLate, totalHrs, totalMins, rate }
+      }).sort((a, b) => b.rate - a.rate || b.daysPresent - a.daysPresent || b.totalMins - a.totalMins)
+
+      const empBreakdown = empStats.map((e, idx) => {
+        return `${idx + 1}. ${e.name} — ${e.rate}% (${e.daysPresent}/${workingDaysCount} days) | ${e.totalHrs} hrs | ${e.uLate} late`
+      })
+
+      const teamAvgRate = users.length > 0
+        ? Math.round((totalPunches / (users.length * workingDaysCount)) * 100)
+        : 0
+
+      const [sy, sm, sd] = sDate.split('-')
+      const [ey, em, ed] = eDate.split('-')
+      const sFormatted = new Date(Number(sy), Number(sm) - 1, Number(sd)).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+      const eFormatted = new Date(Number(ey), Number(em) - 1, Number(ed)).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+
+      let text = `SOFTWIND LABS - CUSTOM RANGE ATTENDANCE REPORT\n`
+      text += `Period: ${sFormatted} to ${eFormatted} (${workingDaysCount} Working Days)\n`
+      text += `Generated: ${genTimeStr} by ${adminName}\n`
+      text += `${divider}\n`
+      text += `RANGE SUMMARY:\n`
+      text += `• Total Employees: ${users.length}\n`
+      text += `• Working Days in Period: ${workingDaysCount} days\n`
       text += `• Total Punches: ${totalPunches}\n`
       text += `• Team Avg Attendance: ${teamAvgRate}%\n`
       text += `• Total Late Arrivals: ${totalLate}\n`
@@ -10244,7 +10461,7 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
     }
 
     return ''
-  }, [activeFilter, workerRecords, users, leaves, officeTiming, adminName])
+  }, [activeFilter, workerRecords, users, leaves, officeTiming, adminName, selectedMonth, customStart, customEnd])
 
   // Mini summary stats for header badges
   const summaryBadges = useMemo(() => {
@@ -10289,9 +10506,9 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       ]
     }
     if (activeFilter === 'monthly') {
-      const recs = workerRecords.filter(r => r.month === curMonthKey || (r.date && r.date.startsWith(curMonthKey)))
+      const recs = workerRecords.filter(r => r.month === selectedMonth || (r.date && r.date.startsWith(selectedMonth)))
       const late = recs.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
-      const mWorkingDays = Math.max(1, getMonthWorkingDays(curMonthKey).length)
+      const mWorkingDays = Math.max(1, getMonthWorkingDays(selectedMonth).length)
       return [
         { label: 'Work Days', val: mWorkingDays, color: '#3B82F6' },
         { label: 'Punches', val: recs.length, color: '#10B981' },
@@ -10299,8 +10516,21 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
         { label: 'Staff', val: users.length, color: '#6366F1' }
       ]
     }
+    if (activeFilter === 'custom') {
+      const sDate = customStart <= customEnd ? customStart : customEnd
+      const eDate = customStart <= customEnd ? customEnd : customStart
+      const daysCount = Math.max(1, getDateRangeWorkingDays(sDate, eDate).length)
+      const recs = workerRecords.filter(r => r.date && r.date >= sDate && r.date <= eDate)
+      const late = recs.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+      return [
+        { label: 'Work Days', val: daysCount, color: '#3B82F6' },
+        { label: 'Punches', val: recs.length, color: '#10B981' },
+        { label: 'Late', val: late, color: '#F59E0B' },
+        { label: 'Staff', val: users.length, color: '#6366F1' }
+      ]
+    }
     return []
-  }, [activeFilter, workerRecords, users, leaves, officeTiming])
+  }, [activeFilter, workerRecords, users, leaves, officeTiming, selectedMonth, customStart, customEnd])
 
   // Share as WhatsApp Message (Sorted by %)
   const handleShareWhatsApp = () => {
@@ -10329,10 +10559,17 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
         workerRecords,
         leaves,
         officeTiming,
-        adminName
+        adminName,
+        selectedMonth,
+        customStart,
+        customEnd
       })
       const blob = doc.output('blob')
-      const fileName = `SWL_Attendance_${activeFilter.toUpperCase()}_${todayDateKey(new Date())}.pdf`
+      const fileName = activeFilter === 'custom'
+        ? `SWL_Attendance_RANGE_${customStart}_to_${customEnd}.pdf`
+        : activeFilter === 'monthly'
+        ? `SWL_Attendance_${selectedMonth}.pdf`
+        : `SWL_Attendance_${activeFilter.toUpperCase()}_${todayDateKey(new Date())}.pdf`
       const file = new File([blob], fileName, { type: 'application/pdf' })
 
       // Check if browser supports direct file sharing (Mobile Android / iOS)
@@ -10369,9 +10606,16 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
         workerRecords,
         leaves,
         officeTiming,
-        adminName
+        adminName,
+        selectedMonth,
+        customStart,
+        customEnd
       })
-      const fileName = `SWL_Attendance_${activeFilter.toUpperCase()}_${todayDateKey(new Date())}.pdf`
+      const fileName = activeFilter === 'custom'
+        ? `SWL_Attendance_RANGE_${customStart}_to_${customEnd}.pdf`
+        : activeFilter === 'monthly'
+        ? `SWL_Attendance_${selectedMonth}.pdf`
+        : `SWL_Attendance_${activeFilter.toUpperCase()}_${todayDateKey(new Date())}.pdf`
       doc.save(fileName)
     } catch (err) {
       console.error('PDF download error:', err)
@@ -10504,12 +10748,13 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
               ✓ Sorted by % High to Low
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 5 }}>
             {[
-              { id: 'today', label: 'Today', icon: '🟢', desc: 'Real-time' },
-              { id: 'yesterday', label: 'Yesterday', icon: '⏪', desc: 'Full log' },
-              { id: 'weekly', label: 'Weekly', icon: '📊', desc: 'Last 7D' },
-              { id: 'monthly', label: 'Monthly', icon: '🗓️', desc: 'Current' }
+              { id: 'today', label: 'Today', icon: '🟢' },
+              { id: 'yesterday', label: 'Yesterday', icon: '⏪' },
+              { id: 'weekly', label: 'Weekly', icon: '📊' },
+              { id: 'monthly', label: 'Monthly', icon: '🗓️' },
+              { id: 'custom', label: 'Range', icon: '📅' }
             ].map(f => {
               const active = activeFilter === f.id
               return (
@@ -10518,13 +10763,13 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
                   type="button"
                   onClick={() => setActiveFilter(f.id)}
                   style={{
-                    padding: '8px 4px',
+                    padding: '8px 2px',
                     borderRadius: 10,
                     border: active ? '2px solid #128C7E' : '1px solid #CBD5E1',
                     background: active ? '#F0FDF4' : '#FFFFFF',
                     color: active ? '#065F46' : '#475569',
                     fontWeight: active ? 800 : 600,
-                    fontSize: '0.74rem',
+                    fontSize: '0.72rem',
                     cursor: 'pointer',
                     display: 'flex',
                     flexDirection: 'column',
@@ -10540,6 +10785,110 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
               )
             })}
           </div>
+
+          {/* Month Selector for Monthly Filter */}
+          {activeFilter === 'monthly' && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, padding: '6px 10px', background: '#FFFFFF', borderRadius: 8, border: '1px solid #CBD5E1' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const [y, m] = selectedMonth.split('-').map(Number)
+                  const prev = new Date(y, m - 2, 1)
+                  const pKey = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`
+                  if (pKey >= '2026-08') setSelectedMonth(pKey)
+                }}
+                style={{ background: '#F1F5F9', border: 'none', borderRadius: 6, padding: '4px 8px', fontWeight: 800, cursor: 'pointer' }}
+              >
+                ◀
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0F172A' }}>
+                  {formatMonthLabel(selectedMonth)}
+                </span>
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  min="2026-08"
+                  max={monthKey(new Date())}
+                  onChange={(e) => e.target.value && setSelectedMonth(e.target.value)}
+                  style={{
+                    fontSize: '0.72rem',
+                    padding: '2px 4px',
+                    borderRadius: 6,
+                    border: '1px solid #CBD5E1',
+                    color: '#0F172A',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const [y, m] = selectedMonth.split('-').map(Number)
+                  const next = new Date(y, m, 1)
+                  const nKey = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`
+                  if (nKey <= monthKey(new Date())) setSelectedMonth(nKey)
+                }}
+                disabled={selectedMonth >= monthKey(new Date())}
+                style={{
+                  background: selectedMonth >= monthKey(new Date()) ? '#F8FAFC' : '#F1F5F9',
+                  border: 'none',
+                  borderRadius: 6,
+                  padding: '4px 8px',
+                  fontWeight: 800,
+                  cursor: selectedMonth >= monthKey(new Date()) ? 'not-allowed' : 'pointer',
+                  color: selectedMonth >= monthKey(new Date()) ? '#CBD5E1' : '#0F172A'
+                }}
+              >
+                ▶
+              </button>
+            </div>
+          )}
+
+          {/* Custom Date Range Picker */}
+          {activeFilter === 'custom' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, padding: '8px 10px', background: '#FFFFFF', borderRadius: 8, border: '1px solid #CBD5E1', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 120 }}>
+                <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748B', marginBottom: 2 }}>FROM DATE</div>
+                <input
+                  type="date"
+                  value={customStart}
+                  min="2026-08-07"
+                  max={customEnd || todayDateKey(new Date())}
+                  onChange={(e) => e.target.value && setCustomStart(e.target.value)}
+                  style={{
+                    width: '100%',
+                    fontSize: '0.72rem',
+                    padding: '4px 6px',
+                    borderRadius: 6,
+                    border: '1px solid #CBD5E1',
+                    color: '#0F172A',
+                    fontWeight: 600
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: 120 }}>
+                <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748B', marginBottom: 2 }}>TO DATE</div>
+                <input
+                  type="date"
+                  value={customEnd}
+                  min={customStart || '2026-08-07'}
+                  max={todayDateKey(new Date())}
+                  onChange={(e) => e.target.value && setCustomEnd(e.target.value)}
+                  style={{
+                    width: '100%',
+                    fontSize: '0.72rem',
+                    padding: '4px 6px',
+                    borderRadius: 6,
+                    border: '1px solid #CBD5E1',
+                    color: '#0F172A',
+                    fontWeight: 600
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Quick Metrics Badges */}
           <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>

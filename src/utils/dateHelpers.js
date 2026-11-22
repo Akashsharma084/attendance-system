@@ -227,6 +227,40 @@ export function getMonthWorkingDays(targetMonthKey) {
 }
 
 /**
+ * Returns non-Sunday working days in a custom date range (startDateStr to endDateStr).
+ * Excludes Sundays and dates before company inception (2026-08-07).
+ */
+export function getDateRangeWorkingDays(startDateStr, endDateStr) {
+  if (!startDateStr || !endDateStr) return []
+  const [sY, sM, sD] = startDateStr.split('-').map(Number)
+  const [eY, eM, eD] = endDateStr.split('-').map(Number)
+  const start = new Date(sY, sM - 1, sD)
+  const end = new Date(eY, eM - 1, eD)
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return []
+
+  const pad = (n) => String(n).padStart(2, '0')
+  const days = []
+  const cur = new Date(start)
+
+  while (cur <= end) {
+    const dayOfWeek = cur.getDay()
+    const dStr = `${cur.getFullYear()}-${pad(cur.getMonth() + 1)}-${pad(cur.getDate())}`
+    if (dayOfWeek >= 1 && dayOfWeek <= 6 && dStr >= COMPANY_START_DATE) {
+      days.push({
+        date: dStr,
+        weekday: cur.toLocaleDateString('en-US', { weekday: 'short' }),
+        weekdayFull: cur.toLocaleDateString('en-US', { weekday: 'long' }),
+        dayNumber: cur.getDate(),
+        holiday: getHoliday(dStr)
+      })
+    }
+    cur.setDate(cur.getDate() + 1)
+  }
+
+  return days
+}
+
+/**
  * Determines employee's first day of work/check-in or explicit join date.
  * If employee has never checked in and has no join date, returns null.
  */
