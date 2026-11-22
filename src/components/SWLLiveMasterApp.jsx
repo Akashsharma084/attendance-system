@@ -100,7 +100,7 @@ const Icons = {
     </svg>
   ))
 }
-import { todayDateKey, monthKey, formatTime, buildEmployeeSchedule, getMonthWorkingDays, getDateRangeWorkingDays, formatMonthLabel, getAvailableMonthKeys } from '../utils/dateHelpers'
+import { todayDateKey, monthKey, formatTime, buildEmployeeSchedule, getMonthWorkingDays, getDateRangeWorkingDays, formatMonthLabel, getAvailableMonthKeys, getHoliday, getHolidaysInMonth } from '../utils/dateHelpers'
 import {
   subscribeLeaves,
   submitLeaveRequest,
@@ -10286,7 +10286,8 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       let workingDaysCount = 0
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now.getTime() - i * 86400000)
-        if (d.getDay() !== 0) workingDaysCount++
+        const dStr = todayDateKey(d)
+        if (d.getDay() !== 0 && !getHoliday(dStr)) workingDaysCount++
       }
       if (workingDaysCount === 0) workingDaysCount = 6
 
@@ -10328,7 +10329,7 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       text += `WEEKLY OVERVIEW:\n`
       text += `• Total Team Members: ${users.length}\n`
       text += `• Total Punches: ${totalPunches}\n`
-      text += `• Working Days in Period: ${workingDaysCount} days\n`
+      text += `• Working Days in Period: ${workingDaysCount} days (Sundays & Festivals off)\n`
       text += `• Team Avg Attendance: ${avgPct}%\n`
       text += `• Late Arrivals: ${totalLate}\n`
       text += `${divider}\n`
@@ -10379,13 +10380,19 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
         ? Math.round((totalPunches / (users.length * workingDaysCount)) * 100)
         : 0
 
+      const monthHolidays = getHolidaysInMonth(selectedMonth)
+
       let text = `SOFTWIND LABS - MONTHLY ATTENDANCE REPORT\n`
       text += `Month: ${monthDisplay}\n`
       text += `Generated: ${genTimeStr} by ${adminName}\n`
       text += `${divider}\n`
       text += `TEAM SUMMARY:\n`
       text += `• Total Employees: ${users.length}\n`
-      text += `• Total Working Days in Month: ${workingDaysCount} days (Mon–Sat, Sundays off)\n`
+      text += `• Total Working Days in Month: ${workingDaysCount} days (Mon–Sat, Sundays & Festivals off)\n`
+      if (monthHolidays && monthHolidays.length > 0) {
+        const hListStr = monthHolidays.map(h => `${h.name} (${h.date.slice(8, 10)} ${monthDisplay.slice(0, 3)})`).join(', ')
+        text += `• Official Festivals / Holidays: ${hListStr}\n`
+      }
       text += `• Total Punches: ${totalPunches}\n`
       text += `• Team Avg Attendance: ${teamAvgRate}%\n`
       text += `• Total Late Arrivals: ${totalLate}\n`
@@ -10448,7 +10455,7 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       text += `${divider}\n`
       text += `RANGE SUMMARY:\n`
       text += `• Total Employees: ${users.length}\n`
-      text += `• Working Days in Period: ${workingDaysCount} days\n`
+      text += `• Working Days in Period: ${workingDaysCount} days (Sundays & Festivals off)\n`
       text += `• Total Punches: ${totalPunches}\n`
       text += `• Team Avg Attendance: ${teamAvgRate}%\n`
       text += `• Total Late Arrivals: ${totalLate}\n`

@@ -1,7 +1,7 @@
-import { getHoliday, isHoliday } from './holidays.js'
+import { getHoliday, isHoliday, getHolidaysInMonth } from './holidays.js'
 
 // Re-export for convenience across pages
-export { getHoliday, isHoliday }
+export { getHoliday, isHoliday, getHolidaysInMonth }
 
 // Company inception date: August 7, 2026 (7/8/26)
 export const COMPANY_START_DATE = '2026-08-07'
@@ -187,7 +187,8 @@ export function getWeekday(dateStr, format = 'short') {
  * Monday-Saturday are working days, Sundays are off).
  * Days prior to company inception (2026-08-07) are excluded.
  */
-export function getMonthWorkingDays(targetMonthKey) {
+export function getMonthWorkingDays(targetMonthKey, options = {}) {
+  const includeHolidays = options?.includeHolidays ?? false
   const [yearNum, monthNum] = targetMonthKey.split('-').map(Number)
   const pad = (n) => String(n).padStart(2, '0')
 
@@ -204,13 +205,17 @@ export function getMonthWorkingDays(targetMonthKey) {
       // Exclude days before company inception (2026-08-07)
       if (dateStr >= COMPANY_START_DATE) {
         const holiday = getHoliday(dateStr)
-        days.push({
-          date: dateStr,
-          weekday: dateObj.toLocaleDateString('en-US', { weekday: 'short' }),
-          weekdayFull: dateObj.toLocaleDateString('en-US', { weekday: 'long' }),
-          dayNumber: d,
-          holiday
-        })
+        // Festivals/Holidays are OFF days by company policy.
+        // Include only if explicitly requested (e.g. to render 'H' badge on calendar).
+        if (includeHolidays || !holiday) {
+          days.push({
+            date: dateStr,
+            weekday: dateObj.toLocaleDateString('en-US', { weekday: 'short' }),
+            weekdayFull: dateObj.toLocaleDateString('en-US', { weekday: 'long' }),
+            dayNumber: d,
+            holiday
+          })
+        }
       }
     }
   }
@@ -222,8 +227,9 @@ export function getMonthWorkingDays(targetMonthKey) {
  * Returns non-Sunday working days in a custom date range (startDateStr to endDateStr).
  * Excludes Sundays and dates before company inception (2026-08-07).
  */
-export function getDateRangeWorkingDays(startDateStr, endDateStr) {
+export function getDateRangeWorkingDays(startDateStr, endDateStr, options = {}) {
   if (!startDateStr || !endDateStr) return []
+  const includeHolidays = options?.includeHolidays ?? false
   const [sY, sM, sD] = startDateStr.split('-').map(Number)
   const [eY, eM, eD] = endDateStr.split('-').map(Number)
   const start = new Date(sY, sM - 1, sD)
@@ -238,13 +244,16 @@ export function getDateRangeWorkingDays(startDateStr, endDateStr) {
     const dayOfWeek = cur.getDay()
     const dStr = `${cur.getFullYear()}-${pad(cur.getMonth() + 1)}-${pad(cur.getDate())}`
     if (dayOfWeek >= 1 && dayOfWeek <= 6 && dStr >= COMPANY_START_DATE) {
-      days.push({
-        date: dStr,
-        weekday: cur.toLocaleDateString('en-US', { weekday: 'short' }),
-        weekdayFull: cur.toLocaleDateString('en-US', { weekday: 'long' }),
-        dayNumber: cur.getDate(),
-        holiday: getHoliday(dStr)
-      })
+      const holiday = getHoliday(dStr)
+      if (includeHolidays || !holiday) {
+        days.push({
+          date: dStr,
+          weekday: cur.toLocaleDateString('en-US', { weekday: 'short' }),
+          weekdayFull: cur.toLocaleDateString('en-US', { weekday: 'long' }),
+          dayNumber: cur.getDate(),
+          holiday
+        })
+      }
     }
     cur.setDate(cur.getDate() + 1)
   }
@@ -285,7 +294,7 @@ export function getEmployeeStartDate(records = [], employeeInfo = {}) {
  * and unrecorded working days after joining as 'A'.
  */
 export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo = {}) {
-  const workingDays = getMonthWorkingDays(targetMonthKey)
+  const workingDays = getMonthWorkingDays(targetMonthKey, { includeHolidays: true })
   const recordMap = new Map()
 
   records.forEach((r) => {
@@ -399,7 +408,7 @@ export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo
     holidayCount,
     notJoinedCount,
     empStartDate,
-    totalWorkingDays: workingDays.length,
+    totalWorkingDays: workingDays.filter(d => !d.holiday).length,
     effectiveWorkingDays,
     fullDaysCount
   }
