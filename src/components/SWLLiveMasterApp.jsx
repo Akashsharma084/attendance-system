@@ -9658,7 +9658,7 @@ function generateAttendancePDF({ activeFilter, users, workerRecords, leaves, off
   const yesterdayStr = todayDateKey(yesterdayDate)
   const curMonthKey = monthKey(now)
   const activeMonthKey = selectedMonth || curMonthKey
-  const elapsedWorkingDays = Math.max(1, getMonthWorkingDays(activeMonthKey).length)
+  const totalMonthWorkingDays = Math.max(1, getMonthWorkingDays(activeMonthKey).length)
 
   // Softwind Brand Colors
   const primaryColor = [18, 140, 126] // #128C7E Teal
@@ -9718,7 +9718,7 @@ function generateAttendancePDF({ activeFilter, users, workerRecords, leaves, off
     sortedEmployees = users.map(u => {
       const rec = todayRecords.find(r => r.uid === u.uid || r.email === u.email)
       const uMonthRecs = workerRecords.filter(r => (r.uid === u.uid || r.email === u.email) && r.month === curMonthKey)
-      const rate = Math.min(100, Math.round((uMonthRecs.length / elapsedWorkingDays) * 100))
+      const rate = Math.min(100, Math.round((uMonthRecs.length / totalMonthWorkingDays) * 100))
       const isPresent = Boolean(rec)
       const lateInfo = rec ? getAttendanceLateInfo(rec, officeTiming) : { isLate: false }
       
@@ -9750,7 +9750,7 @@ function generateAttendancePDF({ activeFilter, users, workerRecords, leaves, off
     sortedEmployees = users.map(u => {
       const rec = yesterdayRecords.find(r => r.uid === u.uid || r.email === u.email)
       const uMonthRecs = workerRecords.filter(r => (r.uid === u.uid || r.email === u.email) && r.month === curMonthKey)
-      const rate = Math.min(100, Math.round((uMonthRecs.length / elapsedWorkingDays) * 100))
+      const rate = Math.min(100, Math.round((uMonthRecs.length / totalMonthWorkingDays) * 100))
       const isPresent = Boolean(rec)
       const lateInfo = rec ? getAttendanceLateInfo(rec, officeTiming) : { isLate: false }
       
@@ -9848,7 +9848,7 @@ function generateAttendancePDF({ activeFilter, users, workerRecords, leaves, off
   } else {
     // Monthly
     const monthlyRecords = workerRecords.filter(r => r.month === activeMonthKey || (r.date && r.date.startsWith(activeMonthKey)))
-    const standardDays = elapsedWorkingDays
+    const standardDays = totalMonthWorkingDays
     kpiStats.present = monthlyRecords.length
     kpiStats.late = monthlyRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
     kpiStats.rate = users.length > 0 ? Math.round((monthlyRecords.length / (users.length * standardDays)) * 100) : 0
@@ -10087,9 +10087,9 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
     const genTimeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
     const divider = '----------------------------------------'
 
-    // Calculate actual working days elapsed in the month so far (excluding Sundays / holidays)
+    // Calculate total working days in month (Mon-Sat, excluding Sundays) - full month, no elapsed cutoff
     const monthWorkingDaysList = getMonthWorkingDays(curMonthKey)
-    const elapsedWorkingDays = Math.max(1, monthWorkingDaysList.length)
+    const totalMonthWorkingDays = Math.max(1, monthWorkingDaysList.length)
 
     if (activeFilter === 'today') {
       const dayFormatted = now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })
@@ -10116,7 +10116,7 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
 
         // Real attendance percentage based on elapsed working days
         const uMonthRecs = workerRecords.filter(x => (x.uid === r.uid || x.email === r.email) && x.month === curMonthKey)
-        const rate = Math.min(100, Math.round((uMonthRecs.length / elapsedWorkingDays) * 100))
+        const rate = Math.min(100, Math.round((uMonthRecs.length / totalMonthWorkingDays) * 100))
 
         let timingStr = `In: ${inTime}`
         if (outTime) timingStr += ` | Out: ${outTime}`
@@ -10216,7 +10216,7 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
         }
 
         const uMonthRecs = workerRecords.filter(x => (x.uid === r.uid || x.email === r.email) && x.month === curMonthKey)
-        const rate = Math.min(100, Math.round((uMonthRecs.length / elapsedWorkingDays) * 100))
+        const rate = Math.min(100, Math.round((uMonthRecs.length / totalMonthWorkingDays) * 100))
 
         return { name, rate, inTime, outTime, hrsStr, lateTag }
       }).sort((a, b) => b.rate - a.rate)
@@ -10380,12 +10380,12 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
         : 0
 
       let text = `SOFTWIND LABS - MONTHLY ATTENDANCE REPORT\n`
-      text += `Month: ${monthDisplay}${isCur ? ' (Month-to-Date)' : ''}\n`
+      text += `Month: ${monthDisplay}\n`
       text += `Generated: ${genTimeStr} by ${adminName}\n`
       text += `${divider}\n`
       text += `TEAM SUMMARY:\n`
       text += `• Total Employees: ${users.length}\n`
-      text += `• Working Days: ${workingDaysCount} days\n`
+      text += `• Total Working Days in Month: ${workingDaysCount} days (Mon–Sat, Sundays off)\n`
       text += `• Total Punches: ${totalPunches}\n`
       text += `• Team Avg Attendance: ${teamAvgRate}%\n`
       text += `• Total Late Arrivals: ${totalLate}\n`

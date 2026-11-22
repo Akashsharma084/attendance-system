@@ -182,31 +182,23 @@ export function getWeekday(dateStr, format = 'short') {
 }
 
 /**
- * Returns all working days (Mon-Fri) for a given monthKey (YYYY-MM).
- * For current month, goes up to today.
- * For past months, goes up to end of the month.
+ * Returns all working days (Mon-Sat, Sundays off) for a given monthKey (YYYY-MM).
+ * Calculates for the full month (no elapsed cutoff, as per company policy:
+ * Monday-Saturday are working days, Sundays are off).
  * Days prior to company inception (2026-08-07) are excluded.
  */
 export function getMonthWorkingDays(targetMonthKey) {
   const [yearNum, monthNum] = targetMonthKey.split('-').map(Number)
-  const today = new Date()
-  const currentMonthKey = monthKey(today)
   const pad = (n) => String(n).padStart(2, '0')
 
-  let lastDay = 31
-  if (targetMonthKey === currentMonthKey) {
-    lastDay = today.getDate()
-  } else if (targetMonthKey < currentMonthKey) {
-    lastDay = new Date(yearNum, monthNum, 0).getDate()
-  } else {
-    lastDay = 0
-  }
+  // Total days in target month (e.g. 30 days for Nov, 31 for Dec) - FULL MONTH, NO ELAPSED CUTOFF
+  const lastDay = new Date(yearNum, monthNum, 0).getDate()
 
   const days = []
   for (let d = 1; d <= lastDay; d++) {
     const dateObj = new Date(yearNum, monthNum - 1, d)
     const dayOfWeek = dateObj.getDay()
-    // Monday to Saturday = 1 to 6. Skip Sunday = 0 (Sunday is the only off day)
+    // Monday to Saturday = 1 to 6 (Saturday is working!). Only Sunday = 0 is cut.
     if (dayOfWeek >= 1 && dayOfWeek <= 6) {
       const dateStr = `${yearNum}-${pad(monthNum)}-${pad(d)}`
       // Exclude days before company inception (2026-08-07)
