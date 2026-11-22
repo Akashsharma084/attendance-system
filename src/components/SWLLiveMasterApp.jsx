@@ -3518,6 +3518,16 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
   }, [selectedTeamDate])
 
   // Generate Calendar cells matching month
+  const currentMonthKey = useMemo(() => {
+    const y = currentDate.getFullYear()
+    const m = String(currentDate.getMonth() + 1).padStart(2, '0')
+    return `${y}-${m}`
+  }, [currentDate])
+
+  const monthHolidays = useMemo(() => {
+    return getHolidaysInMonth(currentMonthKey)
+  }, [currentMonthKey])
+
   const calendarDays = useMemo(() => {
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
@@ -3533,6 +3543,9 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
     for (let d = 1; d <= totalDays; d++) {
       const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
       const rec = attendanceRecords.find(r => r.date === dateKey)
+      const holiday = getHoliday(dateKey)
+      const cellDate = new Date(year, month, d)
+      const isSunday = cellDate.getDay() === 0
 
       let type = 'empty'
       if (rec) {
@@ -3541,15 +3554,19 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
         else if (rec.status === 'present' || rec.checkInTime) type = 'p'
         else if (rec.status === 'absent') type = 'a'
         else type = 'p'
+      } else if (holiday) {
+        type = 'h' // Official Festival/Holiday OFF
+      } else if (isSunday) {
+        type = 'sun' // Sunday OFF
       } else {
-        const cellDate = new Date(year, month, d)
-        const isPast = cellDate < new Date() && cellDate.getDay() !== 0 && cellDate.getDay() !== 6
+        const isPast = cellDate < new Date()
+        // Mon-Sat are working days. Unpunched past working days are absent
         if (isPast && dateKey < todayKey) {
           type = 'a'
         }
       }
 
-      cells.push({ num: d, type, dateKey })
+      cells.push({ num: d, type, dateKey, holiday })
     }
 
     return cells
@@ -3558,6 +3575,7 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
   const presentCount = attendanceRecords.filter(r => r.status === 'present' || r.checkInTime).length
   const lateCount = attendanceRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
   const absentCount = calendarDays.filter(c => c.type === 'a').length
+  const holidayCount = calendarDays.filter(c => c.type === 'h').length
 
   function changeMonth(delta) {
     const d = new Date(currentDate)
@@ -3680,19 +3698,43 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
 
               <div className="swl-cal-grid">
                 {calendarDays.map((d, i) => (
-                  <div key={i} className={`swl-cal-day ${d.type}`}>
+                  <div
+                    key={i}
+                    className={`swl-cal-day ${d.type}`}
+                    title={d.holiday ? `${d.holiday.name} (Official Holiday Off)` : d.type === 'sun' ? 'Sunday Off' : d.type === 'p' ? 'Present' : d.type === 'a' ? 'Absent' : ''}
+                  >
                     {d.num}
                   </div>
                 ))}
               </div>
 
-              <div className="swl-cal-legend">
+              <div className="swl-cal-legend" style={{ flexWrap: 'wrap', gap: 6 }}>
                 <span>🟢 Present</span>
                 <span>🔴 Absent</span>
                 <span>🟠 Late</span>
-                <span>🔵 Leave</span>
+                <span>🟣 Holiday Off</span>
+                <span>🏖️ Sunday Off</span>
               </div>
             </div>
+
+            {/* Official Festivals & Holidays Banner */}
+            {monthHolidays.length > 0 && (
+              <div style={{ margin: '0 12px 10px 12px', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 14, padding: '10px 14px' }}>
+                <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#6D28D9', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <span>🎉</span> Official Company Festivals & Holidays:
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {monthHolidays.map((h, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', color: '#4C1D95' }}>
+                      <span>{h.icon || '✨'} <strong>{h.name}</strong></span>
+                      <span style={{ fontSize: '0.66rem', fontWeight: 700, background: '#EDE9FE', color: '#6D28D9', padding: '2px 8px', borderRadius: 999 }}>
+                        {new Date(h.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' })} • Holiday Off
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Today's Attendance Box with Both Selfies */}
             <div className="swl-today-box">
@@ -3753,8 +3795,8 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
                 <div className="swl-stat-col-label">Absent</div>
               </div>
               <div>
-                <div className="swl-stat-col-num gray">0</div>
-                <div className="swl-stat-col-label">Leave</div>
+                <div className="swl-stat-col-num" style={{ color: '#8B5CF6' }}>{holidayCount}</div>
+                <div className="swl-stat-col-label">Holidays</div>
               </div>
             </div>
 
@@ -6375,13 +6417,15 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
   const { resetEmployeeDeviceBinding } = useAuth()
   const [deviceResetting, setDeviceResetting] = useState(false)
   const [empPhotoUploading, setEmpPhotoUploading] = useState(false)
-  const [tab, setTab] = useState('attendance')
+  const [tab, setTab] = useState('schedule') // 'schedule' | 'attendance' | 'leave'
   const [records, setRecords] = useState([])
+  const [leaves, setLeaves] = useState([])
   const [userDoc, setUserDoc] = useState(employee)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
   const [detailNotice, setDetailNotice] = useState('')
-  const curMonth = monthKey()
+  const [selectedMonth, setSelectedMonth] = useState(() => monthKey())
+  const availableMonths = useMemo(() => getAvailableMonthKeys(), [])
 
   useEffect(() => {
     if (!employee?.uid || !isFirebaseConfigured || !db) return
@@ -6398,13 +6442,21 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
     const q = query(
       collection(db, 'attendance'),
       where('uid', '==', employee.uid),
-      where('month', '==', curMonth)
+      where('month', '==', selectedMonth)
     )
     const unsub = onSnapshot(q, (snap) => {
       setRecords(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     })
     return () => unsub()
-  }, [employee?.uid, curMonth])
+  }, [employee?.uid, selectedMonth])
+
+  useEffect(() => {
+    if (!employee?.uid) return
+    const unsub = subscribeLeaves((allLeaves) => {
+      setLeaves(allLeaves.filter(l => l.uid === employee.uid))
+    })
+    return () => unsub()
+  }, [employee?.uid])
 
   const name = userDoc?.name || employee?.name || 'Employee'
   const role = userDoc?.role || employee?.role || employee?.designation || 'Staff'
@@ -6412,6 +6464,18 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
   const phone = userDoc?.phone || employee?.phone || '+91 98765 43210'
   const empId = userDoc?.employeeId || employee?.employeeId || employee?.empId || 'SWL-1024'
   const isAccDisabled = userDoc?.status === 'disabled' || Boolean(userDoc?.disabled)
+
+  const empScheduleData = useMemo(() => {
+    return buildEmployeeSchedule(records, selectedMonth, {
+      uid: userDoc?.uid || employee?.uid,
+      name,
+      joinDate: userDoc?.joinDate || employee?.joinDate || userDoc?.startDate || null
+    })
+  }, [records, selectedMonth, userDoc, employee, name])
+
+  const monthHolidays = useMemo(() => {
+    return getHolidaysInMonth(selectedMonth)
+  }, [selectedMonth])
 
   async function handleToggleStatus() {
     if (statusUpdating || !userDoc?.uid) return
@@ -6732,13 +6796,155 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
 
         {/* Tabs */}
         <div className="swl-tab-pill-row" style={{ margin: '8px 16px' }}>
+          <button className={`swl-tab-pill ${tab === 'schedule' ? 'active' : ''}`} onClick={() => setTab('schedule')}>
+            🗓️ Schedule ({empScheduleData.effectiveWorkingDays}d)
+          </button>
           <button className={`swl-tab-pill ${tab === 'attendance' ? 'active' : ''}`} onClick={() => setTab('attendance')}>
-            Attendance ({records.length})
+            Punches ({records.length})
           </button>
           <button className={`swl-tab-pill ${tab === 'leave' ? 'active' : ''}`} onClick={() => setTab('leave')}>
-            Leave History
+            Leaves ({leaves.length})
           </button>
         </div>
+
+        {tab === 'schedule' && (
+          <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* Month Filter Selector */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '6px 12px', borderRadius: 10 }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#334155' }}>
+                📅 Month:
+              </span>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                style={{
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  border: '1px solid #CBD5E1',
+                  background: '#FFFFFF',
+                  color: '#0F172A'
+                }}
+              >
+                {availableMonths.map(m => (
+                  <option key={m} value={m}>{formatMonthLabel(m)}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Quick Metrics Bar */}
+            <div style={{ display: 'flex', gap: 6 }}>
+              <div style={{ flex: 1, background: '#ECFDF5', border: '1px solid #A7F3D0', padding: '6px 4px', borderRadius: 8, textAlign: 'center' }}>
+                <div style={{ fontSize: '0.58rem', color: '#065F46', fontWeight: 700 }}>PRESENT</div>
+                <div style={{ fontSize: '0.95rem', color: '#047857', fontWeight: 800 }}>{empScheduleData.presentCount}</div>
+              </div>
+              <div style={{ flex: 1, background: '#F5F3FF', border: '1px solid #DDD6FE', padding: '6px 4px', borderRadius: 8, textAlign: 'center' }}>
+                <div style={{ fontSize: '0.58rem', color: '#6D28D9', fontWeight: 700 }}>HOLIDAYS</div>
+                <div style={{ fontSize: '0.95rem', color: '#7C3AED', fontWeight: 800 }}>{empScheduleData.holidayCount}</div>
+              </div>
+              <div style={{ flex: 1, background: '#FEF2F2', border: '1px solid #FECACA', padding: '6px 4px', borderRadius: 8, textAlign: 'center' }}>
+                <div style={{ fontSize: '0.58rem', color: '#991B1B', fontWeight: 700 }}>ABSENT</div>
+                <div style={{ fontSize: '0.95rem', color: '#DC2626', fontWeight: 800 }}>{empScheduleData.absentCount}</div>
+              </div>
+              <div style={{ flex: 1, background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '6px 4px', borderRadius: 8, textAlign: 'center' }}>
+                <div style={{ fontSize: '0.58rem', color: '#1E40AF', fontWeight: 700 }}>WORK TARGET</div>
+                <div style={{ fontSize: '0.95rem', color: '#2563EB', fontWeight: 800 }}>{empScheduleData.effectiveWorkingDays}d</div>
+              </div>
+            </div>
+
+            {/* Month Festivals / Holidays Box */}
+            {monthHolidays.length > 0 && (
+              <div style={{ background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 10, padding: '8px 12px' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#6D28D9', marginBottom: 4 }}>
+                  🎉 Official Festival Holidays this Month:
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {monthHolidays.map((h, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.66rem', color: '#4C1D95' }}>
+                      <span>{h.icon || '✨'} <strong>{h.name}</strong></span>
+                      <span style={{ fontWeight: 700 }}>{new Date(h.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' })} • Holiday Off</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Day by Day Schedule Items */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {empScheduleData.schedule.map((day) => {
+                const isP = day.status === 'P'
+                const isH = day.status === 'H' || Boolean(day.holiday)
+                const isNotJoined = day.status === 'NOT_JOINED'
+
+                let cardBg = '#FFFFFF'
+                let cardBorder = '#E2E8F0'
+                let badgeBg = '#FEF2F2'
+                let badgeColor = '#DC2626'
+                let badgeBorder = '#FECACA'
+                let badgeText = '✕ Absent'
+
+                if (isP) {
+                  badgeBg = '#ECFDF5'
+                  badgeColor = '#059669'
+                  badgeBorder = '#A7F3D0'
+                  badgeText = '✓ Present'
+                } else if (isH) {
+                  cardBg = '#F5F3FF'
+                  cardBorder = '#DDD6FE'
+                  badgeBg = '#EDE9FE'
+                  badgeColor = '#6D28D9'
+                  badgeBorder = '#C4B5FD'
+                  badgeText = `🏖️ Holiday: ${day.holiday?.name || 'Off Day'}`
+                } else if (isNotJoined) {
+                  badgeBg = '#F8FAFC'
+                  badgeColor = '#64748B'
+                  badgeBorder = '#E2E8F0'
+                  badgeText = '— Pre-Joining'
+                }
+
+                return (
+                  <div
+                    key={day.date}
+                    style={{
+                      background: cardBg,
+                      border: `1px solid ${cardBorder}`,
+                      borderRadius: 10,
+                      padding: '8px 10px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#0F172A' }}>
+                        {new Date(day.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        <span style={{ marginLeft: 6, fontSize: '0.66rem', color: '#64748B', fontWeight: 600 }}>({day.weekdayFull})</span>
+                      </div>
+                      <div style={{ fontSize: '0.64rem', color: '#64748B' }}>
+                        {isP && day.checkInTime ? `In: ${formatTime(day.checkInTime)}${day.checkOutTime ? ` | Out: ${formatTime(day.checkOutTime)}` : ' (Ongoing)'}` : isH ? 'Official Festival Holiday (Not Absent)' : isNotJoined ? 'Before Joining Date' : 'No punch recorded'}
+                      </div>
+                    </div>
+                    <span
+                      style={{
+                        background: badgeBg,
+                        color: badgeColor,
+                        border: `1px solid ${badgeBorder}`,
+                        fontSize: '0.64rem',
+                        fontWeight: 800,
+                        padding: '3px 8px',
+                        borderRadius: 999,
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {badgeText}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {tab === 'attendance' && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 16px 8px 16px' }}>
@@ -6775,108 +6981,133 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
           </div>
         )}
 
-        {/* Records */}
-        <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {records.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '24px 10px', color: '#94A3B8', fontSize: '0.8rem' }}>
-              No punch records found for this month.
-            </div>
-          ) : (
-            records.map((r, i) => {
-              const inUrl = r.checkInSelfieUrl || r.checkInPhotoUrl || r.selfieUrl
-              const outUrl = r.checkOutSelfieUrl || r.checkOutPhotoUrl
-              const loc = r.checkInLocation || r.location
-              return (
-                <div key={r.id || i} style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <SelfiePairThumbs
-                      inUrl={inUrl}
-                      outUrl={outUrl}
-                      onViewSelfie={onViewSelfie}
-                      date={r.date}
-                      name={name}
-                      inLoc={r.checkInLocation}
-                      outLoc={r.checkOutLocation}
-                      inTime={r.checkInTime ? formatTime(r.checkInTime) : ''}
-                      outTime={r.checkOutTime ? formatTime(r.checkOutTime) : ''}
-                      size={32}
-                    />
-                    <div>
-                      <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#0F172A' }}>{r.date}</div>
-                      <div style={{ fontSize: '0.66rem', color: '#64748B' }}>
-                        {r.checkInTime ? formatTime(r.checkInTime) : '-'} - {r.checkOutTime ? formatTime(r.checkOutTime) : 'Ongoing'}
+        {tab === 'attendance' && (
+          <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {records.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px 10px', color: '#94A3B8', fontSize: '0.8rem' }}>
+                No punch records found for this month.
+              </div>
+            ) : (
+              records.map((r, i) => {
+                const inUrl = r.checkInSelfieUrl || r.checkInPhotoUrl || r.selfieUrl
+                const outUrl = r.checkOutSelfieUrl || r.checkOutPhotoUrl
+                const loc = r.checkInLocation || r.location
+                return (
+                  <div key={r.id || i} style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 12, padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <SelfiePairThumbs
+                        inUrl={inUrl}
+                        outUrl={outUrl}
+                        onViewSelfie={onViewSelfie}
+                        date={r.date}
+                        name={name}
+                        inLoc={r.checkInLocation}
+                        outLoc={r.checkOutLocation}
+                        inTime={r.checkInTime ? formatTime(r.checkInTime) : ''}
+                        outTime={r.checkOutTime ? formatTime(r.checkOutTime) : ''}
+                        size={32}
+                      />
+                      <div>
+                        <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#0F172A' }}>{r.date}</div>
+                        <div style={{ fontSize: '0.66rem', color: '#64748B' }}>
+                          {r.checkInTime ? formatTime(r.checkInTime) : '-'} - {r.checkOutTime ? formatTime(r.checkOutTime) : 'Ongoing'}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                      {(() => {
+                        const lateInfo = getAttendanceLateInfo(r, officeTiming)
+                        return (
+                          <span className={`swl-badge-pill ${lateInfo.isLate ? 'yellow' : 'green'}`}>
+                            {lateInfo.isLate
+                              ? (r.checkOutTime ? `Completed (Late${lateInfo.lateText ? ' +' + lateInfo.lateText : ''})` : `Late${lateInfo.lateText ? ' (+' + lateInfo.lateText : ''}`)
+                              : (r.checkOutTime ? 'Completed' : 'Present')}
+                          </span>
+                        )
+                      })()}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <LocationBtn location={loc} />
+                        <button
+                          type="button"
+                          onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'edit', record: r })}
+                          title="Edit Attendance Record"
+                          style={{
+                            border: '1px solid #CBD5E1',
+                            background: '#F8FAFC',
+                            color: '#1E5AE6',
+                            borderRadius: 5,
+                            padding: '2px 6px',
+                            fontSize: '0.64rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2
+                          }}
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const ok = window.confirm(`Delete attendance record for ${name} on ${r.date}?`)
+                            if (ok && isFirebaseConfigured && db) {
+                              try {
+                                await deleteDoc(doc(db, 'attendance', r.id))
+                              } catch (e) {
+                                alert('Delete error: ' + e.message)
+                              }
+                            }
+                          }}
+                          title="Delete Attendance Record"
+                          style={{
+                            border: '1px solid #FECACA',
+                            background: '#FEF2F2',
+                            color: '#DC2626',
+                            borderRadius: 5,
+                            padding: '2px 6px',
+                            fontSize: '0.64rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2
+                          }}
+                        >
+                          🗑️
+                        </button>
                       </div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                    {(() => {
-                      const lateInfo = getAttendanceLateInfo(r, officeTiming)
-                      return (
-                        <span className={`swl-badge-pill ${lateInfo.isLate ? 'yellow' : 'green'}`}>
-                          {lateInfo.isLate
-                            ? (r.checkOutTime ? `Completed (Late${lateInfo.lateText ? ' +' + lateInfo.lateText : ''})` : `Late${lateInfo.lateText ? ' (+' + lateInfo.lateText : ''}`)
-                            : (r.checkOutTime ? 'Completed' : 'Present')}
-                        </span>
-                      )
-                    })()}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <LocationBtn location={loc} />
-                      <button
-                        type="button"
-                        onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'edit', record: r })}
-                        title="Edit Attendance Record"
-                        style={{
-                          border: '1px solid #CBD5E1',
-                          background: '#F8FAFC',
-                          color: '#1E5AE6',
-                          borderRadius: 5,
-                          padding: '2px 6px',
-                          fontSize: '0.64rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 2
-                        }}
-                      >
-                        ✏️ Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const ok = window.confirm(`Delete attendance record for ${name} on ${r.date}?`)
-                          if (ok && isFirebaseConfigured && db) {
-                            try {
-                              await deleteDoc(doc(db, 'attendance', r.id))
-                            } catch (e) {
-                              alert('Delete error: ' + e.message)
-                            }
-                          }
-                        }}
-                        title="Delete Attendance Record"
-                        style={{
-                          border: '1px solid #FECACA',
-                          background: '#FEF2F2',
-                          color: '#DC2626',
-                          borderRadius: 5,
-                          padding: '2px 6px',
-                          fontSize: '0.64rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 2
-                        }}
-                      >
-                        🗑️
-                      </button>
-                    </div>
+                )
+              })
+            )}
+          </div>
+        )}
+
+        {tab === 'leave' && (
+          <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {leaves.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px 10px', color: '#94A3B8', fontSize: '0.8rem' }}>
+                No leave requests found for this employee.
+              </div>
+            ) : (
+              leaves.map((l) => (
+                <div key={l.id} style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#0F172A' }}>{l.type || 'Leave'} ({l.days || 1}d)</span>
+                    <span className={`swl-badge-pill ${l.status === 'approved' ? 'green' : l.status === 'rejected' ? 'red' : 'yellow'}`}>
+                      {l.status ? l.status.toUpperCase() : 'PENDING'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.66rem', color: '#64748B' }}>
+                    {l.startDate} to {l.endDate} {l.reason ? `• ${l.reason}` : ''}
                   </div>
                 </div>
-              )
-            })
-          )}
-        </div>
+              ))
+            )}
+          </div>
+        )}
 
         {/* Danger Zone: Delete Employee */}
         <div style={{ margin: '14px 16px 16px 16px', background: '#FFF7ED', border: '1px dashed #FDBA74', borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

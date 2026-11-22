@@ -1364,6 +1364,19 @@
   color: #FFFFFF;
 }
 
+.swl-cal-day.h {
+  background: #8B5CF6;
+  color: #FFFFFF;
+  font-weight: 700;
+  border-radius: 6px;
+}
+
+.swl-cal-day.sun {
+  background: #F1F5F9;
+  color: #94A3B8;
+  border-radius: 6px;
+}
+
 .swl-cal-legend {
   display: flex;
   justify-content: space-around;
