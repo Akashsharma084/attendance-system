@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { jsPDF } from 'jspdf'
 import {
   collection,
   query,
@@ -9536,11 +9537,340 @@ function LiveOfficeTimingModal({ officeTiming, onClose, adminName }) {
 }
 
 /* =========================================================================
-   14B. LIVE WHATSAPP ATTENDANCE REPORT MODAL
+   14B. LIVE WHATSAPP ATTENDANCE REPORT & PDF EXPORT MODAL
    ========================================================================= */
+function generateAttendancePDF({ activeFilter, users, workerRecords, leaves, officeTiming, adminName }) {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  })
+
+  const now = new Date()
+  const todayStr = todayDateKey(now)
+  const yesterdayDate = new Date(now.getTime() - 86400000)
+  const yesterdayStr = todayDateKey(yesterdayDate)
+  const curMonthKey = monthKey(now)
+
+  // Softwind Brand Colors
+  const primaryColor = [18, 140, 126] // #128C7E Teal
+  const darkColor = [15, 23, 42]     // #0F172A
+  const grayColor = [100, 116, 139]  // #64748B
+  const lightBg = [248, 250, 252]    // #F8FAFC
+
+  const pageWidth = doc.internal.pageSize.getWidth() // 210mm
+  const margin = 14
+  const contentWidth = pageWidth - margin * 2 // 182mm
+
+  // 1. Top Header Banner
+  doc.setFillColor(...primaryColor)
+  doc.roundedRect(margin, 12, contentWidth, 22, 2.5, 2.5, 'F')
+
+  doc.setTextColor(255, 255, 255)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(15)
+  doc.text('SOFTWIND LABS', margin + 6, 21)
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8.5)
+  doc.text('ATTENDANCE & PERFORMANCE REPORT', margin + 6, 28)
+
+  doc.setFontSize(7.5)
+  const dateFormatted = now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+  const timeFormatted = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  doc.text(`Generated: ${dateFormatted} ${timeFormatted}`, pageWidth - margin - 6, 21, { align: 'right' })
+  doc.text(`Admin: ${adminName || 'Admin'}`, pageWidth - margin - 6, 28, { align: 'right' })
+
+  // 2. Report Subtitle
+  let periodTitle = ''
+  if (activeFilter === 'today') periodTitle = `DAILY ATTENDANCE • ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`
+  else if (activeFilter === 'yesterday') periodTitle = `YESTERDAY ATTENDANCE • ${yesterdayDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`
+  else if (activeFilter === 'weekly') periodTitle = `WEEKLY ATTENDANCE SUMMARY • LAST 7 DAYS`
+  else periodTitle = `MONTHLY PERFORMANCE SUMMARY • ${now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }).toUpperCase()}`
+
+  let currentY = 41
+  doc.setTextColor(...darkColor)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10.5)
+  doc.text(periodTitle, margin, currentY)
+
+  // 3. Compute Employee Stats (Ranked by Attendance Percentage Descending)
+  let sortedEmployees = []
+  let kpiStats = { total: users.length, present: 0, rate: 0, late: 0 }
+
+  if (activeFilter === 'today') {
+    const todayRecords = workerRecords.filter(r => r.date === todayStr)
+    const presentUids = new Set(todayRecords.map(r => r.uid).filter(Boolean))
+    const todayLate = todayRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+    kpiStats.present = todayRecords.length
+    kpiStats.late = todayLate
+    kpiStats.rate = users.length > 0 ? Math.round((todayRecords.length / users.length) * 100) : 0
+
+    sortedEmployees = users.map(u => {
+      const rec = todayRecords.find(r => r.uid === u.uid || r.email === u.email)
+      const uMonthRecs = workerRecords.filter(r => (r.uid === u.uid || r.email === u.email) && r.month === curMonthKey)
+      const rate = Math.min(100, Math.round((uMonthRecs.length / 24) * 100))
+      const isPresent = Boolean(rec)
+      const lateInfo = rec ? getAttendanceLateInfo(rec, officeTiming) : { isLate: false }
+      
+      let hrs = '—'
+      if (rec?.checkInTime && rec?.checkOutTime) {
+        const inSec = rec.checkInTime.seconds || (new Date(rec.checkInTime).getTime() / 1000)
+        const outSec = rec.checkOutTime.seconds || (new Date(rec.checkOutTime).getTime() / 1000)
+        hrs = `${Math.max(0, (outSec - inSec) / 3600).toFixed(1)} hrs`
+      } else if (rec?.checkInTime) {
+        hrs = 'Active'
+      }
+
+      return {
+        name: u.name || u.email?.split('@')[0] || 'Employee',
+        rate,
+        punches: isPresent ? (rec.checkInTime ? formatTime(rec.checkInTime) : 'Present') : 'Absent',
+        totalHrs: hrs,
+        uLate: lateInfo.isLate ? 1 : 0,
+        isPresent
+      }
+    }).sort((a, b) => (b.isPresent - a.isPresent) || (b.rate - a.rate))
+  } else if (activeFilter === 'yesterday') {
+    const yesterdayRecords = workerRecords.filter(r => r.date === yesterdayStr)
+    const yLate = yesterdayRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+    kpiStats.present = yesterdayRecords.length
+    kpiStats.late = yLate
+    kpiStats.rate = users.length > 0 ? Math.round((yesterdayRecords.length / users.length) * 100) : 0
+
+    sortedEmployees = users.map(u => {
+      const rec = yesterdayRecords.find(r => r.uid === u.uid || r.email === u.email)
+      const uMonthRecs = workerRecords.filter(r => (r.uid === u.uid || r.email === u.email) && r.month === curMonthKey)
+      const rate = Math.min(100, Math.round((uMonthRecs.length / 24) * 100))
+      const isPresent = Boolean(rec)
+      const lateInfo = rec ? getAttendanceLateInfo(rec, officeTiming) : { isLate: false }
+      
+      let hrs = '—'
+      if (rec?.checkInTime && rec?.checkOutTime) {
+        const inSec = rec.checkInTime.seconds || (new Date(rec.checkInTime).getTime() / 1000)
+        const outSec = rec.checkOutTime.seconds || (new Date(rec.checkOutTime).getTime() / 1000)
+        hrs = `${Math.max(0, (outSec - inSec) / 3600).toFixed(1)} hrs`
+      }
+
+      return {
+        name: u.name || u.email?.split('@')[0] || 'Employee',
+        rate,
+        punches: isPresent ? (rec.checkInTime ? formatTime(rec.checkInTime) : 'Present') : 'Absent',
+        totalHrs: hrs,
+        uLate: lateInfo.isLate ? 1 : 0,
+        isPresent
+      }
+    }).sort((a, b) => (b.isPresent - a.isPresent) || (b.rate - a.rate))
+  } else if (activeFilter === 'weekly') {
+    const last7Keys = []
+    for (let i = 6; i >= 0; i--) {
+      last7Keys.push(todayDateKey(new Date(now.getTime() - i * 86400000)))
+    }
+    const weeklyRecords = workerRecords.filter(r => last7Keys.includes(r.date))
+    let workingDaysCount = 0
+    for (let i = 6; i >= 0; i--) {
+      if (new Date(now.getTime() - i * 86400000).getDay() !== 0) workingDaysCount++
+    }
+    if (workingDaysCount === 0) workingDaysCount = 6
+
+    kpiStats.present = weeklyRecords.length
+    kpiStats.late = weeklyRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+    kpiStats.rate = users.length > 0 ? Math.round((weeklyRecords.length / (users.length * workingDaysCount)) * 100) : 0
+
+    sortedEmployees = users.map(u => {
+      const uRecs = weeklyRecords.filter(r => r.uid === u.uid || r.email === u.email)
+      const daysPresent = uRecs.length
+      const uLate = uRecs.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+      let totalMins = 0
+      uRecs.forEach(r => {
+        if (r.checkInTime && r.checkOutTime) {
+          const inM = r.checkInTime.seconds ? r.checkInTime.seconds : new Date(r.checkInTime).getTime() / 1000
+          const outM = r.checkOutTime.seconds ? r.checkOutTime.seconds : new Date(r.checkOutTime).getTime() / 1000
+          totalMins += Math.max(0, (outM - inM) / 60)
+        } else if (r.checkInTime) {
+          totalMins += 480
+        }
+      })
+      const totalHrs = (totalMins / 60).toFixed(1)
+      const rate = Math.min(100, Math.round((daysPresent / workingDaysCount) * 100))
+      return {
+        name: u.name || u.email?.split('@')[0] || 'Employee',
+        rate,
+        daysPresent: `${daysPresent}/${workingDaysCount}`,
+        totalHrs: `${totalHrs} hrs`,
+        uLate,
+        totalMins
+      }
+    }).sort((a, b) => b.rate - a.rate || b.totalMins - a.totalMins)
+  } else {
+    // Monthly
+    const monthlyRecords = workerRecords.filter(r => r.month === curMonthKey || (r.date && r.date.startsWith(curMonthKey)))
+    const standardDays = 24
+    kpiStats.present = monthlyRecords.length
+    kpiStats.late = monthlyRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+    kpiStats.rate = users.length > 0 ? Math.round((monthlyRecords.length / (users.length * standardDays)) * 100) : 0
+
+    sortedEmployees = users.map(u => {
+      const uRecs = monthlyRecords.filter(r => r.uid === u.uid || r.email === u.email)
+      const daysPresent = uRecs.length
+      const uLate = uRecs.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
+      let totalMins = 0
+      uRecs.forEach(r => {
+        if (r.checkInTime && r.checkOutTime) {
+          const inM = r.checkInTime.seconds ? r.checkInTime.seconds : new Date(r.checkInTime).getTime() / 1000
+          const outM = r.checkOutTime.seconds ? r.checkOutTime.seconds : new Date(r.checkOutTime).getTime() / 1000
+          totalMins += Math.max(0, (outM - inM) / 60)
+        } else if (r.checkInTime) {
+          totalMins += 480
+        }
+      })
+      const totalHrs = (totalMins / 60).toFixed(1)
+      const rate = Math.min(100, Math.round((daysPresent / standardDays) * 100))
+      return {
+        name: u.name || u.email?.split('@')[0] || 'Employee',
+        rate,
+        daysPresent: `${daysPresent}/${standardDays}`,
+        totalHrs: `${totalHrs} hrs`,
+        uLate,
+        totalMins
+      }
+    }).sort((a, b) => b.rate - a.rate || b.totalMins - a.totalMins)
+  }
+
+  // 4. KPI Summary Cards
+  currentY += 4
+  const boxWidth = (contentWidth - 9) / 4
+  const boxHeight = 15
+  const kpiItems = [
+    { label: 'TOTAL STAFF', val: String(kpiStats.total), col: [59, 130, 246] },
+    { label: activeFilter === 'today' ? 'PRESENT TODAY' : 'TOTAL PUNCHES', val: String(kpiStats.present), col: [16, 185, 129] },
+    { label: 'ATTENDANCE RATE', val: `${kpiStats.rate}%`, col: [18, 140, 126] },
+    { label: 'LATE ARRIVALS', val: String(kpiStats.late), col: [245, 158, 11] }
+  ]
+
+  kpiItems.forEach((k, idx) => {
+    const bx = margin + idx * (boxWidth + 3)
+    doc.setFillColor(...lightBg)
+    doc.setDrawColor(226, 232, 240)
+    doc.setLineWidth(0.3)
+    doc.roundedRect(bx, currentY, boxWidth, boxHeight, 1.8, 1.8, 'FD')
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(6.5)
+    doc.setTextColor(...grayColor)
+    doc.text(k.label, bx + 3, currentY + 5)
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10.5)
+    doc.setTextColor(...k.col)
+    doc.text(k.val, bx + 3, currentY + 11.5)
+  })
+
+  // 5. Attendance Performance Table Header
+  currentY += boxHeight + 7
+  const tableTop = currentY
+  const rowHeight = 7.5
+
+  doc.setFillColor(...primaryColor)
+  doc.rect(margin, tableTop, contentWidth, 7.5, 'F')
+
+  doc.setTextColor(255, 255, 255)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7.5)
+
+  doc.text('#', margin + 3, tableTop + 5.2)
+  doc.text('EMPLOYEE NAME', margin + 12, tableTop + 5.2)
+  doc.text('ATTENDANCE %', margin + 72, tableTop + 5.2)
+  doc.text(activeFilter === 'today' || activeFilter === 'yesterday' ? 'CHECK-IN' : 'DAYS WORKED', margin + 104, tableTop + 5.2)
+  doc.text('HOURS', margin + 132, tableTop + 5.2)
+  doc.text('LATE MARKS', margin + 154, tableTop + 5.2)
+  doc.text('STATUS', margin + 172, tableTop + 5.2)
+
+  // 6. Draw Table Rows (Sorted by Attendance Percentage Descending)
+  let rowY = tableTop + 7.5
+  sortedEmployees.forEach((emp, index) => {
+    // Alternating background
+    if (index % 2 === 0) {
+      doc.setFillColor(248, 250, 252)
+      doc.rect(margin, rowY, contentWidth, rowHeight, 'F')
+    } else {
+      doc.setFillColor(255, 255, 255)
+      doc.rect(margin, rowY, contentWidth, rowHeight, 'F')
+    }
+
+    doc.setDrawColor(226, 232, 240)
+    doc.setLineWidth(0.2)
+    doc.line(margin, rowY + rowHeight, margin + contentWidth, rowY + rowHeight)
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.2)
+    doc.setTextColor(15, 23, 42)
+
+    // Rank #
+    doc.text(String(index + 1), margin + 3, rowY + 5)
+
+    // Name
+    doc.setFont('helvetica', 'bold')
+    doc.text(emp.name || 'Employee', margin + 12, rowY + 5)
+    doc.setFont('helvetica', 'normal')
+
+    // Attendance Rate % (with color coding)
+    const rate = emp.rate || 0
+    if (rate >= 90) doc.setTextColor(22, 163, 74)
+    else if (rate >= 75) doc.setTextColor(217, 119, 6)
+    else doc.setTextColor(220, 38, 38)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`${rate}%`, margin + 72, rowY + 5)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(15, 23, 42)
+
+    // Days / Check-in
+    doc.text(emp.daysPresent || emp.punches || '—', margin + 104, rowY + 5)
+
+    // Hours
+    doc.text(emp.totalHrs || '—', margin + 132, rowY + 5)
+
+    // Late Marks
+    if (emp.uLate > 0) {
+      doc.setTextColor(217, 119, 6)
+      doc.text(`${emp.uLate} late`, margin + 154, rowY + 5)
+    } else {
+      doc.setTextColor(100, 116, 139)
+      doc.text('0', margin + 154, rowY + 5)
+    }
+    doc.setTextColor(15, 23, 42)
+
+    // Status
+    if (rate >= 90) {
+      doc.setTextColor(22, 163, 74)
+      doc.text('Top', margin + 172, rowY + 5)
+    } else if (rate >= 70) {
+      doc.setTextColor(217, 119, 6)
+      doc.text('Good', margin + 172, rowY + 5)
+    } else {
+      doc.setTextColor(220, 38, 38)
+      doc.text('Low', margin + 172, rowY + 5)
+    }
+
+    rowY += rowHeight
+  })
+
+  // 7. Footer
+  const footerY = 285
+  doc.setDrawColor(226, 232, 240)
+  doc.line(margin, footerY - 3, margin + contentWidth, footerY - 3)
+  doc.setFontSize(6.8)
+  doc.setTextColor(100, 116, 139)
+  doc.text('Softwind Labs Attendance Portal • Sorted by Attendance Percentage Descending • Confidential', margin, footerY)
+  doc.text('Page 1 of 1', margin + contentWidth, footerY, { align: 'right' })
+
+  return doc
+}
+
 function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
   const [activeFilter, setActiveFilter] = useState('today') // 'today' | 'yesterday' | 'weekly' | 'monthly'
   const [copied, setCopied] = useState(false)
+  const [generatingPdf, setGeneratingPdf] = useState(false)
   const [users, setUsers] = useState([])
   const [records, setRecords] = useState([])
   const [leaves, setLeaves] = useState([])
@@ -9591,12 +9921,13 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
 
   const workerRecords = useMemo(() => records.filter(r => !isUserAdmin(r)), [records])
 
-  // Generate WhatsApp formatted text
+  // Generate WhatsApp formatted text (Employees Sorted by Attendance % Descending)
   const reportText = useMemo(() => {
     const now = new Date()
     const todayStr = todayDateKey(now)
     const yesterdayDate = new Date(now.getTime() - 86400000)
     const yesterdayStr = todayDateKey(yesterdayDate)
+    const curMonthKey = monthKey(now)
 
     const genTimeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
     const divider = '━━━━━━━━━━━━━━━━━━━━━'
@@ -9613,17 +9944,21 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       )
       const leaveUids = new Set(todayApprovedLeaves.map(l => l.uid).filter(Boolean))
 
-      // Absent employees (not present, not on approved leave)
+      // Absent employees
       const absentUsers = users.filter(u => !presentUids.has(u.uid) && !presentEmails.has(u.email) && !leaveUids.has(u.uid))
 
-      // Present list with timing & late status
-      const presentLines = todayRecords.map((r, idx) => {
+      // Calculate each present employee's monthly rate and sort by attendance percentage descending
+      const presentStats = todayRecords.map(r => {
         const u = users.find(x => x.uid === r.uid || x.email === r.email)
-        const name = r.name || u?.name || r.email?.split('@')[0] || `Employee ${idx + 1}`
+        const name = r.name || u?.name || r.email?.split('@')[0] || 'Employee'
         const inTime = r.checkInTime ? formatTime(r.checkInTime) : '—'
         const outTime = r.checkOutTime ? formatTime(r.checkOutTime) : null
         const lateInfo = getAttendanceLateInfo(r, officeTiming)
-        
+
+        // Monthly attendance rate for ranking
+        const uMonthRecs = workerRecords.filter(x => (x.uid === r.uid || x.email === r.email) && x.month === curMonthKey)
+        const rate = Math.min(100, Math.round((uMonthRecs.length / 24) * 100))
+
         let timingStr = `In: ${inTime}`
         if (outTime) timingStr += ` | Out: ${outTime}`
         else timingStr += ` (Active)`
@@ -9632,10 +9967,15 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
         if (lateInfo.isLate) {
           lateTag = ` ⚠️ [Late +${lateInfo.lateText || (lateInfo.lateMinutes + 'm')}]`
         }
-        return `${idx + 1}. *${name}* — ${timingStr}${lateTag}`
+
+        return { name, rate, timingStr, lateTag }
+      }).sort((a, b) => b.rate - a.rate)
+
+      const presentLines = presentStats.map((p, idx) => {
+        const medal = idx === 0 ? '🥇 ' : idx === 1 ? '🥈 ' : idx === 2 ? '🥉 ' : ''
+        return `${idx + 1}. ${medal}*${p.name}* (${p.rate}% att.) — ${p.timingStr}${p.lateTag}`
       })
 
-      // Leave lines
       const leaveLines = todayApprovedLeaves.map((l) => {
         const u = users.find(x => x.uid === l.uid)
         const name = l.employeeName || u?.name || 'Employee'
@@ -9643,7 +9983,6 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
         return `• *${name}* (${typeStr} - Approved)`
       })
 
-      // Absent lines
       const absentLines = absentUsers.map(u => `• *${u.name || u.email?.split('@')[0] || 'Employee'}*`)
 
       const totalEmp = users.length
@@ -9659,13 +9998,13 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       text += `${divider}\n`
       text += `📊 *Summary Overview:*\n`
       text += `• Total Employees: *${totalEmp}*\n`
-      text += `• Present: *${presentCount}* (${pct}%)\n`
+      text += `• Present Today: *${presentCount}* (${pct}%)\n`
       text += `• Late Arrivals: *${lateCount}* ⚠️\n`
       text += `• On Approved Leave: *${leaveCount}* 🌴\n`
       text += `• Absent / Pending: *${absentCount}* ❌\n`
       text += `${divider}\n`
 
-      text += `🟢 *PRESENT EMPLOYEES (${presentCount}):*\n`
+      text += `🟢 *PRESENT EMPLOYEES (Sorted by Att. %):*\n`
       if (presentLines.length > 0) {
         text += presentLines.join('\n') + '\n'
       } else {
@@ -9699,9 +10038,9 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       const leaveUids = new Set(yApprovedLeaves.map(l => l.uid).filter(Boolean))
       const absentUsers = users.filter(u => !presentUids.has(u.uid) && !presentEmails.has(u.email) && !leaveUids.has(u.uid))
 
-      const presentLines = yesterdayRecords.map((r, idx) => {
+      const presentStats = yesterdayRecords.map(r => {
         const u = users.find(x => x.uid === r.uid || x.email === r.email)
-        const name = r.name || u?.name || r.email?.split('@')[0] || `Employee ${idx + 1}`
+        const name = r.name || u?.name || r.email?.split('@')[0] || 'Employee'
         const inTime = r.checkInTime ? formatTime(r.checkInTime) : '—'
         const outTime = r.checkOutTime ? formatTime(r.checkOutTime) : '—'
         
@@ -9709,8 +10048,7 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
         if (r.checkInTime && r.checkOutTime) {
           const inSec = r.checkInTime.seconds || (new Date(r.checkInTime).getTime() / 1000)
           const outSec = r.checkOutTime.seconds || (new Date(r.checkOutTime).getTime() / 1000)
-          const diffHrs = Math.max(0, (outSec - inSec) / 3600).toFixed(1)
-          hrsStr = ` (${diffHrs} hrs)`
+          hrsStr = ` (${Math.max(0, (outSec - inSec) / 3600).toFixed(1)} hrs)`
         }
 
         const lateInfo = getAttendanceLateInfo(r, officeTiming)
@@ -9718,7 +10056,16 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
         if (lateInfo.isLate) {
           lateTag = ` ⚠️ [Late +${lateInfo.lateText || (lateInfo.lateMinutes + 'm')}]`
         }
-        return `${idx + 1}. *${name}* — In: ${inTime} | Out: ${outTime}${hrsStr}${lateTag}`
+
+        const uMonthRecs = workerRecords.filter(x => (x.uid === r.uid || x.email === r.email) && x.month === curMonthKey)
+        const rate = Math.min(100, Math.round((uMonthRecs.length / 24) * 100))
+
+        return { name, rate, inTime, outTime, hrsStr, lateTag }
+      }).sort((a, b) => b.rate - a.rate)
+
+      const presentLines = presentStats.map((p, idx) => {
+        const medal = idx === 0 ? '🥇 ' : idx === 1 ? '🥈 ' : idx === 2 ? '🥉 ' : ''
+        return `${idx + 1}. ${medal}*${p.name}* (${p.rate}% att.) — In: ${p.inTime} | Out: ${p.outTime}${p.hrsStr}${p.lateTag}`
       })
 
       const absentLines = absentUsers.map(u => `• *${u.name || u.email?.split('@')[0] || 'Employee'}*`)
@@ -9744,7 +10091,7 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       text += `• Absent: *${absentLines.length}* ❌\n`
       text += `${divider}\n`
 
-      text += `🟢 *ATTENDANCE LOGS (${presentCount}):*\n`
+      text += `🟢 *ATTENDANCE LOGS (Sorted by Att. %):*\n`
       if (presentLines.length > 0) {
         text += presentLines.join('\n') + '\n'
       } else {
@@ -9786,7 +10133,8 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       }
       if (workingDaysCount === 0) workingDaysCount = 6
 
-      const empBreakdown = users.map((u, idx) => {
+      // SORT EMPLOYEES BY WEEKLY ATTENDANCE PERCENTAGE DESCENDING
+      const empStats = users.map(u => {
         const uRecs = weeklyRecords.filter(r => r.uid === u.uid || r.email === u.email)
         const daysPresent = uRecs.length
         const uLate = uRecs.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
@@ -9803,9 +10151,14 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
         })
         const totalHrs = (totalMins / 60).toFixed(1)
         const pct = Math.min(100, Math.round((daysPresent / workingDaysCount) * 100))
-        const name = u.name || u.email?.split('@')[0] || `Employee ${idx + 1}`
+        const name = u.name || u.email?.split('@')[0] || 'Employee'
 
-        return `${idx + 1}. *${name}*: ${daysPresent}/${workingDaysCount} days (${pct}%) | ${totalHrs} hrs${uLate > 0 ? ` | ${uLate} late ⚠️` : ''}`
+        return { name, daysPresent, uLate, totalHrs, totalMins, pct }
+      }).sort((a, b) => b.pct - a.pct || b.daysPresent - a.daysPresent || b.totalMins - a.totalMins)
+
+      const empBreakdown = empStats.map((e, idx) => {
+        const medal = idx === 0 ? '🥇 ' : idx === 1 ? '🥈 ' : idx === 2 ? '🥉 ' : ''
+        return `${idx + 1}. ${medal}*${e.name}*: *${e.pct}%* (${e.daysPresent}/${workingDaysCount} days) | ${e.totalHrs} hrs${e.uLate > 0 ? ` | ${e.uLate} late ⚠️` : ''}`
       })
 
       const avgPct = users.length > 0
@@ -9823,7 +10176,7 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       text += `• Average Attendance Rate: *${avgPct}%*\n`
       text += `• Late Arrivals: *${totalLate}* ⚠️\n`
       text += `${divider}\n`
-      text += `👥 *Employee-wise Breakdown:*\n`
+      text += `👥 *Employee Breakdown (Sorted by Att. %):*\n`
       text += empBreakdown.join('\n') + '\n'
       text += `${divider}\n`
       text += `_Generated via Softwind Attendance Portal_`
@@ -9831,14 +10184,14 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
     }
 
     if (activeFilter === 'monthly') {
-      const curMonthKey = monthKey(now)
       const monthDisplay = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
       const monthlyRecords = workerRecords.filter(r => r.month === curMonthKey || (r.date && r.date.startsWith(curMonthKey)))
       const totalPunches = monthlyRecords.length
       const totalLate = monthlyRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
       const standardWorkingDays = 24
 
-      const empBreakdown = users.map((u, idx) => {
+      // SORT EMPLOYEES BY MONTHLY ATTENDANCE PERCENTAGE DESCENDING
+      const empStats = users.map(u => {
         const uRecs = monthlyRecords.filter(r => r.uid === u.uid || r.email === u.email)
         const daysPresent = uRecs.length
         const uLate = uRecs.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
@@ -9855,9 +10208,14 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
         })
         const totalHrs = (totalMins / 60).toFixed(1)
         const rate = Math.min(100, Math.round((daysPresent / standardWorkingDays) * 100))
-        const name = u.name || u.email?.split('@')[0] || `Employee ${idx + 1}`
+        const name = u.name || u.email?.split('@')[0] || 'Employee'
 
-        return `${idx + 1}. *${name}*: ${daysPresent}/${standardWorkingDays} days (${rate}%) | ${totalHrs} hrs | ${uLate} late`
+        return { name, daysPresent, uLate, totalHrs, totalMins, rate }
+      }).sort((a, b) => b.rate - a.rate || b.daysPresent - a.daysPresent || b.totalMins - a.totalMins)
+
+      const empBreakdown = empStats.map((e, idx) => {
+        const medal = idx === 0 ? '🥇 ' : idx === 1 ? '🥈 ' : idx === 2 ? '🥉 ' : ''
+        return `${idx + 1}. ${medal}*${e.name}*: *${e.rate}%* (${e.daysPresent}/${standardWorkingDays} days) | ${e.totalHrs} hrs | ${e.uLate} late`
       })
 
       const teamAvgRate = users.length > 0
@@ -9875,7 +10233,7 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       text += `• Team Avg Attendance Rate: *${teamAvgRate}%*\n`
       text += `• Total Late Arrivals: *${totalLate}* ⚠️\n`
       text += `${divider}\n`
-      text += `👥 *Employee Monthly Records:*\n`
+      text += `👥 *Employee Monthly Records (Sorted by Att. %):*\n`
       text += empBreakdown.join('\n') + '\n'
       text += `${divider}\n`
       text += `_Generated via Softwind Attendance Portal_`
@@ -9940,13 +10298,13 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
     return []
   }, [activeFilter, workerRecords, users, leaves, officeTiming])
 
+  // Share as WhatsApp Message (Sorted by %)
   const handleShareWhatsApp = () => {
     const text = reportText
     const encoded = encodeURIComponent(text)
     const waUrl = `https://api.whatsapp.com/send?text=${encoded}`
     const waScheme = `whatsapp://send?text=${encoded}`
 
-    // On mobile devices, using whatsapp:// deep link opens WhatsApp app directly to chat picker (bypassing native OS share sheet)
     if (/mobile|android|iphone|ipad/i.test(navigator.userAgent)) {
       window.location.href = waScheme
       setTimeout(() => {
@@ -9954,6 +10312,66 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       }, 700)
     } else {
       window.open(waUrl, '_blank')
+    }
+  }
+
+  // Share as PDF Document to WhatsApp (Web Share Level 2 on mobile)
+  const handleSharePDF = async () => {
+    try {
+      setGeneratingPdf(true)
+      const doc = generateAttendancePDF({
+        activeFilter,
+        users,
+        workerRecords,
+        leaves,
+        officeTiming,
+        adminName
+      })
+      const blob = doc.output('blob')
+      const fileName = `SWL_Attendance_${activeFilter.toUpperCase()}_${todayDateKey(new Date())}.pdf`
+      const file = new File([blob], fileName, { type: 'application/pdf' })
+
+      // Check if browser supports direct file sharing (Mobile Android / iOS)
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `SWL Attendance Report (${activeFilter.toUpperCase()})`,
+          text: `📄 Softwind Labs Attendance Report (${activeFilter.toUpperCase()})`
+        })
+      } else {
+        // Desktop / Unsupported browser: Download PDF and open WhatsApp Web
+        doc.save(fileName)
+        const waWebUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(
+          `📄 *Softwind Labs Attendance Report (${activeFilter.toUpperCase()})* has been downloaded. Attaching document below:`
+        )}`
+        window.open(waWebUrl, '_blank')
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error('PDF share err:', err)
+        alert('Could not share PDF directly: ' + err.message)
+      }
+    } finally {
+      setGeneratingPdf(false)
+    }
+  }
+
+  // Download PDF file directly
+  const handleDownloadPDF = () => {
+    try {
+      const doc = generateAttendancePDF({
+        activeFilter,
+        users,
+        workerRecords,
+        leaves,
+        officeTiming,
+        adminName
+      })
+      const fileName = `SWL_Attendance_${activeFilter.toUpperCase()}_${todayDateKey(new Date())}.pdf`
+      doc.save(fileName)
+    } catch (err) {
+      console.error('PDF download error:', err)
+      alert('Could not download PDF: ' + err.message)
     }
   }
 
@@ -10006,7 +10424,7 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       <div
         style={{
           width: '100%',
-          maxWidth: '520px',
+          maxWidth: '530px',
           maxHeight: '92vh',
           background: '#FFFFFF',
           borderRadius: 20,
@@ -10044,10 +10462,10 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
             </div>
             <div>
               <div style={{ fontSize: '0.96rem', fontWeight: 800, letterSpacing: '-0.01em' }}>
-                WhatsApp Attendance Report
+                Attendance Report & PDF Share
               </div>
               <div style={{ fontSize: '0.72rem', opacity: 0.88 }}>
-                Generate & share updates with company group
+                Share formatted message or PDF document to WhatsApp
               </div>
             </div>
           </div>
@@ -10074,8 +10492,13 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
 
         {/* Filter Selection Tabs */}
         <div style={{ padding: '14px 18px 8px 18px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-          <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#475569', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Select Report Timeframe:
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Report Timeframe:
+            </div>
+            <div style={{ fontSize: '0.66rem', color: '#10B981', fontWeight: 700, background: '#DCFCE7', padding: '2px 7px', borderRadius: 6 }}>
+              ✓ Sorted by % High to Low
+            </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
             {[
@@ -10155,7 +10578,7 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
               fontWeight: 700
             }}
           >
-            💬 LIVE WHATSAPP MESSAGE PREVIEW
+            💬 LIVE WHATSAPP PREVIEW (RANKED BY ATTENDANCE %)
           </div>
 
           <div
@@ -10206,64 +10629,117 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
           </div>
         </div>
 
-        {/* Bottom Actions */}
+        {/* Bottom Actions: Both Message & PDF Options */}
         <div
           style={{
             padding: '12px 18px',
             background: '#FFFFFF',
             borderTop: '1px solid #E2E8F0',
             display: 'flex',
-            gap: 10,
-            alignItems: 'center'
+            flexDirection: 'column',
+            gap: 8
           }}
         >
-          <button
-            type="button"
-            onClick={handleCopy}
-            style={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              padding: '10px 14px',
-              borderRadius: 10,
-              background: copied ? '#ECFDF5' : '#F1F5F9',
-              border: copied ? '1.5px solid #10B981' : '1px solid #E2E8F0',
-              color: copied ? '#059669' : '#334155',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <span>{copied ? '✓ Copied!' : '📋 Copy Text'}</span>
-          </button>
+          {/* Row 1: WhatsApp Message vs PDF Share */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+            <button
+              type="button"
+              onClick={handleShareWhatsApp}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: '#25D366',
+                border: 'none',
+                color: '#FFFFFF',
+                fontSize: '0.78rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                boxShadow: '0 3px 8px rgba(37, 211, 102, 0.35)',
+                transition: 'transform 0.15s ease'
+              }}
+              title="Send report as WhatsApp message text"
+            >
+              <Icons.WhatsApp size={16} color="#FFFFFF" />
+              <span>💬 Send Message</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={handleShareWhatsApp}
-            style={{
-              flex: 1.6,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              padding: '10px 16px',
-              borderRadius: 10,
-              background: '#25D366',
-              border: 'none',
-              color: '#FFFFFF',
-              fontSize: '0.82rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(37, 211, 102, 0.35)',
-              transition: 'transform 0.15s ease'
-            }}
-          >
-            <Icons.WhatsApp size={18} color="#FFFFFF" />
-            <span>Send to WhatsApp Group</span>
-          </button>
+            <button
+              type="button"
+              onClick={handleSharePDF}
+              disabled={generatingPdf}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: 'linear-gradient(135deg, #075E54 0%, #128C7E 100%)',
+                border: 'none',
+                color: '#FFFFFF',
+                fontSize: '0.78rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                boxShadow: '0 3px 8px rgba(18, 140, 126, 0.35)',
+                transition: 'transform 0.15s ease'
+              }}
+              title="Share as PDF Document directly to WhatsApp"
+            >
+              <span>{generatingPdf ? 'Generating…' : '📄 Share as PDF'}</span>
+            </button>
+          </div>
+
+          {/* Row 2: Copy Text & Download PDF */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+            <button
+              type="button"
+              onClick={handleCopy}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+                padding: '8px 10px',
+                borderRadius: 8,
+                background: copied ? '#ECFDF5' : '#F1F5F9',
+                border: copied ? '1.5px solid #10B981' : '1px solid #E2E8F0',
+                color: copied ? '#059669' : '#334155',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span>{copied ? '✓ Copied Text!' : '📋 Copy Text'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadPDF}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+                padding: '8px 10px',
+                borderRadius: 8,
+                background: '#FFFFFF',
+                border: '1.5px solid #CBD5E1',
+                color: '#1E293B',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              title="Download PDF document to your device"
+            >
+              <span>📥 Download PDF</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
