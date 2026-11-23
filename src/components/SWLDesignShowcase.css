@@ -1377,6 +1377,13 @@
   border-radius: 6px;
 }
 
+.swl-cal-day.pre {
+  background: #F8FAFC;
+  color: #94A3B8;
+  border: 1px dashed #CBD5E1;
+  border-radius: 6px;
+}
+
 .swl-cal-legend {
   display: flex;
   justify-content: space-around;

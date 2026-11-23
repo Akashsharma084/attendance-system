@@ -100,7 +100,7 @@ const Icons = {
     </svg>
   ))
 }
-import { todayDateKey, monthKey, formatTime, buildEmployeeSchedule, getMonthWorkingDays, getDateRangeWorkingDays, formatMonthLabel, getAvailableMonthKeys, getHoliday, getHolidaysInMonth } from '../utils/dateHelpers'
+import { todayDateKey, monthKey, formatTime, buildEmployeeSchedule, getMonthWorkingDays, getDateRangeWorkingDays, formatMonthLabel, getAvailableMonthKeys, getHoliday, getHolidaysInMonth, PORTAL_START_DATE } from '../utils/dateHelpers'
 import {
   subscribeLeaves,
   submitLeaveRequest,
@@ -3558,9 +3558,11 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
         type = 'h' // Official Festival/Holiday OFF
       } else if (isSunday) {
         type = 'sun' // Sunday OFF
+      } else if (dateKey < PORTAL_START_DATE) {
+        type = 'pre' // Pre-Portal Period (Not Absent!)
       } else {
         const isPast = cellDate < new Date()
-        // Mon-Sat are working days. Unpunched past working days are absent
+        // Mon-Sat are working days. Unpunched past working days after portal launch are absent
         if (isPast && dateKey < todayKey) {
           type = 'a'
         }
@@ -3714,6 +3716,7 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
                 <span>🟠 Late</span>
                 <span>🟣 Holiday Off</span>
                 <span>🏖️ Sunday Off</span>
+                <span>⚪ Pre-Portal</span>
               </div>
             </div>
 
@@ -6870,11 +6873,19 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
               </div>
             )}
 
+            {/* Portal Launch Info Banner for Nov 2026 */}
+            {selectedMonth === '2026-11' && (
+              <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: '8px 12px', fontSize: '0.68rem', color: '#1E40AF', lineHeight: 1.4 }}>
+                ℹ️ <strong>Portal Launch (18 Nov):</strong> Online attendance launched on <strong>18 Nov 2026</strong>. Days before 18 Nov (1–17 Nov) are marked as <em>Pre-Portal</em> and not counted as absent.
+              </div>
+            )}
+
             {/* Day by Day Schedule Items */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {empScheduleData.schedule.map((day) => {
                 const isP = day.status === 'P'
                 const isH = day.status === 'H' || Boolean(day.holiday)
+                const isPrePortal = day.status === 'PRE_PORTAL' || day.date < PORTAL_START_DATE
                 const isNotJoined = day.status === 'NOT_JOINED'
 
                 let cardBg = '#FFFFFF'
@@ -6896,6 +6907,13 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
                   badgeColor = '#6D28D9'
                   badgeBorder = '#C4B5FD'
                   badgeText = `🏖️ Holiday: ${day.holiday?.name || 'Off Day'}`
+                } else if (isPrePortal) {
+                  cardBg = '#F8FAFC'
+                  cardBorder = '#E2E8F0'
+                  badgeBg = '#F1F5F9'
+                  badgeColor = '#64748B'
+                  badgeBorder = '#CBD5E1'
+                  badgeText = '— Pre-Portal (Go-Live 18 Nov)'
                 } else if (isNotJoined) {
                   badgeBg = '#F8FAFC'
                   badgeColor = '#64748B'
@@ -6922,7 +6940,7 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
                         <span style={{ marginLeft: 6, fontSize: '0.66rem', color: '#64748B', fontWeight: 600 }}>({day.weekdayFull})</span>
                       </div>
                       <div style={{ fontSize: '0.64rem', color: '#64748B' }}>
-                        {isP && day.checkInTime ? `In: ${formatTime(day.checkInTime)}${day.checkOutTime ? ` | Out: ${formatTime(day.checkOutTime)}` : ' (Ongoing)'}` : isH ? 'Official Festival Holiday (Not Absent)' : isNotJoined ? 'Before Joining Date' : 'No punch recorded'}
+                        {isP && day.checkInTime ? `In: ${formatTime(day.checkInTime)}${day.checkOutTime ? ` | Out: ${formatTime(day.checkOutTime)}` : ' (Ongoing)'}` : isH ? 'Official Festival Holiday (Not Absent)' : isPrePortal ? 'Digital Portal launched on 18 Nov (Not Absent)' : isNotJoined ? 'Before Joining Date' : 'No punch recorded'}
                       </div>
                     </div>
                     <span
@@ -10601,6 +10619,7 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
         : 0
 
       const monthHolidays = getHolidaysInMonth(selectedMonth)
+      const isNov2026 = selectedMonth === '2026-11'
 
       let text = `SOFTWIND LABS - MONTHLY ATTENDANCE REPORT\n`
       text += `Month: ${monthDisplay}\n`
@@ -10608,7 +10627,10 @@ function LiveWhatsAppReportModal({ officeTiming, adminName, onClose }) {
       text += `${divider}\n`
       text += `TEAM SUMMARY:\n`
       text += `• Total Employees: ${users.length}\n`
-      text += `• Total Working Days in Month: ${workingDaysCount} days (Mon–Sat, Sundays & Festivals off)\n`
+      text += `• Total Working Days in Month: ${workingDaysCount} days (${isNov2026 ? 'Active from 18 Nov portal launch' : 'Mon–Sat, Sundays & Festivals off'})\n`
+      if (isNov2026) {
+        text += `• Portal Launch: 18 Nov 2026 (1–17 Nov was manual register, not absent)\n`
+      }
       if (monthHolidays && monthHolidays.length > 0) {
         const hListStr = monthHolidays.map(h => `${h.name} (${h.date.slice(8, 10)} ${monthDisplay.slice(0, 3)})`).join(', ')
         text += `• Official Festivals / Holidays: ${hListStr}\n`

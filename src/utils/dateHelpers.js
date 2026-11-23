@@ -3,9 +3,15 @@ import { getHoliday, isHoliday, getHolidaysInMonth } from './holidays.js'
 // Re-export for convenience across pages
 export { getHoliday, isHoliday, getHolidaysInMonth }
 
-// Company inception date: August 7, 2026 (7/8/26)
-export const COMPANY_START_DATE = '2026-08-07'
+// Company inception date: August 8, 2026 (8/8/26)
+export const COMPANY_START_DATE = '2026-08-08'
 export const COMPANY_START_MONTH = '2026-08'
+
+// Digital Attendance Portal Go-Live / Launch Date: November 18, 2026
+// Active digital portal tracking begins on this date.
+// Working days before 18 Nov 2026 are considered Pre-Portal (manual register period, NOT absent).
+export const PORTAL_START_DATE = '2026-11-18'
+export const PORTAL_START_MONTH = '2026-11'
 
 export function todayDateKey(d = new Date()) {
   return d.toLocaleDateString('en-CA') // YYYY-MM-DD, respects local timezone
@@ -189,11 +195,14 @@ export function getWeekday(dateStr, format = 'short') {
  */
 export function getMonthWorkingDays(targetMonthKey, options = {}) {
   const includeHolidays = options?.includeHolidays ?? false
+  const includePrePortal = options?.includePrePortal ?? false
   const [yearNum, monthNum] = targetMonthKey.split('-').map(Number)
   const pad = (n) => String(n).padStart(2, '0')
 
   // Total days in target month (e.g. 30 days for Nov, 31 for Dec) - FULL MONTH, NO ELAPSED CUTOFF
   const lastDay = new Date(yearNum, monthNum, 0).getDate()
+  // Active digital portal days start strictly from PORTAL_START_DATE (2026-11-18)
+  const minDate = includePrePortal ? COMPANY_START_DATE : PORTAL_START_DATE
 
   const days = []
   for (let d = 1; d <= lastDay; d++) {
@@ -202,8 +211,8 @@ export function getMonthWorkingDays(targetMonthKey, options = {}) {
     // Monday to Saturday = 1 to 6 (Saturday is working!). Only Sunday = 0 is cut.
     if (dayOfWeek >= 1 && dayOfWeek <= 6) {
       const dateStr = `${yearNum}-${pad(monthNum)}-${pad(d)}`
-      // Exclude days before company inception (2026-08-07)
-      if (dateStr >= COMPANY_START_DATE) {
+      // Exclude days before effective start date
+      if (dateStr >= minDate) {
         const holiday = getHoliday(dateStr)
         // Festivals/Holidays are OFF days by company policy.
         // Include only if explicitly requested (e.g. to render 'H' badge on calendar).
@@ -225,11 +234,14 @@ export function getMonthWorkingDays(targetMonthKey, options = {}) {
 
 /**
  * Returns non-Sunday working days in a custom date range (startDateStr to endDateStr).
- * Excludes Sundays and dates before company inception (2026-08-07).
+ * Excludes Sundays and dates before portal inception (2026-11-18) unless includePrePortal is true.
  */
 export function getDateRangeWorkingDays(startDateStr, endDateStr, options = {}) {
   if (!startDateStr || !endDateStr) return []
   const includeHolidays = options?.includeHolidays ?? false
+  const includePrePortal = options?.includePrePortal ?? false
+  const minDate = includePrePortal ? COMPANY_START_DATE : PORTAL_START_DATE
+
   const [sY, sM, sD] = startDateStr.split('-').map(Number)
   const [eY, eM, eD] = endDateStr.split('-').map(Number)
   const start = new Date(sY, sM - 1, sD)
@@ -243,7 +255,7 @@ export function getDateRangeWorkingDays(startDateStr, endDateStr, options = {}) 
   while (cur <= end) {
     const dayOfWeek = cur.getDay()
     const dStr = `${cur.getFullYear()}-${pad(cur.getMonth() + 1)}-${pad(cur.getDate())}`
-    if (dayOfWeek >= 1 && dayOfWeek <= 6 && dStr >= COMPANY_START_DATE) {
+    if (dayOfWeek >= 1 && dayOfWeek <= 6 && dStr >= minDate) {
       const holiday = getHoliday(dStr)
       if (includeHolidays || !holiday) {
         days.push({
@@ -294,7 +306,8 @@ export function getEmployeeStartDate(records = [], employeeInfo = {}) {
  * and unrecorded working days after joining as 'A'.
  */
 export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo = {}) {
-  const workingDays = getMonthWorkingDays(targetMonthKey, { includeHolidays: true })
+  // Use includePrePortal: true so full calendar month (from COMPANY_START_DATE) appears in schedule view
+  const workingDays = getMonthWorkingDays(targetMonthKey, { includeHolidays: true, includePrePortal: true })
   const recordMap = new Map()
 
   records.forEach((r) => {
@@ -308,6 +321,7 @@ export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo
   let absentCount = 0
   let holidayCount = 0
   let notJoinedCount = 0
+  let prePortalCount = 0
   let fullDaysCount = 0
 
   const schedule = workingDays.map((day) => {
@@ -343,6 +357,27 @@ export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo
         weekdayFull: day.weekdayFull,
         status: 'H',
         holiday,
+        name: employeeInfo.name || 'Employee',
+        uid: employeeInfo.uid,
+        checkInTime: null,
+        checkOutTime: null,
+        checkInSelfieUrl: null,
+        checkInLocation: null,
+        checkOutSelfieUrl: null,
+        checkOutLocation: null,
+        isComplete: false
+      }
+    } else if (day.date < PORTAL_START_DATE) {
+      // Days prior to digital portal launch (1 Nov to 17 Nov) are Pre-Portal (manual register period, NOT absent!)
+      prePortalCount++
+      return {
+        id: `pre-portal-${day.date}`,
+        date: day.date,
+        weekday: day.weekday,
+        weekdayFull: day.weekdayFull,
+        status: 'PRE_PORTAL',
+        statusLabel: 'Pre-Portal (Launched 18 Nov)',
+        holiday: null,
         name: employeeInfo.name || 'Employee',
         uid: employeeInfo.uid,
         checkInTime: null,
@@ -397,9 +432,12 @@ export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo
     }
   })
 
-  // Effective working days for this employee exclude holidays and days before their joining
-  const activeWorkingDays = Math.max(0, workingDays.length - notJoinedCount)
-  const effectiveWorkingDays = Math.max(0, activeWorkingDays - holidayCount)
+  // Effective working days target for this employee: only active portal days after joining and excluding holidays
+  const portalWorkingDays = workingDays.filter(d => !d.holiday && d.date >= PORTAL_START_DATE)
+  const activeWorkingDays = empStartDate
+    ? portalWorkingDays.filter(d => d.date >= empStartDate).length
+    : portalWorkingDays.length
+  const effectiveWorkingDays = Math.max(0, activeWorkingDays)
 
   return {
     schedule,
@@ -407,8 +445,9 @@ export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo
     absentCount,
     holidayCount,
     notJoinedCount,
+    prePortalCount,
     empStartDate,
-    totalWorkingDays: workingDays.filter(d => !d.holiday).length,
+    totalWorkingDays: portalWorkingDays.length,
     effectiveWorkingDays,
     fullDaysCount
   }
