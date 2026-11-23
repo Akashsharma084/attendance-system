@@ -3450,6 +3450,7 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
   const todayKey = todayDateKey()
 
   const [historyTab, setHistoryTab] = useState('my') // 'my' | 'team'
+  const [myViewMode, setMyViewMode] = useState('schedule') // 'schedule' | 'punches'
   const [currentDate, setCurrentDate] = useState(new Date())
   const [attendanceRecords, setAttendanceRecords] = useState([])
   const [todayRecord, setTodayRecord] = useState(null)
@@ -3470,6 +3471,15 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
   const monthLabel = useMemo(() => {
     return currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   }, [currentDate])
+
+  // Full day-by-day month schedule for current user
+  const mySchedule = useMemo(() => {
+    return buildEmployeeSchedule(attendanceRecords, monthStr, {
+      uid: user?.uid,
+      name: user?.displayName || user?.email,
+      joinDate: user?.joinDate || null
+    })
+  }, [attendanceRecords, monthStr, user])
 
   // Fetch monthly records for current user
   useEffect(() => {
@@ -3703,18 +3713,22 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
                   <div
                     key={i}
                     className={`swl-cal-day ${d.type}`}
-                    title={d.holiday ? `${d.holiday.name} (Official Holiday Off)` : d.type === 'sun' ? 'Sunday Off' : d.type === 'p' ? 'Present' : d.type === 'a' ? 'Absent' : ''}
+                    title={d.holiday ? `${d.holiday.name} (Official Holiday Off [H])` : d.type === 'sun' ? 'Sunday Off' : d.type === 'p' ? 'Present' : d.type === 'a' ? 'Absent' : ''}
+                    style={d.type === 'h' ? { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 } : {}}
                   >
-                    {d.num}
+                    <span>{d.num}</span>
+                    {d.type === 'h' && (
+                      <span style={{ fontSize: '0.52rem', fontWeight: 900, background: 'rgba(255,255,255,0.3)', padding: '0 2px', borderRadius: 3, lineHeight: 1 }}>H</span>
+                    )}
                   </div>
                 ))}
               </div>
 
               <div className="swl-cal-legend" style={{ flexWrap: 'wrap', gap: 6 }}>
-                <span>🟢 Present</span>
-                <span>🔴 Absent</span>
-                <span>🟠 Late</span>
-                <span>🟣 Holiday Off</span>
+                <span>🟢 [P] Present</span>
+                <span>🔴 [A] Absent</span>
+                <span>🟠 [L] Late</span>
+                <span>🟣 [H] Holiday</span>
                 <span>🏖️ Sunday Off</span>
                 <span>⚪ Pre-Portal</span>
               </div>
@@ -3730,8 +3744,8 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
                   {monthHolidays.map((h, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', color: '#4C1D95' }}>
                       <span>{h.icon || '✨'} <strong>{h.name}</strong></span>
-                      <span style={{ fontSize: '0.66rem', fontWeight: 700, background: '#EDE9FE', color: '#6D28D9', padding: '2px 8px', borderRadius: 999 }}>
-                        {new Date(h.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' })} • Holiday Off
+                      <span style={{ fontSize: '0.66rem', fontWeight: 700, background: '#EDE9FE', color: '#6D28D9', padding: '2px 8px', borderRadius: 999, border: '1px solid #C4B5FD' }}>
+                        {new Date(h.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' })} • 🏖️ [H] Holiday Off
                       </span>
                     </div>
                   ))}
@@ -3803,62 +3817,194 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
               </div>
             </div>
 
-            {/* Monthly Punch Log List with In & Out Selfies */}
-            <div style={{ margin: '14px 16px 6px 16px', fontSize: '0.8rem', fontWeight: 800, color: '#0F172A' }}>
-              My Monthly Punches ({attendanceRecords.length})
+            {/* View Mode Toggle: Day-by-Day Schedule vs Punches */}
+            <div style={{ margin: '14px 16px 10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 6, background: '#F1F5F9', padding: 3, borderRadius: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setMyViewMode('schedule')}
+                  style={{
+                    border: 'none',
+                    background: myViewMode === 'schedule' ? '#FFFFFF' : 'transparent',
+                    color: myViewMode === 'schedule' ? '#0F172A' : '#64748B',
+                    fontWeight: 700,
+                    fontSize: '0.72rem',
+                    padding: '5px 12px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    boxShadow: myViewMode === 'schedule' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  🗓️ Day-by-Day Schedule
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMyViewMode('punches')}
+                  style={{
+                    border: 'none',
+                    background: myViewMode === 'punches' ? '#FFFFFF' : 'transparent',
+                    color: myViewMode === 'punches' ? '#0F172A' : '#64748B',
+                    fontWeight: 700,
+                    fontSize: '0.72rem',
+                    padding: '5px 12px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    boxShadow: myViewMode === 'punches' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  📋 Punches ({attendanceRecords.length})
+                </button>
+              </div>
+              <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 600 }}>
+                {myViewMode === 'schedule' ? `${mySchedule.schedule.length} Days in Schedule` : `${attendanceRecords.length} Punched Days`}
+              </span>
             </div>
 
-            <div style={{ margin: '0 16px', display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 16 }}>
-              {attendanceRecords.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '16px', color: '#94A3B8', fontSize: '0.74rem' }}>
-                  No punch logs recorded for this month.
-                </div>
-              ) : (
-                attendanceRecords.map((r) => {
-                  const inUrl = r.checkInSelfieUrl || r.checkInPhotoUrl || r.selfieUrl
-                  const outUrl = r.checkOutSelfieUrl || r.checkOutPhotoUrl
-                  const loc = r.checkInLocation || r.location
+            {/* View 1: Day-by-Day Schedule */}
+            {myViewMode === 'schedule' && (
+              <div style={{ margin: '0 16px', display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 16 }}>
+                {monthStr === '2026-11' && (
+                  <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: '8px 12px', fontSize: '0.68rem', color: '#1E40AF', lineHeight: 1.4, marginBottom: 2 }}>
+                    ℹ️ <strong>Portal Launch (18 Nov):</strong> Online attendance launched on <strong>18 Nov 2026</strong>. Days before 18 Nov (1–17 Nov) are marked as <em>Pre-Portal</em> and not counted as absent.
+                  </div>
+                )}
+                {mySchedule.schedule.map((day) => {
+                  const isP = day.status === 'P'
+                  const isH = day.status === 'H' || Boolean(day.holiday)
+                  const isPrePortal = day.status === 'PRE_PORTAL' || day.date < PORTAL_START_DATE
+                  const isNotJoined = day.status === 'NOT_JOINED'
+
+                  let cardBg = '#FFFFFF'
+                  let cardBorder = '#E2E8F0'
+                  let badgeBg = '#FEF2F2'
+                  let badgeColor = '#DC2626'
+                  let badgeBorder = '#FECACA'
+                  let badgeText = '✕ [A] Absent'
+
+                  if (isP) {
+                    badgeBg = '#ECFDF5'
+                    badgeColor = '#059669'
+                    badgeBorder = '#A7F3D0'
+                    badgeText = '✓ [P] Present'
+                  } else if (isH) {
+                    cardBg = '#F5F3FF'
+                    cardBorder = '#DDD6FE'
+                    badgeBg = '#EDE9FE'
+                    badgeColor = '#6D28D9'
+                    badgeBorder = '#C4B5FD'
+                    badgeText = `🏖️ [H] Holiday: ${day.holiday?.name || 'Festival Off'}`
+                  } else if (isPrePortal) {
+                    cardBg = '#F8FAFC'
+                    cardBorder = '#E2E8F0'
+                    badgeBg = '#F1F5F9'
+                    badgeColor = '#64748B'
+                    badgeBorder = '#CBD5E1'
+                    badgeText = '— [Pre] Portal Go-Live 18 Nov'
+                  } else if (isNotJoined) {
+                    badgeBg = '#F8FAFC'
+                    badgeColor = '#64748B'
+                    badgeBorder = '#E2E8F0'
+                    badgeText = '— Pre-Joining'
+                  }
+
                   return (
-                    <div key={r.id} className="swl-punch-feed-card">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <SelfiePairThumbs
-                          inUrl={inUrl}
-                          outUrl={outUrl}
-                          onViewSelfie={onViewSelfie}
-                          date={r.date}
-                          name="My Record"
-                          inLoc={r.checkInLocation}
-                          outLoc={r.checkOutLocation}
-                          inTime={r.checkInTime ? formatTime(r.checkInTime) : ''}
-                          outTime={r.checkOutTime ? formatTime(r.checkOutTime) : ''}
-                          size={32}
-                        />
-                        <div>
-                          <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#0F172A' }}>{r.date}</div>
-                          <div style={{ fontSize: '0.66rem', color: '#64748B' }}>
-                            In: {r.checkInTime ? formatTime(r.checkInTime) : '--'}
-                            {r.checkOutTime ? ` • Out: ${formatTime(r.checkOutTime)}` : ''}
-                          </div>
+                    <div
+                      key={day.date}
+                      style={{
+                        background: cardBg,
+                        border: `1px solid ${cardBorder}`,
+                        borderRadius: 10,
+                        padding: '8px 10px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#0F172A' }}>
+                          {new Date(day.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          <span style={{ marginLeft: 6, fontSize: '0.66rem', color: '#64748B', fontWeight: 600 }}>({day.weekdayFull})</span>
+                        </div>
+                        <div style={{ fontSize: '0.64rem', color: '#64748B' }}>
+                          {isP && day.checkInTime ? `In: ${formatTime(day.checkInTime)}${day.checkOutTime ? ` | Out: ${formatTime(day.checkOutTime)}` : ' (Ongoing)'}` : isH ? 'Official Festival Holiday (Not Absent)' : isPrePortal ? 'Digital Portal launched on 18 Nov (Not Absent)' : isNotJoined ? 'Before Joining Date' : 'No punch recorded'}
                         </div>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                        {(() => {
-                          const lateInfo = getAttendanceLateInfo(r, officeTiming)
-                          return (
-                            <span className={`swl-badge-pill ${lateInfo.isLate ? 'yellow' : 'green'}`}>
-                              {lateInfo.isLate
-                                ? (r.checkOutTime ? `Done (Late${lateInfo.lateText ? ' +' + lateInfo.lateText : ''})` : `Late${lateInfo.lateText ? ' (+' + lateInfo.lateText + ')' : ''}`)
-                                : (r.checkOutTime ? 'Done' : 'Present')}
-                            </span>
-                          )
-                        })()}
-                        <LocationBtn location={loc} />
-                      </div>
+                      <span
+                        style={{
+                          background: badgeBg,
+                          color: badgeColor,
+                          border: `1px solid ${badgeBorder}`,
+                          borderRadius: 999,
+                          padding: '3px 9px',
+                          fontSize: '0.66rem',
+                          fontWeight: 700,
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {badgeText}
+                      </span>
                     </div>
                   )
-                })
-              )}
-            </div>
+                })}
+              </div>
+            )}
+
+            {/* View 2: Punches List with In & Out Selfies */}
+            {myViewMode === 'punches' && (
+              <div style={{ margin: '0 16px', display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 16 }}>
+                {attendanceRecords.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '16px', color: '#94A3B8', fontSize: '0.74rem' }}>
+                    No punch logs recorded for this month.
+                  </div>
+                ) : (
+                  attendanceRecords.map((r) => {
+                    const inUrl = r.checkInSelfieUrl || r.checkInPhotoUrl || r.selfieUrl
+                    const outUrl = r.checkOutSelfieUrl || r.checkOutPhotoUrl
+                    const loc = r.checkInLocation || r.location
+                    return (
+                      <div key={r.id} className="swl-punch-feed-card">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <SelfiePairThumbs
+                            inUrl={inUrl}
+                            outUrl={outUrl}
+                            onViewSelfie={onViewSelfie}
+                            date={r.date}
+                            name="My Record"
+                            inLoc={r.checkInLocation}
+                            outLoc={r.checkOutLocation}
+                            inTime={r.checkInTime ? formatTime(r.checkInTime) : ''}
+                            outTime={r.checkOutTime ? formatTime(r.checkOutTime) : ''}
+                            size={32}
+                          />
+                          <div>
+                            <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#0F172A' }}>{r.date}</div>
+                            <div style={{ fontSize: '0.66rem', color: '#64748B' }}>
+                              In: {r.checkInTime ? formatTime(r.checkInTime) : '--'}
+                              {r.checkOutTime ? ` • Out: ${formatTime(r.checkOutTime)}` : ''}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                          {(() => {
+                            const lateInfo = getAttendanceLateInfo(r, officeTiming)
+                            return (
+                              <span className={`swl-badge-pill ${lateInfo.isLate ? 'yellow' : 'green'}`}>
+                                {lateInfo.isLate
+                                  ? (r.checkOutTime ? `Done (Late${lateInfo.lateText ? ' +' + lateInfo.lateText : ''})` : `Late${lateInfo.lateText ? ' (+' + lateInfo.lateText + ')' : ''}`)
+                                  : (r.checkOutTime ? 'Done' : 'Present')}
+                              </span>
+                            )
+                          })()}
+                          <LocationBtn location={loc} />
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -6866,7 +7012,7 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
                   {monthHolidays.map((h, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.66rem', color: '#4C1D95' }}>
                       <span>{h.icon || '✨'} <strong>{h.name}</strong></span>
-                      <span style={{ fontWeight: 700 }}>{new Date(h.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' })} • Holiday Off</span>
+                      <span style={{ fontWeight: 700 }}>{new Date(h.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' })} • 🏖️ [H] Holiday Off</span>
                     </div>
                   ))}
                 </div>
@@ -6893,27 +7039,27 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
                 let badgeBg = '#FEF2F2'
                 let badgeColor = '#DC2626'
                 let badgeBorder = '#FECACA'
-                let badgeText = '✕ Absent'
+                let badgeText = '✕ [A] Absent'
 
                 if (isP) {
                   badgeBg = '#ECFDF5'
                   badgeColor = '#059669'
                   badgeBorder = '#A7F3D0'
-                  badgeText = '✓ Present'
+                  badgeText = '✓ [P] Present'
                 } else if (isH) {
                   cardBg = '#F5F3FF'
                   cardBorder = '#DDD6FE'
                   badgeBg = '#EDE9FE'
                   badgeColor = '#6D28D9'
                   badgeBorder = '#C4B5FD'
-                  badgeText = `🏖️ Holiday: ${day.holiday?.name || 'Off Day'}`
+                  badgeText = `🏖️ [H] Holiday: ${day.holiday?.name || 'Festival Off'}`
                 } else if (isPrePortal) {
                   cardBg = '#F8FAFC'
                   cardBorder = '#E2E8F0'
                   badgeBg = '#F1F5F9'
                   badgeColor = '#64748B'
                   badgeBorder = '#CBD5E1'
-                  badgeText = '— Pre-Portal (Go-Live 18 Nov)'
+                  badgeText = '— [Pre] Portal Go-Live 18 Nov'
                 } else if (isNotJoined) {
                   badgeBg = '#F8FAFC'
                   badgeColor = '#64748B'
