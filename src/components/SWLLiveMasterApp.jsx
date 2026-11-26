@@ -64,6 +64,61 @@ export function WhatsAppIcon({ size = 20, color = 'currentColor' }) {
 const Icons = {
   ...BaseIcons,
   WhatsApp: WhatsAppIcon,
+  Home: ({ active }) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 0 : 2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 10.5L12 3l9 7.5V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9.5z"/>
+      <polyline points="9 22 9 13 15 13 15 22"/>
+    </svg>
+  ),
+  Attendance: ({ active }) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.3 : 1.9} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="3" ry="3"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+      <path d="M9 16l2 2 4-4" stroke={active ? '#1E5AE6' : 'currentColor'} strokeWidth="2.2"/>
+    </svg>
+  ),
+  Leave: ({ active }) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 0 : 2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+    </svg>
+  ),
+  Profile: ({ active }) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 0 : 2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+  ),
+  Dashboard: ({ active }) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 0 : 2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+      <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+      <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+      <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+    </svg>
+  ),
+  Employees: ({ active }) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.3 : 1.9} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  ),
+  Reports: ({ active }) => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.3 : 1.9} strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/>
+      <line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+  ),
+  Bell: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+    </svg>
+  ),
   Theme: ({ active }) => (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.5 : 2} strokeLinecap="round" strokeLinejoin="round">
       <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
@@ -2042,8 +2097,8 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
         <div className="swl-exact-hero-card">
           <div className="swl-exact-hero-header">
             <span className="swl-exact-hero-title">Today's Attendance</span>
-            <span className={`swl-exact-status-pill ${isPresentToday ? 'present' : 'pending'}`}>
-              {isPresentToday ? (isCheckedOutToday ? 'Shift Completed' : 'Present') : 'Pending'}
+            <span className={`swl-exact-status-pill ${isPresentToday ? (isCheckedOutToday ? 'present' : 'present') : 'pending'}`}>
+              {isPresentToday ? (isCheckedOutToday ? 'Shift Completed' : 'Present') : 'Not Checked In'}
             </span>
           </div>
 
@@ -2051,15 +2106,17 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
             <div>
               <div className="swl-exact-hero-time">
                 {isPresentToday
-                  ? (todayRecord?.checkInTime ? formatTime(todayRecord.checkInTime) : '09:30 AM')
+                  ? (todayRecord?.checkInTime ? formatTime(todayRecord.checkInTime) : '--:--')
                   : `${clockDisplay.hours}:${clockDisplay.minutes}`}
                 <span className="ampm">{isPresentToday ? '' : clockDisplay.ampm}</span>
               </div>
               <div className="swl-exact-hero-sublabel">
-                {isPresentToday ? 'Checked In' : 'Shift Not Started'}
+                {todayRecord?.checkOutTime
+                  ? `Checked Out at ${formatTime(todayRecord.checkOutTime)}`
+                  : (isPresentToday ? 'Checked In' : 'Shift Not Started')}
               </div>
               <div className="swl-exact-hero-hours">
-                Working Hours : {isPresentToday ? (elapsedWorkingTime.replace('00s', '').trim() || '1h 45m') : '0h 00m'}
+                Working Hours : {isPresentToday ? (elapsedWorkingTime.replace('00s', '').trim() || '0h 00m') : '0h 00m'}
               </div>
             </div>
 
@@ -2068,60 +2125,73 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
               className={`swl-exact-radar-orb ${isPresentToday ? '' : 'pending'}`}
               onClick={() => onNavigate('emp_checkin', true, { punchMode: isPresentToday && !isCheckedOutToday ? 'checkout' : 'checkin' })}
               style={{ cursor: 'pointer' }}
-              title={isPresentToday ? (isCheckedOutToday ? 'Shift Completed' : 'Tap to Check Out') : 'Tap to Check In'}
+              title={isPresentToday && !isCheckedOutToday ? 'Tap to Check Out' : 'Tap to Check In'}
             >
               {isPresentToday ? '✓' : '➔'}
             </div>
           </div>
 
-          {/* Hero Pill Action Button */}
-          {!isPresentToday && (
+          {/* Action Buttons: Check In AND Check Out Both Visible */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
             <button
               type="button"
               className="swl-exact-hero-btn checkin-theme"
               onClick={() => onNavigate('emp_checkin', true, { punchMode: 'checkin' })}
+              style={{
+                background: !isPresentToday
+                  ? 'linear-gradient(90deg, #10B981 0%, #059669 100%)'
+                  : 'rgba(255, 255, 255, 0.16)',
+                border: !isPresentToday ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.15)',
+                boxShadow: !isPresentToday ? '0 6px 20px rgba(16, 185, 129, 0.45)' : 'none',
+                padding: '11px 8px',
+                fontSize: '0.84rem'
+              }}
             >
               <span>➔</span> Check In
             </button>
-          )}
 
-          {isPresentToday && !isCheckedOutToday && (
             <button
               type="button"
               className="swl-exact-hero-btn checkout-theme"
               onClick={() => onNavigate('emp_checkin', true, { punchMode: 'checkout' })}
+              style={{
+                background: isPresentToday && !todayRecord?.checkOutTime
+                  ? 'linear-gradient(90deg, #2563EB 0%, #3B82F6 100%)'
+                  : 'rgba(255, 255, 255, 0.16)',
+                border: isPresentToday && !todayRecord?.checkOutTime ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.15)',
+                boxShadow: isPresentToday && !todayRecord?.checkOutTime ? '0 6px 20px rgba(37, 99, 235, 0.45)' : 'none',
+                padding: '11px 8px',
+                fontSize: '0.84rem'
+              }}
             >
               <span>➔</span> Check Out
             </button>
-          )}
+          </div>
 
-          {isPresentToday && isCheckedOutToday && (
+          {todayRecord?.checkInTime && todayRecord?.checkOutTime && (
             <div style={{
+              marginTop: 10,
               textAlign: 'center',
-              padding: '12px 16px',
+              padding: '8px 12px',
               background: 'rgba(255, 255, 255, 0.12)',
               borderRadius: 999,
-              fontSize: '0.80rem',
+              fontSize: '0.74rem',
               fontWeight: 800,
-              color: '#E0E7FF',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6
+              color: '#E0E7FF'
             }}>
-              <span>✓</span> Shift Completed ({formatTime(todayRecord?.checkInTime)} – {formatTime(todayRecord?.checkOutTime)})
+              ✓ Today's Shift Completed ({formatTime(todayRecord.checkInTime)} – {formatTime(todayRecord.checkOutTime)})
             </div>
           )}
         </div>
 
-        {/* Dual Stats Row (Total Days & Attendance Rate) */}
+        {/* Dual Stats Row (Real Dynamic Database Counts) */}
         <div className="swl-exact-stats-2col">
           <div className="swl-exact-stat-box" onClick={() => onNavigate('emp_history')} style={{ cursor: 'pointer' }}>
             <div className="swl-exact-stat-icon-wrap blue">
               🕒
             </div>
             <div>
-              <div className="swl-exact-stat-num">{presentCount || 22}</div>
+              <div className="swl-exact-stat-num">{presentCount ?? 0}</div>
               <div className="swl-exact-stat-label">Total Days This Month</div>
             </div>
             <span className="swl-exact-trend-badge">↗</span>
@@ -2132,7 +2202,7 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
               📅
             </div>
             <div>
-              <div className="swl-exact-stat-num">{attendanceRate || 85}%</div>
+              <div className="swl-exact-stat-num">{attendanceRate ?? 0}%</div>
               <div className="swl-exact-stat-label">Attendance Rate</div>
             </div>
             <span className="swl-exact-trend-badge">↗</span>
@@ -2161,7 +2231,7 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
           </div>
         </div>
 
-        {/* Recent Activity */}
+        {/* Recent Activity (Real Dynamic Activity) */}
         <div className="swl-exact-section-title-row">
           <span className="swl-exact-section-title">Recent Activity</span>
           <span className="swl-exact-see-all" onClick={() => onNavigate('emp_history')}>
@@ -2172,20 +2242,94 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
           <div className="swl-exact-activity-left">
             <div className="swl-exact-check-circle">✓</div>
             <div>
-              <h4 className="swl-exact-activity-title">
-                Check In • {todayRecord?.checkInTime ? formatTime(todayRecord.checkInTime) : '09:30 AM'}
-              </h4>
-              <p className="swl-exact-activity-sub">
-                Main Office, Bengaluru
-              </p>
+              {todayRecord?.checkInTime ? (
+                <>
+                  <h4 className="swl-exact-activity-title">
+                    Check In • {formatTime(todayRecord.checkInTime)}
+                    {todayRecord.checkOutTime && ` | Out • ${formatTime(todayRecord.checkOutTime)}`}
+                  </h4>
+                  <p className="swl-exact-activity-sub">
+                    {todayRecord.checkInLocation?.address || 'Softwind Labs HQ, Bengaluru'}
+                  </p>
+                </>
+              ) : monthlyRecords.length > 0 && monthlyRecords[0]?.checkInTime ? (
+                <>
+                  <h4 className="swl-exact-activity-title">
+                    Last Punch • {formatTime(monthlyRecords[0].checkInTime)}
+                  </h4>
+                  <p className="swl-exact-activity-sub">
+                    {monthlyRecords[0].date} • Softwind Labs HQ
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h4 className="swl-exact-activity-title">No punches recorded yet today</h4>
+                  <p className="swl-exact-activity-sub">Softwind Labs HQ • Geofence Ready</p>
+                </>
+              )}
             </div>
           </div>
           <div
             className="swl-exact-map-thumb"
-            title="Office Location: Softwind Labs HQ, Bengaluru"
+            title="Office Location: Softwind Labs HQ"
           >
             📍
           </div>
+        </div>
+
+        {/* Team at Work Today Stories Reel */}
+        <div style={{ margin: '14px 16px 8px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: '0.80rem', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>👥</span>
+            <span>Team at Work Today ({teamToday.length})</span>
+          </div>
+          <span
+            style={{ fontSize: '0.68rem', color: '#1E5AE6', fontWeight: 800, cursor: 'pointer' }}
+            onClick={() => onNavigate('emp_history')}
+          >
+            All Team Records &gt;
+          </span>
+        </div>
+
+        <div className="swl-team-reel-container" style={{ margin: '0 16px 12px 16px' }}>
+          {teamToday.length === 0 ? (
+            <div style={{ fontSize: '0.72rem', color: '#94A3B8', padding: '6px 0', fontStyle: 'italic' }}>
+              No colleagues have punched in yet today.
+            </div>
+          ) : (
+            teamToday.map((member) => {
+              const inUrl = member.checkInSelfieUrl || member.checkInPhotoUrl || member.selfieUrl
+              const isLate = getAttendanceLateInfo(member, officeTiming).isLate
+              return (
+                <div
+                  key={member.id}
+                  className="swl-team-story-item"
+                  onClick={() => {
+                    if (inUrl && onViewSelfie) {
+                      onViewSelfie({
+                        url: inUrl,
+                        title: `${member.name || 'Teammate'} (In at ${formatTime(member.checkInTime)})`,
+                        subtitle: `Softwind Labs • ${member.date}`
+                      })
+                    }
+                  }}
+                  title={`${member.name || 'Teammate'} (In at ${formatTime(member.checkInTime)})`}
+                >
+                  <div className={`swl-team-story-ring ${isLate ? 'late' : ''}`}>
+                    {inUrl || member.photoURL ? (
+                      <img src={inUrl || member.photoURL} alt={member.name} />
+                    ) : (
+                      <div className="story-avatar-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#1E5AE6', fontSize: '0.8rem' }}>
+                        {(member.name || 'T')[0]}
+                      </div>
+                    )}
+                    <span className="swl-team-story-beacon" />
+                  </div>
+                  <span className="swl-team-story-name">{member.name?.split(' ')[0] || 'Team'}</span>
+                </div>
+              )
+            })
+          )}
         </div>
 
         {/* Softwind Labs Live Geofence GPS Active Badge */}
@@ -2290,16 +2434,22 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
     return () => unsub()
   }, [user?.uid, todayKey, officeTiming])
 
-  const nowMins = new Date().getHours() * 60 + new Date().getMinutes()
-  const [endH, endM] = (officeTiming?.endTime || '18:00').split(':').map(Number)
-  const cutoffMins = (isNaN(endH) ? 18 : endH) * 60 + (isNaN(endM) ? 0 : endM)
-  const isPastCutoff = nowMins >= cutoffMins
+  const [overrideShiftDone, setOverrideShiftDone] = useState(false)
+
+  // Sync punchMode prop if it changes
+  useEffect(() => {
+    if (punchMode === 'checkout') {
+      setCheckoutMode(true)
+    } else if (punchMode === 'checkin') {
+      setCheckoutMode(false)
+    }
+  }, [punchMode])
 
   const hasCheckedIn = Boolean(todayDoc?.checkInTime)
-  const hasCheckedOut = Boolean(todayDoc?.checkOutTime) || (hasCheckedIn && isPastCutoff)
-  const isShiftDone = hasCheckedIn && hasCheckedOut
+  const hasCheckedOut = Boolean(todayDoc?.checkOutTime)
+  const isShiftDone = hasCheckedIn && hasCheckedOut && !overrideShiftDone
   const isShiftActive = hasCheckedIn && !hasCheckedOut
-  const isCheckout = isShiftActive && (punchMode === 'checkout' || checkoutMode)
+  const isCheckout = checkoutMode || (hasCheckedIn && punchMode !== 'checkin')
 
   // 2. Start Camera Feed (reusable for initial mount & instant retake)
   const startCamera = useCallback(async () => {
@@ -2672,12 +2822,12 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
     }
 
     try {
-      const isCheckOut = Boolean(todayDoc?.checkInTime && !todayDoc?.checkOutTime)
+      const isCheckOut = isCheckout || Boolean(todayDoc?.checkInTime && !todayDoc?.checkOutTime)
       const punchNow = new Date()
       const lateCalc = isCheckOut ? { isLate: false, lateMinutes: 0, lateText: '' } : checkIsPunchLate(punchNow, officeTiming)
 
       if (isFirebaseConfigured && db && user?.uid) {
-        if (todayDoc) {
+        if (todayDoc && isCheckOut) {
           // Check-Out: update with checkOutPhotoUrl AND checkOutSelfieUrl
           await updateDoc(doc(db, 'attendance', todayDoc.id), {
             checkOutTime: serverTimestamp(),
@@ -2687,6 +2837,20 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
             checkOutDeviceId: currentDeviceId,
             checkOutDeviceName: currentDeviceName,
             status: 'completed'
+          })
+        } else if (todayDoc && !isCheckOut) {
+          // Update check-in
+          await updateDoc(doc(db, 'attendance', todayDoc.id), {
+            checkInTime: serverTimestamp(),
+            checkInPhotoUrl: finalPhoto,
+            checkInSelfieUrl: finalPhoto,
+            selfieUrl: finalPhoto,
+            checkInLocation: gpsLocation || null,
+            deviceId: currentDeviceId,
+            deviceName: currentDeviceName,
+            isLate: lateCalc.isLate,
+            lateMinutes: lateCalc.lateMinutes,
+            status: lateCalc.isLate ? 'late' : 'present'
           })
         } else {
           // Check-In: record with checkInPhotoUrl, checkInSelfieUrl, selfieUrl, and late status
@@ -2781,9 +2945,63 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
           <span>
             {isShiftDone
               ? 'Shift Completed'
-              : (isShiftActive ? 'Check Out' : 'Check In')}
+              : (isCheckout ? 'Check Out' : 'Check In')}
           </span>
           <div style={{ width: 18 }} />
+        </div>
+
+        {/* Punch Mode Dual Toggle Pills */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '0 16px', margin: '8px 0 12px' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setCheckoutMode(false)
+              setOverrideShiftDone(false)
+            }}
+            style={{
+              padding: '10px 14px',
+              borderRadius: 14,
+              border: !isCheckout ? '2px solid #10B981' : '1px solid #E2E8F0',
+              background: !isCheckout ? '#ECFDF5' : '#FFFFFF',
+              color: !isCheckout ? '#065F46' : '#64748B',
+              fontWeight: 800,
+              fontSize: '0.82rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              boxShadow: !isCheckout ? '0 2px 8px rgba(16, 185, 129, 0.2)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <span style={{ fontSize: '0.9rem' }}>🟢</span> Check In
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setCheckoutMode(true)
+              setOverrideShiftDone(false)
+            }}
+            style={{
+              padding: '10px 14px',
+              borderRadius: 14,
+              border: isCheckout ? '2px solid #2563EB' : '1px solid #E2E8F0',
+              background: isCheckout ? '#EFF6FF' : '#FFFFFF',
+              color: isCheckout ? '#1E40AF' : '#64748B',
+              fontWeight: 800,
+              fontSize: '0.82rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              boxShadow: isCheckout ? '0 2px 8px rgba(37, 99, 235, 0.2)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <span style={{ fontSize: '0.9rem' }}>🔵</span> Check Out
+          </button>
         </div>
 
         {/* STATE 1: SHIFT FULLY COMPLETED TODAY */}
@@ -2832,6 +3050,28 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                 </div>
               </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setOverrideShiftDone(true)
+                setCheckoutMode(true)
+              }}
+              style={{
+                width: '100%',
+                padding: '12px',
+                background: '#EFF6FF',
+                color: '#1E40AF',
+                border: '1.5px solid #BFDBFE',
+                borderRadius: 12,
+                fontWeight: 800,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                marginBottom: 10
+              }}
+            >
+              📸 Re-record / Update Check-Out Punch
+            </button>
 
             <button
               type="button"
@@ -5703,7 +5943,7 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
           <div className="swl-admin-pastel-card blue" onClick={() => onNavigate('adm_employees')} style={{ cursor: 'pointer' }}>
             <div className="swl-admin-pastel-icon">👥</div>
             <div>
-              <div className="swl-admin-pastel-num">{totalEmployees || 120}</div>
+              <div className="swl-admin-pastel-num">{totalEmployees}</div>
               <div className="swl-admin-pastel-label">Total Employees</div>
             </div>
           </div>
@@ -5712,7 +5952,7 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
           <div className="swl-admin-pastel-card green" onClick={() => onNavigate('adm_reports')} style={{ cursor: 'pointer' }}>
             <div className="swl-admin-pastel-icon">✓</div>
             <div>
-              <div className="swl-admin-pastel-num">{presentEmployees || 92}</div>
+              <div className="swl-admin-pastel-num">{presentEmployees}</div>
               <div className="swl-admin-pastel-label">Present Today</div>
             </div>
           </div>
@@ -5721,7 +5961,7 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
           <div className="swl-admin-pastel-card red" onClick={() => onNavigate('adm_reports')} style={{ cursor: 'pointer' }}>
             <div className="swl-admin-pastel-icon">✕</div>
             <div>
-              <div className="swl-admin-pastel-num">{absentEmployees || 18}</div>
+              <div className="swl-admin-pastel-num">{absentEmployees}</div>
               <div className="swl-admin-pastel-label">Absent Today</div>
             </div>
           </div>
@@ -5730,7 +5970,7 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
           <div className="swl-admin-pastel-card orange" onClick={() => onNavigate('adm_approvals')} style={{ cursor: 'pointer' }}>
             <div className="swl-admin-pastel-icon">🌴</div>
             <div>
-              <div className="swl-admin-pastel-num">{pendingLeavesCount || 10}</div>
+              <div className="swl-admin-pastel-num">{pendingLeavesCount}</div>
               <div className="swl-admin-pastel-label">On Leave</div>
             </div>
           </div>
@@ -5761,12 +6001,12 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
                   fill="none"
                   stroke="#22D3EE"
                   strokeWidth="3.8"
-                  strokeDasharray={`${Math.max(5, Math.min(100, presentPct || 85))}, 100`}
+                  strokeDasharray={`${Math.max(0, Math.min(100, presentPct))}, 100`}
                   strokeLinecap="round"
                 />
               </svg>
               <div className="swl-admin-donut-center">
-                {presentPct || 85}%
+                {presentPct}%
               </div>
             </div>
 
@@ -5775,17 +6015,17 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
               <div className="legend-item">
                 <span className="legend-dot" style={{ background: '#22D3EE' }} />
                 <span>Present</span>
-                <span className="legend-val">{presentEmployees || 92}</span>
+                <span className="legend-val">{presentEmployees}</span>
               </div>
               <div className="legend-item">
                 <span className="legend-dot" style={{ background: '#F43F5E' }} />
                 <span>Absent</span>
-                <span className="legend-val">{absentEmployees || 18}</span>
+                <span className="legend-val">{absentEmployees}</span>
               </div>
               <div className="legend-item">
                 <span className="legend-dot" style={{ background: '#F59E0B' }} />
                 <span>On Leave</span>
-                <span className="legend-val">{pendingLeavesCount || 10}</span>
+                <span className="legend-val">{pendingLeavesCount}</span>
               </div>
             </div>
 
@@ -5815,7 +6055,7 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
           </div>
         </div>
 
-        {/* Pending Leave Requests Section (Matching Right Phone) */}
+        {/* Pending Leave Requests Section */}
         <div className="swl-exact-section-title-row">
           <span className="swl-exact-section-title">Pending Leave Requests</span>
           <span className="swl-exact-see-all" onClick={() => onNavigate('adm_approvals')}>
@@ -5823,67 +6063,83 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
           </span>
         </div>
 
-        {/* Leave Request Card */}
-        {(() => {
-          const firstPending = pendingLeaves.length > 0 ? pendingLeaves[0] : null
-          const applicantName = firstPending?.userName || firstPending?.name || 'Priya Mehta'
-          const applicantRole = firstPending?.department || firstPending?.role || 'HR Department'
-          const leaveDateRange = firstPending ? `${firstPending.startDate} – ${firstPending.endDate}` : '26 – 27 Nov'
-          const leaveId = firstPending?.id
+        {/* Leave Request Card or Clean Empty State */}
+        {pendingLeaves.length === 0 ? (
+          <div style={{
+            background: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            borderRadius: 16,
+            padding: '16px 20px',
+            margin: '0 16px 16px',
+            textAlign: 'center',
+            color: '#64748B'
+          }}>
+            <div style={{ fontSize: '1.4rem', marginBottom: 4 }}>🌴</div>
+            <div style={{ fontWeight: 700, color: '#1E293B', fontSize: '0.82rem' }}>No Pending Leave Requests</div>
+            <div style={{ fontSize: '0.72rem', marginTop: 2 }}>All team leave applications have been reviewed.</div>
+          </div>
+        ) : (
+          (() => {
+            const firstPending = pendingLeaves[0]
+            const applicantName = firstPending?.userName || firstPending?.name || 'Staff Member'
+            const applicantRole = firstPending?.department || firstPending?.role || 'Staff Member'
+            const leaveDateRange = `${firstPending.startDate || ''} – ${firstPending.endDate || ''}`
+            const leaveId = firstPending?.id
 
-          return (
-            <div className="swl-admin-leave-card">
-              <div className="swl-admin-leave-top">
-                <div className="swl-admin-leave-user">
-                  <UserAvatar
-                    name={applicantName}
-                    photoURL={firstPending?.userPhotoURL}
-                    size={44}
-                    fontSize="1.1rem"
-                    border="2px solid #F1F5F9"
-                  />
-                  <div>
-                    <h4 className="swl-admin-leave-name">{applicantName}</h4>
-                    <p className="swl-admin-leave-role">{applicantRole}</p>
-                    <div className="swl-admin-leave-dates">📅 {leaveDateRange}</div>
+            return (
+              <div className="swl-admin-leave-card">
+                <div className="swl-admin-leave-top">
+                  <div className="swl-admin-leave-user">
+                    <UserAvatar
+                      name={applicantName}
+                      photoURL={firstPending?.userPhotoURL}
+                      size={44}
+                      fontSize="1.1rem"
+                      border="2px solid #F1F5F9"
+                    />
+                    <div>
+                      <h4 className="swl-admin-leave-name">{applicantName}</h4>
+                      <p className="swl-admin-leave-role">{applicantRole}</p>
+                      <div className="swl-admin-leave-dates">📅 {leaveDateRange}</div>
+                    </div>
                   </div>
+                  <span className="swl-admin-leave-pending-badge">Pending</span>
                 </div>
-                <span className="swl-admin-leave-pending-badge">Pending</span>
-              </div>
 
-              <div className="swl-admin-leave-actions">
-                <button
-                  type="button"
-                  className="swl-admin-btn-approve"
-                  onClick={() => {
-                    if (leaveId) {
-                      handleQuickReviewLeave(leaveId, 'approved')
-                    } else {
-                      onNavigate('adm_approvals')
-                    }
-                  }}
-                >
-                  ✓ Approve
-                </button>
-                <button
-                  type="button"
-                  className="swl-admin-btn-reject"
-                  onClick={() => {
-                    if (leaveId) {
-                      handleQuickReviewLeave(leaveId, 'rejected')
-                    } else {
-                      onNavigate('adm_approvals')
-                    }
-                  }}
-                >
-                  ✕ Reject
-                </button>
+                <div className="swl-admin-leave-actions">
+                  <button
+                    type="button"
+                    className="swl-admin-btn-approve"
+                    onClick={() => {
+                      if (leaveId) {
+                        handleQuickReviewLeave(leaveId, 'approved')
+                      } else {
+                        onNavigate('adm_approvals')
+                      }
+                    }}
+                  >
+                    ✓ Approve
+                  </button>
+                  <button
+                    type="button"
+                    className="swl-admin-btn-reject"
+                    onClick={() => {
+                      if (leaveId) {
+                        handleQuickReviewLeave(leaveId, 'rejected')
+                      } else {
+                        onNavigate('adm_approvals')
+                      }
+                    }}
+                  >
+                    ✕ Reject
+                  </button>
+                </div>
               </div>
-            </div>
-          )
-        })()}
+            )
+          })()
+        )}
 
-        {/* Recent Activity Section (Matching Right Phone) */}
+        {/* Recent Activity Section */}
         <div className="swl-exact-section-title-row">
           <span className="swl-exact-section-title">Recent Activity</span>
           <span className="swl-exact-see-all" onClick={() => onNavigate('adm_reports')}>
@@ -5891,33 +6147,119 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
           </span>
         </div>
 
-        {(() => {
-          const latestPunch = todayPunches.length > 0 ? todayPunches[todayPunches.length - 1] : null
-          const punchName = latestPunch?.name || 'Rahul Verma'
-          const punchTimeStr = latestPunch?.checkInTime ? formatTime(latestPunch.checkInTime) : '2 mins ago'
-          return (
-            <div
-              className="swl-exact-activity-box"
-              onClick={() => onNavigate('adm_reports')}
-              style={{ cursor: 'pointer', marginBottom: 20 }}
-            >
-              <div className="swl-exact-activity-left">
-                <div className="swl-exact-check-circle">✓</div>
-                <div>
-                  <h4 className="swl-exact-activity-title">
-                    {punchName} checked in
-                  </h4>
-                  <p className="swl-exact-activity-sub">
-                    {punchTimeStr}
-                  </p>
+        {todayPunches.length === 0 ? (
+          <div style={{
+            background: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            borderRadius: 16,
+            padding: '16px 20px',
+            margin: '0 16px 16px',
+            textAlign: 'center',
+            color: '#64748B'
+          }}>
+            <div style={{ fontSize: '1.4rem', marginBottom: 4 }}>⏱️</div>
+            <div style={{ fontWeight: 700, color: '#1E293B', fontSize: '0.82rem' }}>No Punches Recorded Yet Today</div>
+            <div style={{ fontSize: '0.72rem', marginTop: 2 }}>Staff check-in and check-out punches will appear here in real-time.</div>
+          </div>
+        ) : (
+          (() => {
+            const latestPunch = todayPunches[todayPunches.length - 1]
+            const punchName = latestPunch?.name || 'Staff Member'
+            const isOut = Boolean(latestPunch?.checkOutTime)
+            const punchTimeStr = isOut
+              ? `checked out at ${formatTime(latestPunch.checkOutTime)}`
+              : `checked in at ${formatTime(latestPunch.checkInTime)}`
+            const punchLate = getAttendanceLateInfo(latestPunch, officeTiming)
+
+            return (
+              <div
+                className="swl-exact-activity-box"
+                onClick={() => onNavigate('adm_reports')}
+                style={{ cursor: 'pointer', marginBottom: 16 }}
+              >
+                <div className="swl-exact-activity-left">
+                  <div className="swl-exact-check-circle" style={{ background: isOut ? '#EFF6FF' : '#DCFCE7', color: isOut ? '#2563EB' : '#16A34A', border: isOut ? '1px solid #BFDBFE' : '1px solid #BBF7D0' }}>
+                    {isOut ? '➔' : '✓'}
+                  </div>
+                  <div>
+                    <h4 className="swl-exact-activity-title">
+                      {punchName} {punchTimeStr}
+                    </h4>
+                    <p className="swl-exact-activity-sub">
+                      {punchLate.isLate ? `Marked Late (+${punchLate.lateText})` : 'On Time'}
+                      {latestPunch.checkInLocation?.address ? ` • ${latestPunch.checkInLocation.address}` : ''}
+                    </p>
+                  </div>
+                </div>
+                <div className="swl-exact-map-thumb" style={{ background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
+                  📍
                 </div>
               </div>
-              <div className="swl-exact-map-thumb" style={{ background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
-                📍
-              </div>
+            )
+          })()
+        )}
+
+        {/* Live Staff Punches Feed for Today */}
+        {todayPunches.length > 0 && (
+          <div style={{ margin: '0 16px 20px 16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: '0.86rem', fontWeight: 800, color: '#0F172A' }}>
+                Today's Staff Punches ({todayPunches.length})
+              </span>
+              <span style={{ fontSize: '0.72rem', color: '#1E5AE6', fontWeight: 700, cursor: 'pointer' }} onClick={() => onNavigate('adm_reports')}>
+                Full Log ➔
+              </span>
             </div>
-          )
-        })()}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {todayPunches.slice(-5).reverse().map((p) => {
+                const lateInfo = getAttendanceLateInfo(p, officeTiming)
+                return (
+                  <div
+                    key={p.id || p.uid}
+                    style={{
+                      background: '#FFFFFF',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: 14,
+                      padding: '10px 12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                      <UserAvatar name={p.name || 'Employee'} photoURL={p.userPhotoURL} size={36} fontSize="0.9rem" />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: '0.80rem', fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {p.name || 'Employee'}
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span>In: <strong>{p.checkInTime ? formatTime(p.checkInTime) : '--'}</strong></span>
+                          <span>Out: <strong>{p.checkOutTime ? formatTime(p.checkOutTime) : '--'}</strong></span>
+                          {lateInfo.isLate && (
+                            <span style={{ color: '#D97706', fontWeight: 700 }}>Late (+{lateInfo.lateText})</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <SelfiePairThumbs
+                        inUrl={p.checkInSelfieUrl || p.checkInPhotoUrl || p.selfieUrl}
+                        outUrl={p.checkOutSelfieUrl || p.checkOutPhotoUrl}
+                        onViewSelfie={onViewSelfie}
+                        date={p.date}
+                        name={p.name}
+                        size={32}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Admin Quick Action Pills for Manual Punch & WhatsApp Report */}
         <div style={{ margin: '0 16px 20px 16px', display: 'flex', gap: 10 }}>
@@ -5981,6 +6323,10 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
         <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_approvals')}>
           <Icons.Leave active={false} />
           <span>Leaves</span>
+        </div>
+        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_reports')}>
+          <Icons.Reports active={false} />
+          <span>Reports</span>
         </div>
         <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={false} />
