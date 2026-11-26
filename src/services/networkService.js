@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp, Timestamp } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../firebase'
 
 export const STORAGE_KEY_OFFICE_GEOFENCE = 'punch_office_geofence_settings'
@@ -338,9 +338,10 @@ export const STORAGE_KEY_OFFICE_TIMING = 'punch_office_timing_settings'
 
 export const DEFAULT_OFFICE_TIMING = {
   startTime: '09:00', // 24-hr format (09:00 AM)
-  endTime: '18:00',   // 24-hr format (06:00 PM)
+  endTime: '17:30',   // 24-hr format (05:30 PM) - Office shift end & auto punchout time
   graceMinutes: 30,   // Grace period in minutes (e.g. up to 09:30 AM before marked late)
   workDays: 'Mon – Sat', // 'Mon – Sat', 'Mon – Fri', 'All 7 Days'
+  autoCheckout: true, // Auto punch out at 5:30 PM
   updatedAt: null,
   updatedBy: null
 }
@@ -373,6 +374,7 @@ export function getLocalOfficeTiming() {
         endTime: parsed.endTime || DEFAULT_OFFICE_TIMING.endTime,
         graceMinutes: parsed.graceMinutes != null ? Number(parsed.graceMinutes) : DEFAULT_OFFICE_TIMING.graceMinutes,
         workDays: parsed.workDays || DEFAULT_OFFICE_TIMING.workDays,
+        autoCheckout: parsed.autoCheckout != null ? Boolean(parsed.autoCheckout) : true,
         updatedAt: parsed.updatedAt || null,
         updatedBy: parsed.updatedBy || null
       }
@@ -409,6 +411,7 @@ export function subscribeOfficeTimingConfig(callback) {
           endTime: data.endTime || DEFAULT_OFFICE_TIMING.endTime,
           graceMinutes: data.graceMinutes != null ? Number(data.graceMinutes) : DEFAULT_OFFICE_TIMING.graceMinutes,
           workDays: data.workDays || DEFAULT_OFFICE_TIMING.workDays,
+          autoCheckout: data.autoCheckout != null ? Boolean(data.autoCheckout) : true,
           updatedAt: data.updatedAt || null,
           updatedBy: data.updatedBy || null
         }
@@ -433,12 +436,13 @@ export function subscribeOfficeTimingConfig(callback) {
 /**
  * Save office timing configuration to Firestore and localStorage (Admin only)
  */
-export async function saveOfficeTimingConfig({ startTime, endTime, graceMinutes, workDays, updatedBy }) {
+export async function saveOfficeTimingConfig({ startTime, endTime, graceMinutes, workDays, autoCheckout = true, updatedBy }) {
   const payload = {
     startTime: startTime || '09:00',
-    endTime: endTime || '18:00',
+    endTime: endTime || '17:30',
     graceMinutes: graceMinutes != null ? Number(graceMinutes) : 30,
     workDays: workDays || 'Mon – Sat',
+    autoCheckout: Boolean(autoCheckout),
     updatedAt: new Date().toISOString(),
     updatedBy: updatedBy || 'Admin'
   }
@@ -461,6 +465,79 @@ export async function saveOfficeTimingConfig({ startTime, endTime, graceMinutes,
     )
   }
   return payload
+}
+
+/**
+ * Auto Punch-Out Resolver (5:30 PM cutoff):
+ * If an employee checked in but forgot to punch out:
+ * - On any past day (e.g. yesterday or earlier), OR
+ * - Today once the clock reaches 5:30 PM (or configured shift endTime),
+ * automatically marks checkOutTime at 5:30 PM with completed/late status.
+ *
+ * Per user instruction: No tags, no badges - just plain, standard checkout identical to a manual punchout!
+ */
+export async function autoResolveRecordIfPastShiftEnd(record, officeTiming) {
+  if (!record || !record.id || !record.checkInTime || record.checkOutTime) {
+    return false
+  }
+  if (!isFirebaseConfigured || !db) return false
+
+  const timing = officeTiming || liveOfficeTiming || getLocalOfficeTiming() || DEFAULT_OFFICE_TIMING
+  const endTimeStr = timing?.endTime || '17:30' // 5:30 PM default
+  const parts = String(endTimeStr).split(':')
+  const endH = parseInt(parts[0], 10)
+  const endM = parseInt(parts[1], 10)
+  const cutoffH = isNaN(endH) ? 17 : endH
+  const cutoffM = isNaN(endM) ? 30 : endM
+  const cutoffTotalMinutes = cutoffH * 60 + cutoffM
+
+  const now = new Date()
+  const todayKeyStr = now.toLocaleDateString('en-CA') // YYYY-MM-DD
+  const currentTotalMinutes = now.getHours() * 60 + now.getMinutes()
+
+  const isPastDay = Boolean(record.date && record.date < todayKeyStr)
+  const isTodayPastCutoff = Boolean(record.date === todayKeyStr && currentTotalMinutes >= cutoffTotalMinutes)
+
+  if (isPastDay || isTodayPastCutoff) {
+    try {
+      const dateParts = String(record.date || todayKeyStr).split('-').map(Number)
+      const year = dateParts[0]
+      const month = dateParts[1]
+      const day = dateParts[2]
+      const outDate = new Date(year, month - 1, day, cutoffH, cutoffM, 0)
+      const outTimestamp = Timestamp.fromDate(outDate)
+
+      const docRef = doc(db, 'attendance', record.id)
+      await updateDoc(docRef, {
+        checkOutTime: outTimestamp,
+        checkOutPhotoUrl: record.checkOutPhotoUrl || record.checkInSelfieUrl || record.selfieUrl || null,
+        checkOutSelfieUrl: record.checkOutSelfieUrl || record.checkInSelfieUrl || record.selfieUrl || null,
+        checkOutLocation: record.checkOutLocation || record.checkInLocation || null,
+        status: (record.isLate || record.status === 'late') ? 'late' : 'completed',
+        updatedAt: serverTimestamp()
+      })
+      return true
+    } catch (err) {
+      console.warn('Auto punch-out update warning:', err)
+      return false
+    }
+  }
+  return false
+}
+
+/**
+ * Auto-resolve an array of attendance records in bulk
+ */
+export async function autoResolveMissingPunchOuts(records = [], officeTiming) {
+  if (!Array.isArray(records) || records.length === 0) return 0
+  let resolvedCount = 0
+  for (const r of records) {
+    if (r?.checkInTime && !r?.checkOutTime) {
+      const didResolve = await autoResolveRecordIfPastShiftEnd(r, officeTiming)
+      if (didResolve) resolvedCount++
+    }
+  }
+  return resolvedCount
 }
 
 /**

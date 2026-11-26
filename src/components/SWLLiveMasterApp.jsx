@@ -11,6 +11,7 @@ import {
   doc,
   setDoc,
   deleteDoc,
+  getDocs,
   serverTimestamp,
   Timestamp
 } from 'firebase/firestore'
@@ -121,7 +122,9 @@ import {
   DEFAULT_OFFICE_TIMING,
   checkIsPunchLate,
   getAttendanceLateInfo,
-  getLocalOfficeTiming
+  getLocalOfficeTiming,
+  autoResolveRecordIfPastShiftEnd,
+  autoResolveMissingPunchOuts
 } from '../services/networkService'
 
 const DEFAULT_AVATARS = {
@@ -886,6 +889,54 @@ export default function SWLLiveMasterApp() {
       if (unsubTiming) unsubTiming()
     }
   }, [])
+
+  // Auto Punch-Out Background Resolver (5:30 PM cutoff):
+  // Automatically punches out any employee who checked in but forgot to punch out (at 5:30 PM)
+  useEffect(() => {
+    if (!isFirebaseConfigured || !db || !user?.uid) return
+    let cancelled = false
+
+    async function checkAutoPunchOut() {
+      if (cancelled) return
+      try {
+        const todayKey = todayDateKey()
+        // 1. Check current user's attendance records for past days or today
+        const qUser = query(
+          collection(db, 'attendance'),
+          where('uid', '==', user.uid),
+          where('date', '<=', todayKey)
+        )
+        const snapUser = await getDocs(qUser)
+        if (!snapUser.empty && !cancelled) {
+          const list = snapUser.docs.map(d => ({ id: d.id, ...d.data() }))
+          await autoResolveMissingPunchOuts(list, officeTiming)
+        }
+
+        // 2. If user is Admin, also scan team punches for today
+        if (isAdmin) {
+          const qTeam = query(
+            collection(db, 'attendance'),
+            where('date', '==', todayKey)
+          )
+          const snapTeam = await getDocs(qTeam)
+          if (!snapTeam.empty && !cancelled) {
+            const teamList = snapTeam.docs.map(d => ({ id: d.id, ...d.data() }))
+            await autoResolveMissingPunchOuts(teamList, officeTiming)
+          }
+        }
+      } catch (err) {
+        console.warn('Auto punch-out check error:', err)
+      }
+    }
+
+    checkAutoPunchOut()
+    const timerId = setInterval(checkAutoPunchOut, 30000)
+
+    return () => {
+      cancelled = true
+      clearInterval(timerId)
+    }
+  }, [user?.uid, isAdmin, officeTiming])
 
   const SCREEN_PATH_MAP = {
     emp_home: '/',
@@ -1803,7 +1854,11 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
     const unsubToday = onSnapshot(todayQ, (snap) => {
       if (!active) return
       if (!snap.empty) {
-        setTodayRecord({ id: snap.docs[0].id, ...snap.docs[0].data() })
+        const docData = { id: snap.docs[0].id, ...snap.docs[0].data() }
+        setTodayRecord(docData)
+        if (docData.checkInTime && !docData.checkOutTime) {
+          autoResolveRecordIfPastShiftEnd(docData, officeTiming)
+        }
       } else {
         setTodayRecord(null)
       }
@@ -1858,9 +1913,14 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
     return monthlyRecords.filter(r => getAttendanceLateInfo(r, officeTiming).isLate).length
   }, [monthlyRecords, officeTiming])
 
+  const nowMins = new Date().getHours() * 60 + new Date().getMinutes()
+  const [endH, endM] = (officeTiming?.endTime || '17:30').split(':').map(Number)
+  const cutoffMins = (isNaN(endH) ? 17 : endH) * 60 + (isNaN(endM) ? 30 : endM)
+  const isPastShiftEnd = nowMins >= cutoffMins
+
   const attendanceRate = effectiveWorkingDays > 0 ? Math.round((presentCount / effectiveWorkingDays) * 100) : 0
   const isPresentToday = Boolean(todayRecord?.checkInTime)
-  const isCheckedOutToday = Boolean(todayRecord?.checkOutTime)
+  const isCheckedOutToday = Boolean(todayRecord?.checkOutTime) || (isPresentToday && isPastShiftEnd)
   const todayLate = useMemo(() => {
     return getAttendanceLateInfo(todayRecord, officeTiming)
   }, [todayRecord, officeTiming])
@@ -2070,11 +2130,11 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
           <div className="swl-hero-hours" style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '4px 0 0 0' }}>
             <div style={{ fontSize: '0.80rem', color: '#334155', fontWeight: 600, wordBreak: 'break-word' }}>
               {isPresentToday
-                ? `Punch Time: In ${formatTime(todayRecord.checkInTime)}${isCheckedOutToday ? ` • Out ${formatTime(todayRecord.checkOutTime)}` : ' (Ongoing)'}`
-                : `Working Hours: ${formatTime24to12(officeTiming?.startTime || '09:00')} - ${formatTime24to12(officeTiming?.endTime || '18:00')}`}
+                ? `Punch Time: In ${formatTime(todayRecord.checkInTime)}${isCheckedOutToday ? ` • Out ${formatTime(todayRecord?.checkOutTime || new Date(`${todayKey}T17:30:00`))}` : ' (Ongoing)'}`
+                : `Working Hours: ${formatTime24to12(officeTiming?.startTime || '09:00')} - ${formatTime24to12(officeTiming?.endTime || '17:30')}`}
             </div>
             <div style={{ fontSize: '0.70rem', color: '#1E5AE6', fontWeight: 700, wordBreak: 'break-word', lineHeight: 1.4 }}>
-              ⏰ Office Shift: {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '18:00')} • Late after {officeCutoffStr}
+              ⏰ Office Shift: {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '17:30')} • Late after {officeCutoffStr}
             </div>
           </div>
 
@@ -2156,7 +2216,7 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
             </div>
             <div className="swl-punch-title">Check Out</div>
             <div className={`swl-punch-sub ${isCheckedOutToday ? 'done' : 'pending'}`}>
-              {isCheckedOutToday ? `${formatTime(todayRecord.checkOutTime)} Done` : (isPresentToday ? 'Tap to Punch Out' : 'Not Yet')}
+              {isCheckedOutToday ? `${formatTime(todayRecord?.checkOutTime || new Date(`${todayKey}T17:30:00`))} Done` : (isPresentToday ? 'Tap to Punch Out' : 'Not Yet')}
             </div>
           </div>
         </div>
@@ -2344,16 +2404,25 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
     )
     const unsub = onSnapshot(q, (snap) => {
       if (!snap.empty) {
-        setTodayDoc({ id: snap.docs[0].id, ...snap.docs[0].data() })
+        const docData = { id: snap.docs[0].id, ...snap.docs[0].data() }
+        setTodayDoc(docData)
+        if (docData.checkInTime && !docData.checkOutTime) {
+          autoResolveRecordIfPastShiftEnd(docData, officeTiming)
+        }
       } else {
         setTodayDoc(null)
       }
     })
     return () => unsub()
-  }, [user?.uid, todayKey])
+  }, [user?.uid, todayKey, officeTiming])
+
+  const nowMins = new Date().getHours() * 60 + new Date().getMinutes()
+  const [endH, endM] = (officeTiming?.endTime || '17:30').split(':').map(Number)
+  const cutoffMins = (isNaN(endH) ? 17 : endH) * 60 + (isNaN(endM) ? 30 : endM)
+  const isPastCutoff = nowMins >= cutoffMins
 
   const hasCheckedIn = Boolean(todayDoc?.checkInTime)
-  const hasCheckedOut = Boolean(todayDoc?.checkOutTime)
+  const hasCheckedOut = Boolean(todayDoc?.checkOutTime) || (hasCheckedIn && isPastCutoff)
   const isShiftDone = hasCheckedIn && hasCheckedOut
   const isShiftActive = hasCheckedIn && !hasCheckedOut
   const isCheckout = isShiftActive && (punchMode === 'checkout' || checkoutMode)
@@ -3486,10 +3555,11 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
       setAttendanceRecords(docs)
       const t = docs.find(d => d.date === todayKey)
       setTodayRecord(t || null)
+      autoResolveMissingPunchOuts(docs, officeTiming)
     })
 
     return () => unsub()
-  }, [user?.uid, monthStr, todayKey])
+  }, [user?.uid, monthStr, todayKey, officeTiming])
 
   // Fetch Team attendance records & users list for selected date
   useEffect(() => {
@@ -3501,7 +3571,9 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
     )
 
     const unsubAtt = onSnapshot(qAtt, (snap) => {
-      setTeamRecords(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      setTeamRecords(docs)
+      autoResolveMissingPunchOuts(docs, officeTiming)
     })
 
     const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
@@ -5278,7 +5350,7 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
               {/* Company Admin Support Info */}
               <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12, padding: '10px 12px', fontSize: '0.7rem', color: '#64748B' }}>
                 <div style={{ fontWeight: 800, color: '#0F172A', marginBottom: 2 }}>🏢 Softwind Labs Corporate Helpdesk</div>
-                <div>Office Hours: {officeTiming?.workDays || 'Mon–Sat'}, {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '18:00')} IST</div>
+                <div>Office Hours: {officeTiming?.workDays || 'Mon–Sat'}, {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '17:30')} IST</div>
                 <div>Urgent Helpline: +91 (011) 4567-8900</div>
               </div>
             </div>
@@ -5478,7 +5550,7 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
                 </h4>
                 <div style={{ fontSize: '0.74rem', color: '#475569', lineHeight: 1.6 }}>
                   <div>• <strong>Allowed Radius:</strong> {officeConfig?.radiusMeters || 100} meters around headquarters</div>
-                  <div>• <strong>Office Working Hours:</strong> {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '18:00')} IST ({officeTiming?.workDays || 'Mon–Sat'})</div>
+                  <div>• <strong>Office Working Hours:</strong> {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '17:30')} IST ({officeTiming?.workDays || 'Mon–Sat'})</div>
                   <div>• <strong>Grace Time:</strong> {officeTiming?.graceMinutes != null ? officeTiming.graceMinutes : 30} minutes grace period</div>
                   <div>• <strong>Verification Mode:</strong> Live Face Selfie + GPS Validation</div>
                 </div>
@@ -5562,6 +5634,7 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
       const workerRecords = records.filter(r => !isUserAdmin(r))
       setTodayPunches(workerRecords)
       setPresentEmployees(workerRecords.length)
+      autoResolveMissingPunchOuts(workerRecords, officeTiming)
     })
 
     const qLeaves = query(collection(db, 'leaves'), where('status', '==', 'pending'))
@@ -5574,7 +5647,7 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
       unsubAtt()
       unsubLeaves()
     }
-  }, [todayKey])
+  }, [todayKey, officeTiming])
 
   const absentEmployees = Math.max(0, totalEmployees - presentEmployees)
   const presentPct = totalEmployees > 0 ? Math.round((presentEmployees / totalEmployees) * 100) : 0
@@ -8993,7 +9066,7 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
                     <div>
                       <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#0F172A' }}>Office Timings & Shift Hours</span>
                       <span style={{ display: 'block', fontSize: '0.64rem', color: '#D97706', fontWeight: 600 }}>
-                        {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '18:00')} ({officeTiming?.graceMinutes != null ? officeTiming.graceMinutes : 30}m grace)
+                        {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '17:30')} ({officeTiming?.graceMinutes != null ? officeTiming.graceMinutes : 30}m grace)
                       </span>
                     </div>
                   </div>
@@ -9604,7 +9677,7 @@ function LiveGeofenceModal({ officeConfig, onClose, adminName }) {
    ========================================================================= */
 function LiveOfficeTimingModal({ officeTiming, onClose, adminName }) {
   const [startTime, setStartTime] = useState(officeTiming?.startTime || '09:00')
-  const [endTime, setEndTime] = useState(officeTiming?.endTime || '18:00')
+  const [endTime, setEndTime] = useState(officeTiming?.endTime || '17:30')
   const [graceMinutes, setGraceMinutes] = useState(officeTiming?.graceMinutes != null ? officeTiming.graceMinutes : 30)
   const [workDays, setWorkDays] = useState(officeTiming?.workDays || 'Mon – Sat')
   const [saving, setSaving] = useState(false)
@@ -9731,7 +9804,7 @@ function LiveOfficeTimingModal({ officeTiming, onClose, adminName }) {
 
             <div>
               <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 4 }}>
-                Shift End
+                Shift End (Auto Punch-Out)
               </label>
               <input
                 type="time"
@@ -9749,8 +9822,8 @@ function LiveOfficeTimingModal({ officeTiming, onClose, adminName }) {
                   background: '#F8FAFC'
                 }}
               />
-              <span style={{ fontSize: '0.64rem', color: '#1E5AE6', fontWeight: 800, marginTop: 3, display: 'block' }}>
-                {formatTime24to12(endTime)}
+              <span style={{ fontSize: '0.64rem', color: '#10B981', fontWeight: 800, marginTop: 3, display: 'block' }}>
+                {formatTime24to12(endTime)} • Auto Punch-Out
               </span>
             </div>
           </div>

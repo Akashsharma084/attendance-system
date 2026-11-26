@@ -330,7 +330,12 @@ export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo
 
     if (existing) {
       presentCount++
-      if (existing.checkOutTime) fullDaysCount++
+      const now = new Date()
+      const todayKey = todayDateKey(now)
+      const isPastCutoff = existing.date < todayKey || (existing.date === todayKey && (now.getHours() * 60 + now.getMinutes()) >= (17 * 60 + 30))
+      const effectiveCheckOut = existing.checkOutTime || (isPastCutoff ? new Date(`${existing.date}T17:30:00`) : null)
+
+      if (effectiveCheckOut) fullDaysCount++
       return {
         id: existing.id || `rec-${day.date}`,
         date: day.date,
@@ -341,12 +346,12 @@ export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo
         name: existing.name || employeeInfo.name || 'Employee',
         uid: existing.uid || employeeInfo.uid,
         checkInTime: existing.checkInTime,
-        checkOutTime: existing.checkOutTime,
+        checkOutTime: effectiveCheckOut,
         checkInSelfieUrl: existing.checkInSelfieUrl || null,
         checkInLocation: existing.checkInLocation || null,
         checkOutSelfieUrl: existing.checkOutSelfieUrl || null,
         checkOutLocation: existing.checkOutLocation || null,
-        isComplete: Boolean(existing.checkOutTime)
+        isComplete: Boolean(effectiveCheckOut)
       }
     } else if (holiday) {
       holidayCount++
