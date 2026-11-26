@@ -64,61 +64,6 @@ export function WhatsAppIcon({ size = 20, color = 'currentColor' }) {
 const Icons = {
   ...BaseIcons,
   WhatsApp: WhatsAppIcon,
-  Home: ({ active }) => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 0 : 2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 10.5L12 3l9 7.5V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9.5z"/>
-      <polyline points="9 22 9 13 15 13 15 22"/>
-    </svg>
-  ),
-  Attendance: ({ active }) => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.3 : 1.9} strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="18" rx="3" ry="3"/>
-      <line x1="16" y1="2" x2="16" y2="6"/>
-      <line x1="8" y1="2" x2="8" y2="6"/>
-      <line x1="3" y1="10" x2="21" y2="10"/>
-      <path d="M9 16l2 2 4-4" stroke={active ? '#1E5AE6' : 'currentColor'} strokeWidth="2.2"/>
-    </svg>
-  ),
-  Leave: ({ active }) => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 0 : 2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
-    </svg>
-  ),
-  Profile: ({ active }) => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 0 : 2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-      <circle cx="12" cy="7" r="4"/>
-    </svg>
-  ),
-  Dashboard: ({ active }) => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 0 : 2} strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7" rx="1.5"/>
-      <rect x="14" y="3" width="7" height="7" rx="1.5"/>
-      <rect x="14" y="14" width="7" height="7" rx="1.5"/>
-      <rect x="3" y="14" width="7" height="7" rx="1.5"/>
-    </svg>
-  ),
-  Employees: ({ active }) => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.3 : 1.9} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-      <circle cx="9" cy="7" r="4"/>
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-    </svg>
-  ),
-  Reports: ({ active }) => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.3 : 1.9} strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="20" x2="18" y2="10"/>
-      <line x1="12" y1="20" x2="12" y2="4"/>
-      <line x1="6" y1="20" x2="6" y2="14"/>
-    </svg>
-  ),
-  Bell: () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-    </svg>
-  ),
   Theme: ({ active }) => (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.5 : 2} strokeLinecap="round" strokeLinejoin="round">
       <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
@@ -1988,40 +1933,6 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
     return getAttendanceLateInfo(todayRecord, officeTiming)
   }, [todayRecord, officeTiming])
 
-  // Live real-time ticking clock (updates every second)
-  const [liveDate, setLiveDate] = useState(() => new Date())
-  useEffect(() => {
-    const timer = setInterval(() => setLiveDate(new Date()), 1000)
-    return () => clearInterval(timer)
-  }, [])
-
-  // Dynamic ticking clock display values
-  const clockDisplay = useMemo(() => {
-    let hours = liveDate.getHours()
-    const minutes = String(liveDate.getMinutes()).padStart(2, '0')
-    const seconds = String(liveDate.getSeconds()).padStart(2, '0')
-    const ampm = hours >= 12 ? 'PM' : 'AM'
-    hours = hours % 12
-    hours = hours ? hours : 12
-    return {
-      hours: String(hours).padStart(2, '0'),
-      minutes,
-      seconds,
-      ampm
-    }
-  }, [liveDate])
-
-  // Live stopwatch when user is checked in and working
-  const elapsedWorkingTime = useMemo(() => {
-    if (!todayRecord?.checkInTime) return '00h 00m 00s'
-    const inDate = todayRecord.checkInTime.toDate ? todayRecord.checkInTime.toDate() : new Date(todayRecord.checkInTime)
-    const diff = Math.max(0, liveDate.getTime() - inDate.getTime())
-    const hrs = Math.floor(diff / 3600000)
-    const mins = Math.floor((diff % 3600000) / 60000)
-    const secs = Math.floor((diff % 60000) / 1000)
-    return `${String(hrs).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`
-  }, [todayRecord?.checkInTime, liveDate])
-
   // Greeting based on hour
   const greeting = useMemo(() => {
     const hr = new Date().getHours()
@@ -2041,306 +1952,395 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
   }, [])
 
   const dayOfWeek = useMemo(() => {
-    return new Date().toLocaleDateString('en-US', { weekday: 'long' })
+    return new Date().toLocaleDateString('en-US', { weekday: 'Friday' ? 'long' : 'short' })
   }, [])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="swl-home-viewport no-scrollbar swl-exact-screen-body" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', position: 'relative' }}>
-        {/* Flowing curved organic blue wave background at top */}
-        <div className="swl-exact-top-wave-bg" />
-
-        {/* Header matching Left Phone in Screenshot */}
-        <div className="swl-exact-user-header">
-          <div>
-            <p className="swl-exact-greeting-sub">{greeting} 👋</p>
-            <h2 className="swl-exact-user-name">{employeeName}</h2>
-            <p className="swl-exact-user-role">{employeeRole}</p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              className="swl-exact-bell-badge-btn"
-              onClick={() => setShowNotifModal(true)}
-              title="Team Arrival Alerts & Activity"
-            >
-              <Icons.Bell />
-              {unreadCount > 0 && (
-                <span className="swl-exact-bell-count">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </div>
-            <div
-              className="swl-exact-avatar-wrap"
+      <div className="swl-home-viewport no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        {/* User Header */}
+        <div className="swl-user-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <UserAvatar
+              name={employeeName}
+              photoURL={profile?.photoURL || user?.photoURL}
+              size={44}
+              fontSize="1.15rem"
+              border="2px solid #1E5AE6"
               onClick={() => onNavigate('emp_profile')}
               title="Click to view profile & upload photo"
-            >
-              <UserAvatar
-                name={employeeName}
-                photoURL={profile?.photoURL || user?.photoURL}
-                size={44}
-                fontSize="1.15rem"
-                border="2px solid #FFFFFF"
-              />
-              <span
-                className="active-dot"
-                style={{
-                  background: isPresentToday ? '#10B981' : '#CBD5E1',
-                  animation: isPresentToday ? 'liveBeaconGlow 2s infinite' : 'none'
-                }}
-              />
+            />
+            <div>
+              <p className="swl-user-info-greeting">{greeting}</p>
+              <h3 className="swl-user-info-name">{employeeName} 👋</h3>
+              <p className="swl-user-info-role">{employeeRole}</p>
             </div>
+          </div>
+          <div
+            className="swl-bell-btn"
+            style={{ position: 'relative', cursor: 'pointer' }}
+            onClick={() => setShowNotifModal(true)}
+            title="Team Arrival Alerts & Activity"
+          >
+            <Icons.Bell />
+            {unreadCount > 0 && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: -3,
+                  right: -3,
+                  background: '#EF4444',
+                  color: '#FFFFFF',
+                  fontSize: '0.58rem',
+                  fontWeight: 800,
+                  borderRadius: 999,
+                  minWidth: 16,
+                  height: 16,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 3px',
+                  border: '2px solid #FFFFFF'
+                }}
+              >
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Hero Attendance Card (Deep Navy / Blue Gradient matching Left Phone) */}
-        <div className="swl-exact-hero-card">
-          <div className="swl-exact-hero-header">
-            <span className="swl-exact-hero-title">Today's Attendance</span>
-            <span className={`swl-exact-status-pill ${isPresentToday ? (isCheckedOutToday ? 'present' : 'present') : 'pending'}`}>
-              {isPresentToday ? (isCheckedOutToday ? 'Shift Completed' : 'Present') : 'Not Checked In'}
+        {/* Pop-up Notification Permission Card */}
+        {pushPermission !== 'granted' && pushPermission !== 'unsupported' && typeof window !== 'undefined' && 'Notification' in window && (
+          <div
+            style={{
+              margin: '0 16px 10px 16px',
+              background: 'linear-gradient(135deg, #EEF4FF 0%, #E0E7FF 100%)',
+              border: '1.5px solid #BFDBFE',
+              borderRadius: 14,
+              padding: '10px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              boxShadow: '0 2px 8px rgba(30, 90, 230, 0.08)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+              <img
+                src="/softwind-logo.png"
+                alt="Softwind Labs Logo"
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 6,
+                  objectFit: 'contain',
+                  background: '#FFFFFF',
+                  padding: '2px',
+                  border: '1px solid #BFDBFE'
+                }}
+              />
+              <div>
+                <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#1E293B' }}>
+                  Enable Pop-up Alerts
+                </div>
+                <div style={{ fontSize: '0.62rem', color: '#64748B' }}>
+                  Get real-time arrival alerts for Softwind Labs staff
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={requestPushPermission}
+              style={{
+                background: '#1E5AE6',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: 999,
+                padding: '6px 12px',
+                fontSize: '0.7rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Allow
+            </button>
+          </div>
+        )}
+
+        {/* Hero Attendance Card */}
+        <div className="swl-status-hero-card">
+          <div className="swl-status-hero-top">
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+              Today, {formattedToday}
             </span>
-          </div>
-
-          <div className="swl-exact-hero-middle">
-            <div>
-              <div className="swl-exact-hero-time">
-                {isPresentToday
-                  ? (todayRecord?.checkInTime ? formatTime(todayRecord.checkInTime) : '--:--')
-                  : `${clockDisplay.hours}:${clockDisplay.minutes}`}
-                <span className="ampm">{isPresentToday ? '' : clockDisplay.ampm}</span>
-              </div>
-              <div className="swl-exact-hero-sublabel">
-                {todayRecord?.checkOutTime
-                  ? `Checked Out at ${formatTime(todayRecord.checkOutTime)}`
-                  : (isPresentToday ? 'Checked In' : 'Shift Not Started')}
-              </div>
-              <div className="swl-exact-hero-hours">
-                Working Hours : {isPresentToday ? (elapsedWorkingTime.replace('00s', '').trim() || '0h 00m') : '0h 00m'}
-              </div>
-            </div>
-
-            {/* Glowing Concentric Circular Radar Checkmark Orb */}
-            <div
-              className={`swl-exact-radar-orb ${isPresentToday ? '' : 'pending'}`}
-              onClick={() => onNavigate('emp_checkin', true, { punchMode: isPresentToday && !isCheckedOutToday ? 'checkout' : 'checkin' })}
-              style={{ cursor: 'pointer' }}
-              title={isPresentToday && !isCheckedOutToday ? 'Tap to Check Out' : 'Tap to Check In'}
-            >
-              {isPresentToday ? '✓' : '➔'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.76rem', color: '#64748B', fontWeight: 600 }}>
+              <span>{dayOfWeek}</span>
+              <span style={{ color: '#94A3B8' }}>♡</span>
             </div>
           </div>
 
-          {/* Action Buttons: Check In AND Check Out Both Visible */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
-            <button
-              type="button"
-              className="swl-exact-hero-btn checkin-theme"
-              onClick={() => onNavigate('emp_checkin', true, { punchMode: 'checkin' })}
-              style={{
-                background: !isPresentToday
-                  ? 'linear-gradient(90deg, #10B981 0%, #059669 100%)'
-                  : 'rgba(255, 255, 255, 0.16)',
-                border: !isPresentToday ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.15)',
-                boxShadow: !isPresentToday ? '0 6px 20px rgba(16, 185, 129, 0.45)' : 'none',
-                padding: '11px 8px',
-                fontSize: '0.84rem'
-              }}
-            >
-              <span>➔</span> Check In
-            </button>
-
-            <button
-              type="button"
-              className="swl-exact-hero-btn checkout-theme"
-              onClick={() => onNavigate('emp_checkin', true, { punchMode: 'checkout' })}
-              style={{
-                background: isPresentToday && !todayRecord?.checkOutTime
-                  ? 'linear-gradient(90deg, #2563EB 0%, #3B82F6 100%)'
-                  : 'rgba(255, 255, 255, 0.16)',
-                border: isPresentToday && !todayRecord?.checkOutTime ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.15)',
-                boxShadow: isPresentToday && !todayRecord?.checkOutTime ? '0 6px 20px rgba(37, 99, 235, 0.45)' : 'none',
-                padding: '11px 8px',
-                fontSize: '0.84rem'
-              }}
-            >
-              <span>➔</span> Check Out
-            </button>
+          <div className="swl-status-hero-badge-row" style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0', flexWrap: 'wrap' }}>
+            {isPresentToday ? (
+              <>
+                <div
+                  className="swl-green-check-circle"
+                  style={{
+                    background: todayLate.isLate ? '#FEF3C7' : '#ECFDF5',
+                    color: todayLate.isLate ? '#D97706' : '#10B981',
+                    border: todayLate.isLate ? '1.5px solid #FDE68A' : '1.5px solid #A7F3D0',
+                    width: 30,
+                    height: 30,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '13px',
+                    fontWeight: 900,
+                    flexShrink: 0
+                  }}
+                >
+                  {todayLate.isLate ? '⏱️' : '✓'}
+                </div>
+                <span className="swl-hero-status-text" style={{ fontSize: '1.02rem', fontWeight: 800, color: todayLate.isLate ? '#B45309' : '#0F172A', wordBreak: 'break-word' }}>
+                  {isCheckedOutToday
+                    ? (todayLate.isLate ? `Shift Completed (Late${todayLate.lateText ? ' +' + todayLate.lateText : ''})` : 'Shift Completed')
+                    : (todayLate.isLate ? `You are Present (Late${todayLate.lateText ? ' +' + todayLate.lateText : ''})` : 'You are Present')}
+                </span>
+              </>
+            ) : (
+              <>
+                <div
+                  className="swl-green-check-circle"
+                  style={{
+                    background: '#FEF3C7',
+                    color: '#D97706',
+                    border: '1.5px solid #FDE68A',
+                    width: 30,
+                    height: 30,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '13px',
+                    flexShrink: 0
+                  }}
+                >
+                  ⏱️
+                </div>
+                <span className="swl-hero-status-text" style={{ fontSize: '1.02rem', fontWeight: 800, color: '#0F172A', wordBreak: 'break-word' }}>
+                  Not Checked In Yet
+                </span>
+              </>
+            )}
           </div>
 
-          {todayRecord?.checkInTime && todayRecord?.checkOutTime && (
+          <div className="swl-hero-hours" style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '4px 0 0 0' }}>
+            <div style={{ fontSize: '0.80rem', color: '#334155', fontWeight: 600, wordBreak: 'break-word' }}>
+              {isPresentToday
+                ? `Punch Time: In ${formatTime(todayRecord.checkInTime)}${isCheckedOutToday ? ` • Out ${formatTime(todayRecord?.checkOutTime || new Date(`${todayKey}T18:00:00`))}` : ' (Ongoing)'}`
+                : `Working Hours: ${formatTime24to12(officeTiming?.startTime || '09:00')} - ${formatTime24to12(officeTiming?.endTime || '18:00')}`}
+            </div>
+            <div style={{ fontSize: '0.70rem', color: '#1E5AE6', fontWeight: 700, wordBreak: 'break-word', lineHeight: 1.4 }}>
+              ⏰ Office Shift: {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '18:00')} • Late after {officeCutoffStr}
+            </div>
+          </div>
+
+          {/* Today's In/Out Verified Selfies */}
+          {isPresentToday && (
             <div style={{
               marginTop: 10,
-              textAlign: 'center',
-              padding: '8px 12px',
-              background: 'rgba(255, 255, 255, 0.12)',
-              borderRadius: 999,
-              fontSize: '0.74rem',
-              fontWeight: 800,
-              color: '#E0E7FF'
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderTop: '1px solid #F1F5F9',
+              paddingTop: 8
             }}>
-              ✓ Today's Shift Completed ({formatTime(todayRecord.checkInTime)} – {formatTime(todayRecord.checkOutTime)})
+              <span style={{ fontSize: '0.70rem', color: '#64748B', fontWeight: 700 }}>
+                Verified Punch Selfies:
+              </span>
+              <SelfiePairThumbs
+                inUrl={todayRecord?.checkInSelfieUrl || todayRecord?.checkInPhotoUrl || todayRecord?.selfieUrl}
+                outUrl={todayRecord?.checkOutSelfieUrl || todayRecord?.checkOutPhotoUrl}
+                onViewSelfie={onViewSelfie}
+                date={todayRecord?.date || todayKey}
+                name={employeeName}
+                inLoc={todayRecord?.checkInLocation}
+                outLoc={todayRecord?.checkOutLocation}
+                inTime={todayRecord?.checkInTime ? formatTime(todayRecord.checkInTime) : ''}
+                outTime={todayRecord?.checkOutTime ? formatTime(todayRecord.checkOutTime) : ''}
+                size={28}
+              />
             </div>
           )}
         </div>
 
-        {/* Dual Stats Row (Real Dynamic Database Counts) */}
-        <div className="swl-exact-stats-2col">
-          <div className="swl-exact-stat-box" onClick={() => onNavigate('emp_history')} style={{ cursor: 'pointer' }}>
-            <div className="swl-exact-stat-icon-wrap blue">
-              🕒
+        {/* 2 Quick Punch Cards */}
+        <div className="swl-punch-cards-row">
+          {/* Check In Card */}
+          <div
+            className="swl-punch-card"
+            style={{ cursor: isPresentToday ? 'default' : 'pointer' }}
+            onClick={() => {
+              if (isPresentToday) {
+                onNavigate('emp_checkin', true, { punchMode: 'status' })
+              } else {
+                onNavigate('emp_checkin', true, { punchMode: 'checkin' })
+              }
+            }}
+          >
+            <div className={`swl-punch-icon ${isPresentToday ? 'in' : 'in'}`}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
             </div>
-            <div>
-              <div className="swl-exact-stat-num">{presentCount ?? 0}</div>
-              <div className="swl-exact-stat-label">Total Days This Month</div>
+            <div className="swl-punch-title">Check In</div>
+            <div className={`swl-punch-sub ${isPresentToday ? (todayLate.isLate ? 'late' : 'done') : 'pending'}`}>
+              {isPresentToday ? `${formatTime(todayRecord.checkInTime)} (${todayLate.isLate ? `Late +${todayLate.lateText}` : 'Done'})` : 'Tap to Punch In'}
             </div>
-            <span className="swl-exact-trend-badge">↗</span>
           </div>
 
-          <div className="swl-exact-stat-box" onClick={() => onNavigate('emp_history')} style={{ cursor: 'pointer' }}>
-            <div className="swl-exact-stat-icon-wrap purple">
-              📅
+          {/* Check Out Card */}
+          <div
+            className="swl-punch-card"
+            style={{ cursor: isPresentToday && !isCheckedOutToday ? 'pointer' : 'default' }}
+            onClick={() => {
+              if (!isPresentToday) {
+                alert('You have not checked in yet. Please punch Check-In first.')
+                return
+              }
+              if (isCheckedOutToday) {
+                onNavigate('emp_checkin', true, { punchMode: 'status' })
+                return
+              }
+              onNavigate('emp_checkin', true, { punchMode: 'checkout' })
+            }}
+          >
+            <div className={`swl-punch-icon ${isCheckedOutToday ? 'in' : 'out'}`}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
             </div>
-            <div>
-              <div className="swl-exact-stat-num">{attendanceRate ?? 0}%</div>
-              <div className="swl-exact-stat-label">Attendance Rate</div>
+            <div className="swl-punch-title">Check Out</div>
+            <div className={`swl-punch-sub ${isCheckedOutToday ? 'done' : 'pending'}`}>
+              {isCheckedOutToday ? `${formatTime(todayRecord?.checkOutTime || new Date(`${todayKey}T18:00:00`))} Done` : (isPresentToday ? 'Tap to Punch Out' : 'Not Yet')}
             </div>
-            <span className="swl-exact-trend-badge">↗</span>
           </div>
         </div>
 
-        {/* Quick Actions (3 Pastel Cards) */}
-        <div className="swl-exact-section-title-row">
-          <span className="swl-exact-section-title">Quick Actions</span>
-          <span className="swl-exact-see-all" onClick={() => onNavigate('emp_history')}>
-            See All ➔
-          </span>
-        </div>
-        <div className="swl-exact-quick-3col">
-          <div className="swl-exact-quick-card blue" onClick={() => onNavigate('emp_leave')}>
-            <div className="swl-exact-quick-icon">✈️</div>
-            <span className="swl-exact-quick-text">Apply<br />Leave</span>
-          </div>
-          <div className="swl-exact-quick-card peach" onClick={() => onNavigate('emp_history')}>
-            <div className="swl-exact-quick-icon">🕒</div>
-            <span className="swl-exact-quick-text">Attendance<br />History</span>
-          </div>
-          <div className="swl-exact-quick-card purple" onClick={() => onNavigate('emp_history')}>
-            <div className="swl-exact-quick-icon">📅</div>
-            <span className="swl-exact-quick-text">My<br />Calendar</span>
-          </div>
-        </div>
-
-        {/* Recent Activity (Real Dynamic Activity) */}
-        <div className="swl-exact-section-title-row">
-          <span className="swl-exact-section-title">Recent Activity</span>
-          <span className="swl-exact-see-all" onClick={() => onNavigate('emp_history')}>
-            See All ➔
-          </span>
-        </div>
-        <div className="swl-exact-activity-box" onClick={() => onNavigate('emp_history')} style={{ cursor: 'pointer' }}>
-          <div className="swl-exact-activity-left">
-            <div className="swl-exact-check-circle">✓</div>
-            <div>
-              {todayRecord?.checkInTime ? (
-                <>
-                  <h4 className="swl-exact-activity-title">
-                    Check In • {formatTime(todayRecord.checkInTime)}
-                    {todayRecord.checkOutTime && ` | Out • ${formatTime(todayRecord.checkOutTime)}`}
-                  </h4>
-                  <p className="swl-exact-activity-sub">
-                    {todayRecord.checkInLocation?.address || 'Softwind Labs HQ, Bengaluru'}
-                  </p>
-                </>
-              ) : monthlyRecords.length > 0 && monthlyRecords[0]?.checkInTime ? (
-                <>
-                  <h4 className="swl-exact-activity-title">
-                    Last Punch • {formatTime(monthlyRecords[0].checkInTime)}
-                  </h4>
-                  <p className="swl-exact-activity-sub">
-                    {monthlyRecords[0].date} • Softwind Labs HQ
-                  </p>
-                </>
-              ) : (
-                <>
-                  <h4 className="swl-exact-activity-title">No punches recorded yet today</h4>
-                  <p className="swl-exact-activity-sub">Softwind Labs HQ • Geofence Ready</p>
-                </>
-              )}
+        {/* Monthly Summary */}
+        <div className="swl-summary-card">
+          <div className="swl-summary-title">Monthly Summary</div>
+          <div className="swl-donut-row">
+            <div className="swl-donut-container">
+              <svg className="swl-donut-svg" viewBox="0 0 36 36">
+                <path
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="#E2E8F0"
+                  strokeWidth="3.8"
+                />
+                <path
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="#10B981"
+                  strokeWidth="3.8"
+                  strokeDasharray={`${Math.min(100, Math.max(0, attendanceRate))}, 100`}
+                />
+              </svg>
+              <div className="swl-donut-center-text">{presentCount}/{effectiveWorkingDays || 26}</div>
+            </div>
+            <div className="swl-donut-legend">
+              <div className="swl-legend-row"><span className="swl-dot green"></span> Present {presentCount}</div>
+              <div className="swl-legend-row"><span className="swl-dot yellow"></span> Late {lateCount}</div>
+              <div className="swl-legend-row"><span className="swl-dot red"></span> Absent {absentCount}</div>
             </div>
           </div>
           <div
-            className="swl-exact-map-thumb"
-            title="Office Location: Softwind Labs HQ"
+            className="swl-view-details-link"
+            style={{ cursor: 'pointer' }}
+            onClick={() => onNavigate('emp_history')}
           >
-            📍
+            View Details &gt;
           </div>
         </div>
 
-        {/* Team at Work Today Stories Reel */}
-        <div style={{ margin: '14px 16px 8px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: '0.80rem', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>👥</span>
-            <span>Team at Work Today ({teamToday.length})</span>
+        {/* 👥 Team Attendance Arrivals Today */}
+        <div style={{ margin: '14px 16px 6px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0F172A' }}>
+            👥 Team Attendance ({teamToday.length})
           </div>
           <span
             style={{ fontSize: '0.68rem', color: '#1E5AE6', fontWeight: 800, cursor: 'pointer' }}
             onClick={() => onNavigate('emp_history')}
+            title="View Full Team Attendance History"
           >
             All Team Records &gt;
           </span>
         </div>
 
-        <div className="swl-team-reel-container" style={{ margin: '0 16px 12px 16px' }}>
+        <div style={{ margin: '0 16px', display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 16 }}>
           {teamToday.length === 0 ? (
-            <div style={{ fontSize: '0.72rem', color: '#94A3B8', padding: '6px 0', fontStyle: 'italic' }}>
+            <div style={{ background: '#FFFFFF', border: '1px dashed #CBD5E1', borderRadius: 12, padding: '14px', textAlign: 'center', fontSize: '0.72rem', color: '#94A3B8' }}>
               No colleagues have punched in yet today.
             </div>
           ) : (
             teamToday.map((member) => {
               const inUrl = member.checkInSelfieUrl || member.checkInPhotoUrl || member.selfieUrl
-              const isLate = getAttendanceLateInfo(member, officeTiming).isLate
+              const outUrl = member.checkOutSelfieUrl || member.checkOutPhotoUrl
+              const loc = member.checkInLocation || member.location
               return (
-                <div
-                  key={member.id}
-                  className="swl-team-story-item"
-                  onClick={() => {
-                    if (inUrl && onViewSelfie) {
-                      onViewSelfie({
-                        url: inUrl,
-                        title: `${member.name || 'Teammate'} (In at ${formatTime(member.checkInTime)})`,
-                        subtitle: `Softwind Labs • ${member.date}`
-                      })
-                    }
-                  }}
-                  title={`${member.name || 'Teammate'} (In at ${formatTime(member.checkInTime)})`}
-                >
-                  <div className={`swl-team-story-ring ${isLate ? 'late' : ''}`}>
-                    {inUrl || member.photoURL ? (
-                      <img src={inUrl || member.photoURL} alt={member.name} />
+                <div key={member.id} className="swl-punch-feed-card">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {inUrl || outUrl ? (
+                      <SelfiePairThumbs
+                        inUrl={inUrl}
+                        outUrl={outUrl}
+                        onViewSelfie={onViewSelfie}
+                        date={member.date}
+                        name={member.name}
+                        inLoc={member.checkInLocation}
+                        outLoc={member.checkOutLocation}
+                        inTime={member.checkInTime ? formatTime(member.checkInTime) : ''}
+                        outTime={member.checkOutTime ? formatTime(member.checkOutTime) : ''}
+                        size={34}
+                      />
                     ) : (
-                      <div className="story-avatar-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#1E5AE6', fontSize: '0.8rem' }}>
-                        {(member.name || 'T')[0]}
-                      </div>
+                      <UserAvatar
+                        name={member.name}
+                        photoURL={member.photoURL}
+                        size={34}
+                        fontSize="0.75rem"
+                      />
                     )}
-                    <span className="swl-team-story-beacon" />
+                    <div>
+                      <p style={{ margin: '0 0 2px 0', fontSize: '0.78rem', fontWeight: 800, color: '#0F172A' }}>
+                        {member.name || 'Teammate'}
+                      </p>
+                      <p style={{ margin: 0, fontSize: '0.66rem', color: '#64748B' }}>
+                        In: {member.checkInTime ? formatTime(member.checkInTime) : '--'}
+                        {member.checkOutTime ? ` • Out: ${formatTime(member.checkOutTime)}` : ''}
+                      </p>
+                    </div>
                   </div>
-                  <span className="swl-team-story-name">{member.name?.split(' ')[0] || 'Team'}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                    {(() => {
+                      const memberLate = getAttendanceLateInfo(member, officeTiming)
+                      return (
+                        <span className={`swl-badge-pill ${memberLate.isLate ? 'yellow' : 'green'}`}>
+                          {memberLate.isLate
+                            ? (member.checkOutTime ? 'Out (Late)' : `Late${memberLate.lateText ? ' (+' + memberLate.lateText + ')' : ''}`)
+                            : (member.checkOutTime ? 'Out' : 'Present')}
+                        </span>
+                      )
+                    })()}
+                    <LocationBtn location={loc} />
+                  </div>
                 </div>
               )
             })
           )}
-        </div>
-
-        {/* Softwind Labs Live Geofence GPS Active Badge */}
-        <div style={{ margin: '4px 16px 14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'linear-gradient(90deg, #F0FDF4 0%, #ECFDF5 100%)', border: '1px solid #BBF7D0', padding: '6px 12px', borderRadius: 999 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.68rem', fontWeight: 700, color: '#14532D' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', display: 'inline-block', animation: 'liveBeaconGlow 2s infinite' }} />
-            <span>Softwind Labs HQ • Geofence Active</span>
-          </div>
-          <span style={{ fontSize: '0.64rem', color: '#15803D', fontWeight: 800, background: '#DCFCE7', padding: '1px 7px', borderRadius: 999 }}>
-            GPS 100m
-          </span>
         </div>
       </div>
 
@@ -2352,31 +2352,21 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
         />
       )}
 
-      {/* Floating Bottom Nav matching Left Phone in Screenshot */}
-      <div className="swl-floating-bottom-nav">
-        <div className="swl-floating-nav-item active" onClick={() => onNavigate('emp_home')}>
+      {/* Bottom Nav */}
+      <div className="swl-mobile-nav">
+        <div className="swl-nav-item active" onClick={() => onNavigate('emp_home')}>
           <Icons.Home active={true} />
           <span>Home</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('emp_history')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('emp_history')}>
           <Icons.Attendance active={false} />
           <span>Attendance</span>
         </div>
-
-        {/* Center Elevated Action Button */}
-        <div
-          className="swl-floating-center-btn"
-          onClick={() => onNavigate('emp_checkin', true, { punchMode: isPresentToday && !isCheckedOutToday ? 'checkout' : 'checkin' })}
-          title={isPresentToday && !isCheckedOutToday ? 'Check Out' : 'Check In'}
-        >
-          <span style={{ fontSize: '1.4rem', fontWeight: 900 }}>✓</span>
-        </div>
-
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('emp_leave')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('emp_leave')}>
           <Icons.Leave active={false} />
           <span>Leave</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('emp_profile')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('emp_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
         </div>
@@ -2434,22 +2424,16 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
     return () => unsub()
   }, [user?.uid, todayKey, officeTiming])
 
-  const [overrideShiftDone, setOverrideShiftDone] = useState(false)
-
-  // Sync punchMode prop if it changes
-  useEffect(() => {
-    if (punchMode === 'checkout') {
-      setCheckoutMode(true)
-    } else if (punchMode === 'checkin') {
-      setCheckoutMode(false)
-    }
-  }, [punchMode])
+  const nowMins = new Date().getHours() * 60 + new Date().getMinutes()
+  const [endH, endM] = (officeTiming?.endTime || '18:00').split(':').map(Number)
+  const cutoffMins = (isNaN(endH) ? 18 : endH) * 60 + (isNaN(endM) ? 0 : endM)
+  const isPastCutoff = nowMins >= cutoffMins
 
   const hasCheckedIn = Boolean(todayDoc?.checkInTime)
-  const hasCheckedOut = Boolean(todayDoc?.checkOutTime)
-  const isShiftDone = hasCheckedIn && hasCheckedOut && !overrideShiftDone
+  const hasCheckedOut = Boolean(todayDoc?.checkOutTime) || (hasCheckedIn && isPastCutoff)
+  const isShiftDone = hasCheckedIn && hasCheckedOut
   const isShiftActive = hasCheckedIn && !hasCheckedOut
-  const isCheckout = checkoutMode || (hasCheckedIn && punchMode !== 'checkin')
+  const isCheckout = isShiftActive && (punchMode === 'checkout' || checkoutMode)
 
   // 2. Start Camera Feed (reusable for initial mount & instant retake)
   const startCamera = useCallback(async () => {
@@ -2822,12 +2806,12 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
     }
 
     try {
-      const isCheckOut = isCheckout || Boolean(todayDoc?.checkInTime && !todayDoc?.checkOutTime)
+      const isCheckOut = Boolean(todayDoc?.checkInTime && !todayDoc?.checkOutTime)
       const punchNow = new Date()
       const lateCalc = isCheckOut ? { isLate: false, lateMinutes: 0, lateText: '' } : checkIsPunchLate(punchNow, officeTiming)
 
       if (isFirebaseConfigured && db && user?.uid) {
-        if (todayDoc && isCheckOut) {
+        if (todayDoc) {
           // Check-Out: update with checkOutPhotoUrl AND checkOutSelfieUrl
           await updateDoc(doc(db, 'attendance', todayDoc.id), {
             checkOutTime: serverTimestamp(),
@@ -2837,20 +2821,6 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
             checkOutDeviceId: currentDeviceId,
             checkOutDeviceName: currentDeviceName,
             status: 'completed'
-          })
-        } else if (todayDoc && !isCheckOut) {
-          // Update check-in
-          await updateDoc(doc(db, 'attendance', todayDoc.id), {
-            checkInTime: serverTimestamp(),
-            checkInPhotoUrl: finalPhoto,
-            checkInSelfieUrl: finalPhoto,
-            selfieUrl: finalPhoto,
-            checkInLocation: gpsLocation || null,
-            deviceId: currentDeviceId,
-            deviceName: currentDeviceName,
-            isLate: lateCalc.isLate,
-            lateMinutes: lateCalc.lateMinutes,
-            status: lateCalc.isLate ? 'late' : 'present'
           })
         } else {
           // Check-In: record with checkInPhotoUrl, checkInSelfieUrl, selfieUrl, and late status
@@ -2945,63 +2915,9 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
           <span>
             {isShiftDone
               ? 'Shift Completed'
-              : (isCheckout ? 'Check Out' : 'Check In')}
+              : (isShiftActive ? 'Check Out' : 'Check In')}
           </span>
           <div style={{ width: 18 }} />
-        </div>
-
-        {/* Punch Mode Dual Toggle Pills */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '0 16px', margin: '8px 0 12px' }}>
-          <button
-            type="button"
-            onClick={() => {
-              setCheckoutMode(false)
-              setOverrideShiftDone(false)
-            }}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 14,
-              border: !isCheckout ? '2px solid #10B981' : '1px solid #E2E8F0',
-              background: !isCheckout ? '#ECFDF5' : '#FFFFFF',
-              color: !isCheckout ? '#065F46' : '#64748B',
-              fontWeight: 800,
-              fontSize: '0.82rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              boxShadow: !isCheckout ? '0 2px 8px rgba(16, 185, 129, 0.2)' : 'none',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            <span style={{ fontSize: '0.9rem' }}>🟢</span> Check In
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setCheckoutMode(true)
-              setOverrideShiftDone(false)
-            }}
-            style={{
-              padding: '10px 14px',
-              borderRadius: 14,
-              border: isCheckout ? '2px solid #2563EB' : '1px solid #E2E8F0',
-              background: isCheckout ? '#EFF6FF' : '#FFFFFF',
-              color: isCheckout ? '#1E40AF' : '#64748B',
-              fontWeight: 800,
-              fontSize: '0.82rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              boxShadow: isCheckout ? '0 2px 8px rgba(37, 99, 235, 0.2)' : 'none',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            <span style={{ fontSize: '0.9rem' }}>🔵</span> Check Out
-          </button>
         </div>
 
         {/* STATE 1: SHIFT FULLY COMPLETED TODAY */}
@@ -3050,28 +2966,6 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                 </div>
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setOverrideShiftDone(true)
-                setCheckoutMode(true)
-              }}
-              style={{
-                width: '100%',
-                padding: '12px',
-                background: '#EFF6FF',
-                color: '#1E40AF',
-                border: '1.5px solid #BFDBFE',
-                borderRadius: 12,
-                fontWeight: 800,
-                fontSize: '0.82rem',
-                cursor: 'pointer',
-                marginBottom: 10
-              }}
-            >
-              📸 Re-record / Update Check-Out Punch
-            </button>
 
             <button
               type="button"
@@ -3253,15 +3147,7 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
         {/* STATE 3: CAMERA PUNCH VIEW */}
         {isCameraNeeded && (
           <div>
-            {/* GPS Geofence Live Radar Status Pill */}
-            <div style={{ textAlign: 'center', margin: '6px 0 2px 0' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: isOutsideGeofence ? '#FEF2F2' : '#ECFDF5', border: isOutsideGeofence ? '1px solid #FECACA' : '1px solid #A7F3D0', padding: '4px 12px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 800, color: isOutsideGeofence ? '#DC2626' : '#059669' }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: isOutsideGeofence ? '#EF4444' : '#10B981', display: 'inline-block', animation: 'liveBeaconGlow 2s infinite' }} />
-                <span>{isOutsideGeofence ? '⚠️ Outside Office Radar (100m)' : (geofence?.distance != null ? `📍 Office Verified (${geofence.distance}m away)` : '📍 GPS Radar Active')}</span>
-              </div>
-            </div>
-
-            {/* Circular Camera Selfie Viewfinder with Google Lens Scanner Brackets */}
+            {/* Circular Camera Selfie Viewfinder */}
             <div style={{ textAlign: 'center', margin: '8px 0 4px 0' }}>
               <div
                 className={`swl-camera-frame ${photoUrl ? 'photo-captured' : (faceDetected ? 'face-detected' : '')}`}
@@ -3305,11 +3191,6 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
                     className="swl-camera-photo"
                     style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
                   />
-                )}
-
-                {/* Google Lens Animated Laser Scanner Line */}
-                {!photoUrl && cameraActive && (
-                  <div className="swl-scanner-laser-line" />
                 )}
 
                 {/* Inner Circular Guide */}
@@ -3615,28 +3496,21 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
         )}
       </div>
 
-      {/* Floating Bottom Nav */}
-      <div className="swl-floating-bottom-nav">
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('emp_home')}>
+      {/* Bottom Nav */}
+      <div className="swl-mobile-nav">
+        <div className="swl-nav-item" onClick={() => onNavigate('emp_home')}>
           <Icons.Home active={false} />
           <span>Home</span>
         </div>
-        <div className="swl-floating-nav-item active" onClick={() => onNavigate('emp_history')}>
+        <div className="swl-nav-item active" onClick={() => onNavigate('emp_history')}>
           <Icons.Attendance active={true} />
           <span>Attendance</span>
         </div>
-        <div
-          className="swl-floating-center-btn"
-          onClick={() => onNavigate('emp_checkin', true, { punchMode: 'auto' })}
-          title="Clock In / Out"
-        >
-          <span style={{ fontSize: '1.4rem', fontWeight: 900 }}>✓</span>
-        </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('emp_leave')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('emp_leave')}>
           <Icons.Leave active={false} />
           <span>Leave</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('emp_profile')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('emp_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
         </div>
@@ -4222,28 +4096,21 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
         )}
       </div>
 
-      {/* Floating Bottom Nav */}
-      <div className="swl-floating-bottom-nav">
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('emp_home')}>
+      {/* Bottom Nav */}
+      <div className="swl-mobile-nav">
+        <div className="swl-nav-item" onClick={() => onNavigate('emp_home')}>
           <Icons.Home active={false} />
           <span>Home</span>
         </div>
-        <div className="swl-floating-nav-item active" onClick={() => onNavigate('emp_history')}>
+        <div className="swl-nav-item active" onClick={() => onNavigate('emp_history')}>
           <Icons.Attendance active={true} />
           <span>Attendance</span>
         </div>
-        <div
-          className="swl-floating-center-btn"
-          onClick={() => onNavigate('emp_checkin', true, { punchMode: 'auto' })}
-          title="Clock In / Out"
-        >
-          <span style={{ fontSize: '1.4rem', fontWeight: 900 }}>✓</span>
-        </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('emp_leave')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('emp_leave')}>
           <Icons.Leave active={false} />
           <span>Leave</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('emp_profile')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('emp_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
         </div>
@@ -4763,28 +4630,21 @@ function LiveLeaveAppScreen({ onNavigate }) {
         )}
       </div>
 
-      {/* Floating Bottom Nav */}
-      <div className="swl-floating-bottom-nav">
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('emp_home')}>
+      {/* Bottom Nav */}
+      <div className="swl-mobile-nav">
+        <div className="swl-nav-item" onClick={() => onNavigate('emp_home')}>
           <Icons.Home active={false} />
           <span>Home</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('emp_history')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('emp_history')}>
           <Icons.Attendance active={false} />
           <span>Attendance</span>
         </div>
-        <div
-          className="swl-floating-center-btn"
-          onClick={() => onNavigate('emp_checkin', true, { punchMode: 'auto' })}
-          title="Clock In / Out"
-        >
-          <span style={{ fontSize: '1.4rem', fontWeight: 900 }}>✓</span>
-        </div>
-        <div className="swl-floating-nav-item active" onClick={() => onNavigate('emp_leave')}>
+        <div className="swl-nav-item active" onClick={() => onNavigate('emp_leave')}>
           <Icons.Leave active={true} />
           <span>Leave</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('emp_profile')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('emp_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
         </div>
@@ -5720,28 +5580,21 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
         )}
       </div>
 
-      {/* Floating Bottom Nav */}
-      <div className="swl-floating-bottom-nav">
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('emp_home')}>
+      {/* Bottom Nav */}
+      <div className="swl-mobile-nav">
+        <div className="swl-nav-item" onClick={() => onNavigate('emp_home')}>
           <Icons.Home active={false} />
           <span>Home</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('emp_history')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('emp_history')}>
           <Icons.Attendance active={false} />
           <span>Attendance</span>
         </div>
-        <div
-          className="swl-floating-center-btn"
-          onClick={() => onNavigate('emp_checkin', true, { punchMode: 'auto' })}
-          title="Clock In / Out"
-        >
-          <span style={{ fontSize: '1.4rem', fontWeight: 900 }}>✓</span>
-        </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('emp_leave')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('emp_leave')}>
           <Icons.Leave active={false} />
           <span>Leave</span>
         </div>
-        <div className="swl-floating-nav-item active" onClick={() => onNavigate('emp_profile')}>
+        <div className="swl-nav-item active" onClick={() => onNavigate('emp_profile')}>
           <Icons.Profile active={true} />
           <span>Profile</span>
         </div>
@@ -5760,7 +5613,6 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
   const [totalEmployees, setTotalEmployees] = useState(0)
   const [presentEmployees, setPresentEmployees] = useState(0)
   const [pendingLeavesCount, setPendingLeavesCount] = useState(0)
-  const [pendingLeaves, setPendingLeaves] = useState([])
   const [todayPunches, setTodayPunches] = useState([])
 
   const lateEmployees = useMemo(() => {
@@ -5808,7 +5660,6 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
     const qLeaves = query(collection(db, 'leaves'), where('status', '==', 'pending'))
     const unsubLeaves = onSnapshot(qLeaves, (snap) => {
       setPendingLeavesCount(snap.docs.length)
-      setPendingLeaves(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     })
 
     return () => {
@@ -5821,50 +5672,14 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
   const absentEmployees = Math.max(0, totalEmployees - presentEmployees)
   const presentPct = totalEmployees > 0 ? Math.round((presentEmployees / totalEmployees) * 100) : 0
 
-  const [liveDate, setLiveDate] = useState(() => new Date())
-  useEffect(() => {
-    const timer = setInterval(() => setLiveDate(new Date()), 1000)
-    return () => clearInterval(timer)
-  }, [])
-
-  async function handleQuickReviewLeave(leaveId, newStatus) {
-    try {
-      await reviewLeaveRequest({
-        leaveId,
-        status: newStatus,
-        reviewedBy: user.uid,
-        reviewedByName: profile?.name || 'Admin',
-        adminNote: `Dashboard 1-tap review by ${profile?.name || 'Admin'}`
-      })
-    } catch (err) {
-      alert('Review error: ' + err.message)
-    }
-  }
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="no-scrollbar swl-exact-screen-body" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', position: 'relative' }}>
-        {/* Flowing curved organic blue wave background at top */}
-        <div className="swl-exact-top-wave-bg" />
-
-        {/* Top Header matching Right Phone */}
-        <div className="swl-admin-header-row">
-          <div className="swl-admin-header-left">
-            <div className="swl-admin-office-icon-wrap" onClick={onOpenGeofence} style={{ cursor: 'pointer' }} title="Softwind Labs Office Setup">
-              🏢
+      <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <div className="swl-screen-top-nav">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div onClick={onOpenGeofence} style={{ cursor: 'pointer', padding: 2 }} title="Office Geofence Setup">
+              <Icons.LocationPin />
             </div>
-            <div>
-              <h2 className="swl-exact-user-name" style={{ fontSize: '1.1rem', margin: 0 }}>
-                Hello Admin 👋
-              </h2>
-              <p className="swl-exact-user-role" style={{ margin: '1px 0 0 0' }}>
-                Manage Your Workforce
-              </p>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {/* Quick Office Setting Buttons */}
             <div
               onClick={onOpenTiming}
               style={{
@@ -5872,14 +5687,13 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: 34,
-                height: 34,
+                width: 26,
+                height: 26,
                 borderRadius: '50%',
                 background: '#FEF3C7',
                 color: '#D97706',
-                fontSize: '0.92rem',
-                border: '1px solid #FDE68A',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.05)'
+                fontSize: '0.82rem',
+                border: '1px solid #FDE68A'
               }}
               title="Office Timings & Shift Setup"
             >
@@ -5892,443 +5706,386 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: 34,
-                height: 34,
+                width: 26,
+                height: 26,
                 borderRadius: '50%',
                 background: '#DCFCE7',
                 color: '#16A34A',
-                border: '1px solid #BBF7D0',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.05)'
+                border: '1px solid #BBF7D0'
               }}
               title="Share Attendance Report to WhatsApp"
             >
-              <Icons.WhatsApp size={17} color="#16A34A" />
+              <Icons.WhatsApp size={16} color="#16A34A" />
             </div>
-
-            {/* Bell icon with badge */}
-            <div
-              className="swl-exact-bell-badge-btn"
-              onClick={() => onNavigate('adm_approvals')}
-              title="Pending Leave Approvals"
-            >
+          </div>
+          <span>Admin Dashboard</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="swl-bell-btn" style={{ width: 28, height: 28 }} onClick={() => onNavigate('adm_approvals')}>
               <Icons.Bell />
-              {pendingLeavesCount > 0 && (
-                <span className="swl-exact-bell-count">
-                  {pendingLeavesCount > 9 ? '9+' : pendingLeavesCount}
-                </span>
-              )}
+              {pendingLeavesCount > 0 && <div className="swl-bell-badge" />}
             </div>
-
-            {/* Admin Avatar */}
-            <div
-              className="swl-exact-avatar-wrap"
-              onClick={() => onNavigate('adm_profile')}
-              title="Admin Profile"
-            >
+            <div onClick={() => onNavigate('adm_profile')} style={{ cursor: 'pointer' }} title="Admin Profile">
               <UserAvatar
                 name={profile?.name || user?.displayName || 'Jai Chaturvedi'}
                 photoURL={profile?.photoURL || user?.photoURL}
-                size={42}
-                fontSize="1.05rem"
-                border="2px solid #FFFFFF"
+                size={28}
+                fontSize="0.75rem"
+                border="1.5px solid #1E5AE6"
               />
-              <span className="active-dot" style={{ background: '#10B981' }} />
             </div>
           </div>
         </div>
 
-        {/* 4 KPI Pastel Stat Cards in 2x2 Grid (Matching Right Phone) */}
-        <div className="swl-admin-pastel-2x2">
-          {/* Card 1: Total Employees (Soft Blue) */}
-          <div className="swl-admin-pastel-card blue" onClick={() => onNavigate('adm_employees')} style={{ cursor: 'pointer' }}>
-            <div className="swl-admin-pastel-icon">👥</div>
+        {/* Pop-up Notification Permission Card */}
+        {pushPermission !== 'granted' && pushPermission !== 'unsupported' && typeof window !== 'undefined' && 'Notification' in window && (
+          <div
+            style={{
+              margin: '0 16px 10px 16px',
+              background: 'linear-gradient(135deg, #EEF4FF 0%, #E0E7FF 100%)',
+              border: '1.5px solid #BFDBFE',
+              borderRadius: 14,
+              padding: '10px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              boxShadow: '0 2px 8px rgba(30, 90, 230, 0.08)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: '1.25rem' }}>🔔</span>
+              <div>
+                <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#1E293B' }}>
+                  Enable Pop-up Alerts
+                </div>
+                <div style={{ fontSize: '0.62rem', color: '#64748B' }}>
+                  Get real-time alerts on your phone when staff punches in
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={requestPushPermission}
+              style={{
+                background: '#1E5AE6',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: 999,
+                padding: '6px 12px',
+                fontSize: '0.7rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Allow
+            </button>
+          </div>
+        )}
+
+        {/* 4 Stats in 2x2 Grid */}
+        <div className="swl-admin-stats-2x2">
+          <div className="swl-admin-stat-card" onClick={() => onNavigate('adm_employees')} style={{ cursor: 'pointer' }}>
+            <div className="swl-admin-stat-icon blue">👥</div>
             <div>
-              <div className="swl-admin-pastel-num">{totalEmployees}</div>
-              <div className="swl-admin-pastel-label">Total Employees</div>
+              <div style={{ fontSize: '0.65rem', color: '#64748B' }}>Total Employees</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A' }}>{totalEmployees}</div>
             </div>
           </div>
 
-          {/* Card 2: Present Today (Soft Green) */}
-          <div className="swl-admin-pastel-card green" onClick={() => onNavigate('adm_reports')} style={{ cursor: 'pointer' }}>
-            <div className="swl-admin-pastel-icon">✓</div>
+          <div className="swl-admin-stat-card">
+            <div className="swl-admin-stat-icon green">✓</div>
             <div>
-              <div className="swl-admin-pastel-num">{presentEmployees}</div>
-              <div className="swl-admin-pastel-label">Present Today</div>
+              <div style={{ fontSize: '0.65rem', color: '#64748B' }}>Present</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#10B981' }}>{presentEmployees}</div>
             </div>
           </div>
 
-          {/* Card 3: Absent Today (Soft Red/Pink) */}
-          <div className="swl-admin-pastel-card red" onClick={() => onNavigate('adm_reports')} style={{ cursor: 'pointer' }}>
-            <div className="swl-admin-pastel-icon">✕</div>
+          <div className="swl-admin-stat-card">
+            <div className="swl-admin-stat-icon red">✕</div>
             <div>
-              <div className="swl-admin-pastel-num">{absentEmployees}</div>
-              <div className="swl-admin-pastel-label">Absent Today</div>
+              <div style={{ fontSize: '0.65rem', color: '#64748B' }}>Absent</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#EF4444' }}>{absentEmployees}</div>
             </div>
           </div>
 
-          {/* Card 4: On Leave (Soft Orange/Peach) */}
-          <div className="swl-admin-pastel-card orange" onClick={() => onNavigate('adm_approvals')} style={{ cursor: 'pointer' }}>
-            <div className="swl-admin-pastel-icon">🌴</div>
+          <div className="swl-admin-stat-card" onClick={onOpenTiming} style={{ cursor: 'pointer' }} title="Click to view/change Office Timings">
+            <div className="swl-admin-stat-icon orange">🕒</div>
             <div>
-              <div className="swl-admin-pastel-num">{pendingLeavesCount}</div>
-              <div className="swl-admin-pastel-label">On Leave</div>
+              <div style={{ fontSize: '0.65rem', color: '#64748B' }}>Late</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#F59E0B' }}>{lateEmployees}</div>
             </div>
           </div>
         </div>
 
-        {/* Dark Navy Attendance Overview Card with Donut & Wave Sparkline */}
-        <div className="swl-admin-overview-card">
-          <div className="swl-admin-overview-header">
-            <span className="swl-admin-overview-title">Attendance Overview</span>
-            <div className="swl-admin-overview-filter" onClick={() => onNavigate('adm_reports')}>
-              <span>This Month</span>
-              <span style={{ fontSize: '0.60rem' }}>▼</span>
-            </div>
-          </div>
-
-          <div className="swl-admin-overview-body">
-            {/* Donut Chart with center percentage */}
-            <div className="swl-admin-donut-box">
-              <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+        {/* Today's Attendance Donut Card */}
+        <div className="swl-summary-card" style={{ margin: '0 16px' }}>
+          <div className="swl-summary-title">Today's Attendance</div>
+          <div className="swl-donut-row">
+            <div className="swl-donut-container">
+              <svg className="swl-donut-svg" viewBox="0 0 36 36">
                 <path
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                   fill="none"
-                  stroke="rgba(255, 255, 255, 0.12)"
+                  stroke="#E2E8F0"
                   strokeWidth="3.8"
                 />
                 <path
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                   fill="none"
-                  stroke="#22D3EE"
+                  stroke="#10B981"
                   strokeWidth="3.8"
-                  strokeDasharray={`${Math.max(0, Math.min(100, presentPct))}, 100`}
-                  strokeLinecap="round"
+                  strokeDasharray={`${presentPct}, 100`}
                 />
               </svg>
-              <div className="swl-admin-donut-center">
-                {presentPct}%
+              <div className="swl-donut-center-text" style={{ fontSize: '0.72rem' }}>
+                {presentPct}%<br/>
+                <span style={{ fontSize: '0.55rem', color: '#10B981' }}>Present</span>
               </div>
             </div>
-
-            {/* Legend */}
-            <div className="swl-admin-overview-legend">
-              <div className="legend-item">
-                <span className="legend-dot" style={{ background: '#22D3EE' }} />
-                <span>Present</span>
-                <span className="legend-val">{presentEmployees}</span>
-              </div>
-              <div className="legend-item">
-                <span className="legend-dot" style={{ background: '#F43F5E' }} />
-                <span>Absent</span>
-                <span className="legend-val">{absentEmployees}</span>
-              </div>
-              <div className="legend-item">
-                <span className="legend-dot" style={{ background: '#F59E0B' }} />
-                <span>On Leave</span>
-                <span className="legend-val">{pendingLeavesCount}</span>
-              </div>
-            </div>
-
-            {/* Glowing Neon Wave Sparkline Graphic */}
-            <div style={{ flexShrink: 0 }}>
-              <svg viewBox="0 0 100 50" style={{ width: 95, height: 48, overflow: 'visible' }}>
-                <defs>
-                  <linearGradient id="adminNeonWaveGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.75" />
-                    <stop offset="60%" stopColor="#2563EB" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#1E3A8A" stopOpacity="0.02" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M 0,42 Q 18,12 34,32 T 62,18 T 84,24 T 100,6 L 100,48 L 0,48 Z"
-                  fill="url(#adminNeonWaveGrad)"
-                />
-                <path
-                  d="M 0,42 Q 18,12 34,32 T 62,18 T 84,24 T 100,6"
-                  fill="none"
-                  stroke="#38BDF8"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                />
-              </svg>
+            <div className="swl-donut-legend">
+              <div className="swl-legend-row"><span className="swl-dot green"></span> Present {presentEmployees}</div>
+              <div className="swl-legend-row"><span className="swl-dot red"></span> Absent {absentEmployees}</div>
+              <div className="swl-legend-row"><span className="swl-dot yellow"></span> Late {lateEmployees}</div>
             </div>
           </div>
         </div>
 
-        {/* Pending Leave Requests Section */}
-        <div className="swl-exact-section-title-row">
-          <span className="swl-exact-section-title">Pending Leave Requests</span>
-          <span className="swl-exact-see-all" onClick={() => onNavigate('adm_approvals')}>
-            See All ➔
-          </span>
-        </div>
-
-        {/* Leave Request Card or Clean Empty State */}
-        {pendingLeaves.length === 0 ? (
-          <div style={{
-            background: '#FFFFFF',
-            border: '1px solid #E2E8F0',
-            borderRadius: 16,
-            padding: '16px 20px',
-            margin: '0 16px 16px',
-            textAlign: 'center',
-            color: '#64748B'
-          }}>
-            <div style={{ fontSize: '1.4rem', marginBottom: 4 }}>🌴</div>
-            <div style={{ fontWeight: 700, color: '#1E293B', fontSize: '0.82rem' }}>No Pending Leave Requests</div>
-            <div style={{ fontSize: '0.72rem', marginTop: 2 }}>All team leave applications have been reviewed.</div>
-          </div>
-        ) : (
-          (() => {
-            const firstPending = pendingLeaves[0]
-            const applicantName = firstPending?.userName || firstPending?.name || 'Staff Member'
-            const applicantRole = firstPending?.department || firstPending?.role || 'Staff Member'
-            const leaveDateRange = `${firstPending.startDate || ''} – ${firstPending.endDate || ''}`
-            const leaveId = firstPending?.id
-
-            return (
-              <div className="swl-admin-leave-card">
-                <div className="swl-admin-leave-top">
-                  <div className="swl-admin-leave-user">
-                    <UserAvatar
-                      name={applicantName}
-                      photoURL={firstPending?.userPhotoURL}
-                      size={44}
-                      fontSize="1.1rem"
-                      border="2px solid #F1F5F9"
-                    />
-                    <div>
-                      <h4 className="swl-admin-leave-name">{applicantName}</h4>
-                      <p className="swl-admin-leave-role">{applicantRole}</p>
-                      <div className="swl-admin-leave-dates">📅 {leaveDateRange}</div>
-                    </div>
-                  </div>
-                  <span className="swl-admin-leave-pending-badge">Pending</span>
-                </div>
-
-                <div className="swl-admin-leave-actions">
-                  <button
-                    type="button"
-                    className="swl-admin-btn-approve"
-                    onClick={() => {
-                      if (leaveId) {
-                        handleQuickReviewLeave(leaveId, 'approved')
-                      } else {
-                        onNavigate('adm_approvals')
-                      }
-                    }}
-                  >
-                    ✓ Approve
-                  </button>
-                  <button
-                    type="button"
-                    className="swl-admin-btn-reject"
-                    onClick={() => {
-                      if (leaveId) {
-                        handleQuickReviewLeave(leaveId, 'rejected')
-                      } else {
-                        onNavigate('adm_approvals')
-                      }
-                    }}
-                  >
-                    ✕ Reject
-                  </button>
-                </div>
-              </div>
-            )
-          })()
-        )}
-
-        {/* Recent Activity Section */}
-        <div className="swl-exact-section-title-row">
-          <span className="swl-exact-section-title">Recent Activity</span>
-          <span className="swl-exact-see-all" onClick={() => onNavigate('adm_reports')}>
-            See All ➔
-          </span>
-        </div>
-
-        {todayPunches.length === 0 ? (
-          <div style={{
-            background: '#FFFFFF',
-            border: '1px solid #E2E8F0',
-            borderRadius: 16,
-            padding: '16px 20px',
-            margin: '0 16px 16px',
-            textAlign: 'center',
-            color: '#64748B'
-          }}>
-            <div style={{ fontSize: '1.4rem', marginBottom: 4 }}>⏱️</div>
-            <div style={{ fontWeight: 700, color: '#1E293B', fontSize: '0.82rem' }}>No Punches Recorded Yet Today</div>
-            <div style={{ fontSize: '0.72rem', marginTop: 2 }}>Staff check-in and check-out punches will appear here in real-time.</div>
-          </div>
-        ) : (
-          (() => {
-            const latestPunch = todayPunches[todayPunches.length - 1]
-            const punchName = latestPunch?.name || 'Staff Member'
-            const isOut = Boolean(latestPunch?.checkOutTime)
-            const punchTimeStr = isOut
-              ? `checked out at ${formatTime(latestPunch.checkOutTime)}`
-              : `checked in at ${formatTime(latestPunch.checkInTime)}`
-            const punchLate = getAttendanceLateInfo(latestPunch, officeTiming)
-
-            return (
-              <div
-                className="swl-exact-activity-box"
-                onClick={() => onNavigate('adm_reports')}
-                style={{ cursor: 'pointer', marginBottom: 16 }}
-              >
-                <div className="swl-exact-activity-left">
-                  <div className="swl-exact-check-circle" style={{ background: isOut ? '#EFF6FF' : '#DCFCE7', color: isOut ? '#2563EB' : '#16A34A', border: isOut ? '1px solid #BFDBFE' : '1px solid #BBF7D0' }}>
-                    {isOut ? '➔' : '✓'}
-                  </div>
-                  <div>
-                    <h4 className="swl-exact-activity-title">
-                      {punchName} {punchTimeStr}
-                    </h4>
-                    <p className="swl-exact-activity-sub">
-                      {punchLate.isLate ? `Marked Late (+${punchLate.lateText})` : 'On Time'}
-                      {latestPunch.checkInLocation?.address ? ` • ${latestPunch.checkInLocation.address}` : ''}
-                    </p>
-                  </div>
-                </div>
-                <div className="swl-exact-map-thumb" style={{ background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
-                  📍
-                </div>
-              </div>
-            )
-          })()
-        )}
-
-        {/* Live Staff Punches Feed for Today */}
-        {todayPunches.length > 0 && (
-          <div style={{ margin: '0 16px 20px 16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <span style={{ fontSize: '0.86rem', fontWeight: 800, color: '#0F172A' }}>
-                Today's Staff Punches ({todayPunches.length})
-              </span>
-              <span style={{ fontSize: '0.72rem', color: '#1E5AE6', fontWeight: 700, cursor: 'pointer' }} onClick={() => onNavigate('adm_reports')}>
-                Full Log ➔
-              </span>
+        {/* Quick Actions */}
+        <div style={{ margin: '14px 16px 8px 16px', fontSize: '0.82rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em' }}>Quick Actions</div>
+        <div className="swl-quick-actions-grid">
+          <div className="swl-action-btn-card" onClick={onOpenWhatsAppReport} title="Generate & send attendance report to WhatsApp group">
+            <div className="swl-action-icon-wrap" style={{ background: '#DCFCE7', color: '#16A34A' }}>
+              <Icons.WhatsApp size={22} color="#16A34A" />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {todayPunches.slice(-5).reverse().map((p) => {
-                const lateInfo = getAttendanceLateInfo(p, officeTiming)
-                return (
-                  <div
-                    key={p.id || p.uid}
-                    style={{
-                      background: '#FFFFFF',
-                      border: '1px solid #E2E8F0',
-                      borderRadius: 14,
-                      padding: '10px 12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 10,
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
-                      <UserAvatar name={p.name || 'Employee'} photoURL={p.userPhotoURL} size={36} fontSize="0.9rem" />
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontSize: '0.80rem', fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {p.name || 'Employee'}
-                        </div>
-                        <div style={{ fontSize: '0.68rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <span>In: <strong>{p.checkInTime ? formatTime(p.checkInTime) : '--'}</strong></span>
-                          <span>Out: <strong>{p.checkOutTime ? formatTime(p.checkOutTime) : '--'}</strong></span>
-                          {lateInfo.isLate && (
-                            <span style={{ color: '#D97706', fontWeight: 700 }}>Late (+{lateInfo.lateText})</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+            <span>WhatsApp Report</span>
+          </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="swl-action-btn-card" onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'add' })} title="Manual punch entry if employee forgot">
+            <div className="swl-action-icon-wrap" style={{ background: '#EEF2FF', color: '#1E40AF' }}>⏱️</div>
+            <span>Manual Punch</span>
+          </div>
+
+          <div className="swl-action-btn-card" onClick={() => onNavigate('adm_employees')}>
+            <div className="swl-action-icon-wrap" style={{ background: '#F0FDF4', color: '#16A34A' }}>
+              <Icons.Employees active={true} />
+            </div>
+            <span>Manage Employees</span>
+          </div>
+
+          <div className="swl-action-btn-card" onClick={() => onNavigate('adm_approvals')}>
+            <div className="swl-action-icon-wrap" style={{ background: '#FAF5FF', color: '#9333EA' }}>
+              <Icons.Leave active={true} />
+            </div>
+            <span>Leave Approvals</span>
+            {pendingLeavesCount > 0 && <div className="swl-action-badge">{pendingLeavesCount}</div>}
+          </div>
+
+          <div className="swl-action-btn-card" onClick={() => onNavigate('adm_reports')}>
+            <div className="swl-action-icon-wrap" style={{ background: '#FFF7ED', color: '#EA580C' }}>
+              <Icons.Reports active={true} />
+            </div>
+            <span>Reports</span>
+          </div>
+
+          <div className="swl-action-btn-card" onClick={onOpenGeofence}>
+            <div className="swl-action-icon-wrap" style={{ background: '#EFF6FF', color: '#2563EB' }}>
+              <Icons.LocationPin />
+            </div>
+            <span>Office Geofence</span>
+          </div>
+
+          <div className="swl-action-btn-card" onClick={onOpenTiming} title="Set office shift hours and late grace period">
+            <div className="swl-action-icon-wrap" style={{ background: '#FEF9C3', color: '#CA8A04' }}>⏰</div>
+            <span>Office Timings</span>
+          </div>
+        </div>
+
+        {/* 📍 Today's Punch Feed */}
+        <div style={{ margin: '14px 16px 8px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em' }}>
+            📍 Today's Punches ({todayPunches.length})
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'add' })}
+              style={{
+                border: 'none',
+                background: '#1E40AF',
+                color: '#FFFFFF',
+                fontSize: '0.70rem',
+                fontWeight: 700,
+                padding: '5px 12px',
+                borderRadius: 999,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                boxShadow: '0 2px 6px rgba(30, 64, 175, 0.25)',
+                transition: 'transform 0.1s ease'
+              }}
+            >
+              + Add Punch
+            </button>
+            <span
+              style={{ fontSize: '0.68rem', color: '#1E40AF', fontWeight: 700, cursor: 'pointer' }}
+              onClick={() => onNavigate('adm_reports')}
+            >
+              All Reports &gt;
+            </span>
+          </div>
+        </div>
+
+        <div style={{ margin: '0 16px', display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 16 }}>
+          {todayPunches.length === 0 ? (
+            <div style={{ background: '#FFFFFF', border: '1px dashed #CBD5E1', borderRadius: 12, padding: '14px', textAlign: 'center', fontSize: '0.72rem', color: '#94A3B8' }}>
+              No punch records yet today.
+            </div>
+          ) : (
+            todayPunches.map((punch) => {
+              const inUrl = punch.checkInSelfieUrl || punch.checkInPhotoUrl || punch.selfieUrl
+              const outUrl = punch.checkOutSelfieUrl || punch.checkOutPhotoUrl
+              const loc = punch.checkInLocation || punch.location
+              return (
+                <div key={punch.id} className="swl-punch-feed-card">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {inUrl || outUrl ? (
                       <SelfiePairThumbs
-                        inUrl={p.checkInSelfieUrl || p.checkInPhotoUrl || p.selfieUrl}
-                        outUrl={p.checkOutSelfieUrl || p.checkOutPhotoUrl}
+                        inUrl={inUrl}
+                        outUrl={outUrl}
                         onViewSelfie={onViewSelfie}
-                        date={p.date}
-                        name={p.name}
-                        size={32}
+                        date={punch.date}
+                        name={punch.name}
+                        inLoc={punch.checkInLocation}
+                        outLoc={punch.checkOutLocation}
+                        inTime={punch.checkInTime ? formatTime(punch.checkInTime) : ''}
+                        outTime={punch.checkOutTime ? formatTime(punch.checkOutTime) : ''}
+                        size={34}
                       />
+                    ) : (
+                      <UserAvatar
+                        name={punch.name || punch.email}
+                        photoURL={punch.photoURL}
+                        size={34}
+                        fontSize="0.75rem"
+                      />
+                    )}
+                    <div>
+                      <p style={{ margin: '0 0 2px 0', fontSize: '0.78rem', fontWeight: 800, color: '#0F172A' }}>
+                        {punch.name || punch.email?.split('@')[0] || 'Employee'}
+                      </p>
+                      <p style={{ margin: 0, fontSize: '0.66rem', color: '#64748B' }}>
+                        In: {punch.checkInTime ? formatTime(punch.checkInTime) : '--'}
+                        {punch.checkOutTime ? ` • Out: ${formatTime(punch.checkOutTime)}` : ''}
+                      </p>
                     </div>
                   </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Admin Quick Action Pills for Manual Punch & WhatsApp Report */}
-        <div style={{ margin: '0 16px 20px 16px', display: 'flex', gap: 10 }}>
-          <button
-            type="button"
-            onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'add' })}
-            style={{
-              flex: 1,
-              padding: '11px 14px',
-              borderRadius: 14,
-              border: '1px solid #BFDBFE',
-              background: '#FFFFFF',
-              color: '#1E40AF',
-              fontSize: '0.74rem',
-              fontWeight: 800,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              cursor: 'pointer',
-              boxShadow: '0 2px 6px rgba(30, 64, 175, 0.08)'
-            }}
-          >
-            ⏱️ Manual Punch
-          </button>
-          <button
-            type="button"
-            onClick={onOpenWhatsAppReport}
-            style={{
-              flex: 1,
-              padding: '11px 14px',
-              borderRadius: 14,
-              border: '1px solid #BBF7D0',
-              background: '#FFFFFF',
-              color: '#16A34A',
-              fontSize: '0.74rem',
-              fontWeight: 800,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              cursor: 'pointer',
-              boxShadow: '0 2px 6px rgba(22, 163, 74, 0.08)'
-            }}
-          >
-            <Icons.WhatsApp size={16} color="#16A34A" /> WhatsApp Report
-          </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                    {(() => {
+                      const punchLate = getAttendanceLateInfo(punch, officeTiming)
+                      return (
+                        <span className={`swl-badge-pill ${punchLate.isLate ? 'yellow' : 'green'}`}>
+                          {punchLate.isLate
+                            ? (punch.checkOutTime ? 'Out (Late)' : `Late${punchLate.lateText ? ' (+' + punchLate.lateText + ')' : ''}`)
+                            : (punch.checkOutTime ? 'Out' : 'Present')}
+                        </span>
+                      )
+                    })()}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <LocationBtn location={loc} />
+                      <button
+                        type="button"
+                        onClick={() => onOpenAttendanceModal && onOpenAttendanceModal({ mode: 'edit', record: punch })}
+                        title="Edit Attendance"
+                        style={{
+                          border: 'none',
+                          background: '#EEF4FF',
+                          color: '#1E40AF',
+                          borderRadius: 999,
+                          padding: '4px 10px',
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          boxShadow: '0 1px 3px rgba(30, 64, 175, 0.1)',
+                          transition: 'transform 0.1s ease'
+                        }}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                        </svg>
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const ok = window.confirm(`Are you sure you want to delete today's attendance record for ${punch.name || 'Employee'}?`)
+                          if (ok && isFirebaseConfigured && db) {
+                            try {
+                              await deleteDoc(doc(db, 'attendance', punch.id))
+                            } catch (e) {
+                              alert('Delete error: ' + e.message)
+                            }
+                          }
+                        }}
+                        title="Delete Attendance Record"
+                        style={{
+                          border: 'none',
+                          background: '#FEE2E2',
+                          color: '#DC2626',
+                          borderRadius: 999,
+                          padding: '4px 10px',
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          boxShadow: '0 1px 3px rgba(220, 38, 38, 0.1)',
+                          transition: 'transform 0.1s ease'
+                        }}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          )}
         </div>
       </div>
 
-      {/* Admin Floating Bottom Navigation matching Right Phone */}
-      <div className="swl-floating-bottom-nav">
-        <div className="swl-floating-nav-item active" onClick={() => onNavigate('adm_dashboard')}>
+      {/* Admin Bottom Nav with 5 tabs */}
+      <div className="swl-mobile-nav">
+        <div className="swl-nav-item active" onClick={() => onNavigate('adm_dashboard')}>
           <Icons.Dashboard active={true} />
-          <span>Home</span>
+          <span>Dashboard</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_employees')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_employees')}>
           <Icons.Employees active={false} />
           <span>Employees</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_approvals')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_approvals')}>
           <Icons.Leave active={false} />
-          <span>Leaves</span>
+          <span>Leave</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_reports')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_reports')}>
           <Icons.Reports active={false} />
           <span>Reports</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_profile')}>
+        <div className="swl-nav-item" onClick={onOpenWhatsAppReport} title="WhatsApp Report">
+          <Icons.WhatsApp size={22} color="#16A34A" />
+          <span style={{ color: '#16A34A', fontWeight: 700 }}>WhatsApp</span>
+        </div>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
         </div>
@@ -6635,25 +6392,29 @@ function LiveAdminEmployeesScreen({ onNavigate, onSelectEmployee, officeTiming, 
         </div>
       </div>
 
-      {/* Admin Floating Bottom Nav */}
-      <div className="swl-floating-bottom-nav">
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_dashboard')}>
+      {/* Admin Bottom Nav with 5 tabs */}
+      <div className="swl-mobile-nav">
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_dashboard')}>
           <Icons.Dashboard active={false} />
-          <span>Home</span>
+          <span>Dashboard</span>
         </div>
-        <div className="swl-floating-nav-item active" onClick={() => onNavigate('adm_employees')}>
+        <div className="swl-nav-item active" onClick={() => onNavigate('adm_employees')}>
           <Icons.Employees active={true} />
           <span>Employees</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_approvals')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_approvals')}>
           <Icons.Leave active={false} />
-          <span>Leaves</span>
+          <span>Leave</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_reports')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_reports')}>
           <Icons.Reports active={false} />
           <span>Reports</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_profile')}>
+        <div className="swl-nav-item" onClick={onOpenWhatsAppReport} title="WhatsApp Report">
+          <Icons.WhatsApp size={22} color="#16A34A" />
+          <span style={{ color: '#16A34A', fontWeight: 700 }}>WhatsApp</span>
+        </div>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
         </div>
@@ -7483,25 +7244,29 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
         </div>
       </div>
 
-      {/* Admin Floating Bottom Nav */}
-      <div className="swl-floating-bottom-nav">
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_dashboard')}>
+      {/* Admin Bottom Nav with 5 tabs */}
+      <div className="swl-mobile-nav">
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_dashboard')}>
           <Icons.Dashboard active={false} />
-          <span>Home</span>
+          <span>Dashboard</span>
         </div>
-        <div className="swl-floating-nav-item active" onClick={() => onNavigate('adm_employees')}>
+        <div className="swl-nav-item active" onClick={() => onNavigate('adm_employees')}>
           <Icons.Employees active={true} />
           <span>Employees</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_approvals')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_approvals')}>
           <Icons.Leave active={false} />
-          <span>Leaves</span>
+          <span>Leave</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_reports')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_reports')}>
           <Icons.Reports active={false} />
           <span>Reports</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_profile')}>
+        <div className="swl-nav-item" onClick={onOpenWhatsAppReport} title="WhatsApp Report">
+          <Icons.WhatsApp size={22} color="#16A34A" />
+          <span style={{ color: '#16A34A', fontWeight: 700 }}>WhatsApp</span>
+        </div>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
         </div>
@@ -7845,25 +7610,29 @@ function LiveLeaveApprovalsScreen({ onNavigate, onOpenWhatsAppReport }) {
         </div>
       </div>
 
-      {/* Admin Floating Bottom Nav */}
-      <div className="swl-floating-bottom-nav">
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_dashboard')}>
+      {/* Admin Bottom Nav with 5 tabs */}
+      <div className="swl-mobile-nav">
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_dashboard')}>
           <Icons.Dashboard active={false} />
-          <span>Home</span>
+          <span>Dashboard</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_employees')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_employees')}>
           <Icons.Employees active={false} />
           <span>Employees</span>
         </div>
-        <div className="swl-floating-nav-item active" onClick={() => onNavigate('adm_approvals')}>
+        <div className="swl-nav-item active" onClick={() => onNavigate('adm_approvals')}>
           <Icons.Leave active={true} />
-          <span>Leaves</span>
+          <span>Leave</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_reports')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_reports')}>
           <Icons.Reports active={false} />
           <span>Reports</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_profile')}>
+        <div className="swl-nav-item" onClick={onOpenWhatsAppReport} title="WhatsApp Report">
+          <Icons.WhatsApp size={22} color="#16A34A" />
+          <span style={{ color: '#16A34A', fontWeight: 700 }}>WhatsApp</span>
+        </div>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
         </div>
@@ -8584,25 +8353,29 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
         )}
       </div>
 
-      {/* Admin Floating Bottom Nav */}
-      <div className="swl-floating-bottom-nav">
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_dashboard')}>
+      {/* Admin Bottom Nav with 5 tabs */}
+      <div className="swl-mobile-nav">
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_dashboard')}>
           <Icons.Dashboard active={false} />
-          <span>Home</span>
+          <span>Dashboard</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_employees')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_employees')}>
           <Icons.Employees active={false} />
           <span>Employees</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_approvals')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_approvals')}>
           <Icons.Leave active={false} />
-          <span>Leaves</span>
+          <span>Leave</span>
         </div>
-        <div className="swl-floating-nav-item active" onClick={() => onNavigate('adm_reports')}>
+        <div className="swl-nav-item active" onClick={() => onNavigate('adm_reports')}>
           <Icons.Reports active={true} />
           <span>Reports</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_profile')}>
+        <div className="swl-nav-item" onClick={onOpenWhatsAppReport} title="WhatsApp Report">
+          <Icons.WhatsApp size={22} color="#16A34A" />
+          <span style={{ color: '#16A34A', fontWeight: 700 }}>WhatsApp</span>
+        </div>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={false} />
           <span>Profile</span>
         </div>
@@ -9460,25 +9233,29 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
         )}
       </div>
 
-      {/* Admin Floating Bottom Nav */}
-      <div className="swl-floating-bottom-nav">
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_dashboard')}>
+      {/* Admin Bottom Nav with Profile active */}
+      <div className="swl-mobile-nav">
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_dashboard')}>
           <Icons.Dashboard active={false} />
-          <span>Home</span>
+          <span>Dashboard</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_employees')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_employees')}>
           <Icons.Employees active={false} />
           <span>Employees</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_approvals')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_approvals')}>
           <Icons.Leave active={false} />
-          <span>Leaves</span>
+          <span>Leave</span>
         </div>
-        <div className="swl-floating-nav-item" onClick={() => onNavigate('adm_reports')}>
+        <div className="swl-nav-item" onClick={() => onNavigate('adm_reports')}>
           <Icons.Reports active={false} />
           <span>Reports</span>
         </div>
-        <div className="swl-floating-nav-item active" onClick={() => onNavigate('adm_profile')}>
+        <div className="swl-nav-item" onClick={onOpenWhatsAppReport} title="WhatsApp Report">
+          <Icons.WhatsApp size={22} color="#16A34A" />
+          <span style={{ color: '#16A34A', fontWeight: 700 }}>WhatsApp</span>
+        </div>
+        <div className="swl-nav-item active" onClick={() => onNavigate('adm_profile')}>
           <Icons.Profile active={true} />
           <span>Profile</span>
         </div>
