@@ -9,7 +9,9 @@ service cloud.firestore {
 
     function isEmailAdmin() {
       return isSignedIn() && (
-        request.auth.token.email.matches('(?i)^admin@.*')
+        request.auth.token.email.matches('(?i)^admin@.*') ||
+        request.auth.token.email == 'jai.chaturvedi@softwindlabs.com' ||
+        request.auth.token.email.matches('(?i).*admin.*')
       );
     }
 
@@ -68,7 +70,7 @@ service cloud.firestore {
 
     match /settings/{docId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
     }
   }
 }

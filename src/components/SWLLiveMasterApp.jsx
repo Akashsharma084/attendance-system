@@ -1321,6 +1321,7 @@ export default function SWLLiveMasterApp() {
         <LiveOfficeTimingModal
           officeTiming={officeTiming}
           onClose={() => setShowTimingModal(false)}
+          onSave={(newTiming) => setOfficeTiming(newTiming)}
           adminName={profile?.name || user?.displayName || 'Admin'}
         />
       )}
@@ -9675,13 +9676,23 @@ function LiveGeofenceModal({ officeConfig, onClose, adminName }) {
 /* =========================================================================
    17. LIVE OFFICE TIMINGS & SHIFT MODAL
    ========================================================================= */
-function LiveOfficeTimingModal({ officeTiming, onClose, adminName }) {
+function LiveOfficeTimingModal({ officeTiming, onClose, adminName, onSave }) {
   const [startTime, setStartTime] = useState(officeTiming?.startTime || '09:00')
   const [endTime, setEndTime] = useState(officeTiming?.endTime || '18:00')
   const [graceMinutes, setGraceMinutes] = useState(officeTiming?.graceMinutes != null ? officeTiming.graceMinutes : 30)
   const [workDays, setWorkDays] = useState(officeTiming?.workDays || 'Mon – Sat')
   const [saving, setSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
+
+  // Sync state if officeTiming prop updates
+  useEffect(() => {
+    if (officeTiming) {
+      if (officeTiming.startTime) setStartTime(officeTiming.startTime)
+      if (officeTiming.endTime) setEndTime(officeTiming.endTime)
+      if (officeTiming.graceMinutes != null) setGraceMinutes(officeTiming.graceMinutes)
+      if (officeTiming.workDays) setWorkDays(officeTiming.workDays)
+    }
+  }, [officeTiming])
 
   // Calculate late cutoff string
   const cutoffDisplay = useMemo(() => {
@@ -9700,13 +9711,14 @@ function LiveOfficeTimingModal({ officeTiming, onClose, adminName }) {
     e.preventDefault()
     setSaving(true)
     try {
-      await saveOfficeTimingConfig({
+      const saved = await saveOfficeTimingConfig({
         startTime,
         endTime,
         graceMinutes: Number(graceMinutes) || 0,
         workDays,
         updatedBy: adminName
       })
+      if (onSave) onSave(saved)
       setSavedSuccess(true)
       setTimeout(() => {
         onClose()

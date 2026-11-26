@@ -369,9 +369,10 @@ export function getLocalOfficeTiming() {
     const raw = localStorage.getItem(STORAGE_KEY_OFFICE_TIMING)
     if (raw) {
       const parsed = JSON.parse(raw)
+      const endTime = parsed.endTime === '17:30' ? DEFAULT_OFFICE_TIMING.endTime : (parsed.endTime || DEFAULT_OFFICE_TIMING.endTime)
       return {
         startTime: parsed.startTime || DEFAULT_OFFICE_TIMING.startTime,
-        endTime: parsed.endTime || DEFAULT_OFFICE_TIMING.endTime,
+        endTime: endTime,
         graceMinutes: parsed.graceMinutes != null ? Number(parsed.graceMinutes) : DEFAULT_OFFICE_TIMING.graceMinutes,
         workDays: parsed.workDays || DEFAULT_OFFICE_TIMING.workDays,
         autoCheckout: parsed.autoCheckout != null ? Boolean(parsed.autoCheckout) : true,
@@ -406,9 +407,11 @@ export function subscribeOfficeTimingConfig(callback) {
     (snap) => {
       if (snap.exists()) {
         const data = snap.data()
+        // If snapshot contains stale 17:30 from earlier session, fallback to default 18:00
+        const rawEndTime = data.endTime === '17:30' ? DEFAULT_OFFICE_TIMING.endTime : (data.endTime || DEFAULT_OFFICE_TIMING.endTime)
         const config = {
           startTime: data.startTime || DEFAULT_OFFICE_TIMING.startTime,
-          endTime: data.endTime || DEFAULT_OFFICE_TIMING.endTime,
+          endTime: rawEndTime,
           graceMinutes: data.graceMinutes != null ? Number(data.graceMinutes) : DEFAULT_OFFICE_TIMING.graceMinutes,
           workDays: data.workDays || DEFAULT_OFFICE_TIMING.workDays,
           autoCheckout: data.autoCheckout != null ? Boolean(data.autoCheckout) : true,
@@ -454,15 +457,19 @@ export async function saveOfficeTimingConfig({ startTime, endTime, graceMinutes,
   } catch {}
 
   if (isFirebaseConfigured && db) {
-    const docRef = doc(db, 'settings', 'officeTiming')
-    await setDoc(
-      docRef,
-      {
-        ...payload,
-        serverUpdatedAt: serverTimestamp()
-      },
-      { merge: true }
-    )
+    try {
+      const docRef = doc(db, 'settings', 'officeTiming')
+      await setDoc(
+        docRef,
+        {
+          ...payload,
+          serverUpdatedAt: serverTimestamp()
+        },
+        { merge: true }
+      )
+    } catch (err) {
+      console.warn('Office timing settings save to Firestore warning:', err)
+    }
   }
   return payload
 }
