@@ -338,10 +338,10 @@ export const STORAGE_KEY_OFFICE_TIMING = 'punch_office_timing_settings'
 
 export const DEFAULT_OFFICE_TIMING = {
   startTime: '09:00', // 24-hr format (09:00 AM)
-  endTime: '17:30',   // 24-hr format (05:30 PM) - Office shift end & auto punchout time
+  endTime: '18:00',   // 24-hr format (06:00 PM) - Office shift end & auto punchout time
   graceMinutes: 30,   // Grace period in minutes (e.g. up to 09:30 AM before marked late)
   workDays: 'Mon – Sat', // 'Mon – Sat', 'Mon – Fri', 'All 7 Days'
-  autoCheckout: true, // Auto punch out at 5:30 PM
+  autoCheckout: true, // Auto punch out at 6:00 PM
   updatedAt: null,
   updatedBy: null
 }
@@ -439,7 +439,7 @@ export function subscribeOfficeTimingConfig(callback) {
 export async function saveOfficeTimingConfig({ startTime, endTime, graceMinutes, workDays, autoCheckout = true, updatedBy }) {
   const payload = {
     startTime: startTime || '09:00',
-    endTime: endTime || '17:30',
+    endTime: endTime || '18:00',
     graceMinutes: graceMinutes != null ? Number(graceMinutes) : 30,
     workDays: workDays || 'Mon – Sat',
     autoCheckout: Boolean(autoCheckout),
@@ -468,11 +468,11 @@ export async function saveOfficeTimingConfig({ startTime, endTime, graceMinutes,
 }
 
 /**
- * Auto Punch-Out Resolver (5:30 PM cutoff):
+ * Auto Punch-Out Resolver (6:00 PM cutoff):
  * If an employee checked in but forgot to punch out:
  * - On any past day (e.g. yesterday or earlier), OR
- * - Today once the clock reaches 5:30 PM (or configured shift endTime),
- * automatically marks checkOutTime at 5:30 PM with completed/late status.
+ * - Today once the clock reaches 6:00 PM (or configured shift endTime),
+ * automatically marks checkOutTime at 6:00 PM with completed/late status.
  *
  * Per user instruction: No tags, no badges - just plain, standard checkout identical to a manual punchout!
  */
@@ -483,12 +483,12 @@ export async function autoResolveRecordIfPastShiftEnd(record, officeTiming) {
   if (!isFirebaseConfigured || !db) return false
 
   const timing = officeTiming || liveOfficeTiming || getLocalOfficeTiming() || DEFAULT_OFFICE_TIMING
-  const endTimeStr = timing?.endTime || '17:30' // 5:30 PM default
+  const endTimeStr = timing?.endTime || '18:00' // 6:00 PM default
   const parts = String(endTimeStr).split(':')
   const endH = parseInt(parts[0], 10)
   const endM = parseInt(parts[1], 10)
-  const cutoffH = isNaN(endH) ? 17 : endH
-  const cutoffM = isNaN(endM) ? 30 : endM
+  const cutoffH = isNaN(endH) ? 18 : endH
+  const cutoffM = isNaN(endM) ? 0 : endM
   const cutoffTotalMinutes = cutoffH * 60 + cutoffM
 
   const now = new Date()

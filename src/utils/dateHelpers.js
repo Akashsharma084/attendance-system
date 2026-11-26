@@ -332,8 +332,8 @@ export function buildEmployeeSchedule(records = [], targetMonthKey, employeeInfo
       presentCount++
       const now = new Date()
       const todayKey = todayDateKey(now)
-      const isPastCutoff = existing.date < todayKey || (existing.date === todayKey && (now.getHours() * 60 + now.getMinutes()) >= (17 * 60 + 30))
-      const effectiveCheckOut = existing.checkOutTime || (isPastCutoff ? new Date(`${existing.date}T17:30:00`) : null)
+      const isPastCutoff = existing.date < todayKey || (existing.date === todayKey && (now.getHours() * 60 + now.getMinutes()) >= (18 * 60))
+      const effectiveCheckOut = existing.checkOutTime || (isPastCutoff ? new Date(`${existing.date}T18:00:00`) : null)
 
       if (effectiveCheckOut) fullDaysCount++
       return {

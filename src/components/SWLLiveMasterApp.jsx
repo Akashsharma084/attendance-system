@@ -1914,8 +1914,8 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
   }, [monthlyRecords, officeTiming])
 
   const nowMins = new Date().getHours() * 60 + new Date().getMinutes()
-  const [endH, endM] = (officeTiming?.endTime || '17:30').split(':').map(Number)
-  const cutoffMins = (isNaN(endH) ? 17 : endH) * 60 + (isNaN(endM) ? 30 : endM)
+  const [endH, endM] = (officeTiming?.endTime || '18:00').split(':').map(Number)
+  const cutoffMins = (isNaN(endH) ? 18 : endH) * 60 + (isNaN(endM) ? 0 : endM)
   const isPastShiftEnd = nowMins >= cutoffMins
 
   const attendanceRate = effectiveWorkingDays > 0 ? Math.round((presentCount / effectiveWorkingDays) * 100) : 0
@@ -2130,11 +2130,11 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
           <div className="swl-hero-hours" style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '4px 0 0 0' }}>
             <div style={{ fontSize: '0.80rem', color: '#334155', fontWeight: 600, wordBreak: 'break-word' }}>
               {isPresentToday
-                ? `Punch Time: In ${formatTime(todayRecord.checkInTime)}${isCheckedOutToday ? ` • Out ${formatTime(todayRecord?.checkOutTime || new Date(`${todayKey}T17:30:00`))}` : ' (Ongoing)'}`
-                : `Working Hours: ${formatTime24to12(officeTiming?.startTime || '09:00')} - ${formatTime24to12(officeTiming?.endTime || '17:30')}`}
+                ? `Punch Time: In ${formatTime(todayRecord.checkInTime)}${isCheckedOutToday ? ` • Out ${formatTime(todayRecord?.checkOutTime || new Date(`${todayKey}T18:00:00`))}` : ' (Ongoing)'}`
+                : `Working Hours: ${formatTime24to12(officeTiming?.startTime || '09:00')} - ${formatTime24to12(officeTiming?.endTime || '18:00')}`}
             </div>
             <div style={{ fontSize: '0.70rem', color: '#1E5AE6', fontWeight: 700, wordBreak: 'break-word', lineHeight: 1.4 }}>
-              ⏰ Office Shift: {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '17:30')} • Late after {officeCutoffStr}
+              ⏰ Office Shift: {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '18:00')} • Late after {officeCutoffStr}
             </div>
           </div>
 
@@ -2216,7 +2216,7 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
             </div>
             <div className="swl-punch-title">Check Out</div>
             <div className={`swl-punch-sub ${isCheckedOutToday ? 'done' : 'pending'}`}>
-              {isCheckedOutToday ? `${formatTime(todayRecord?.checkOutTime || new Date(`${todayKey}T17:30:00`))} Done` : (isPresentToday ? 'Tap to Punch Out' : 'Not Yet')}
+              {isCheckedOutToday ? `${formatTime(todayRecord?.checkOutTime || new Date(`${todayKey}T18:00:00`))} Done` : (isPresentToday ? 'Tap to Punch Out' : 'Not Yet')}
             </div>
           </div>
         </div>
@@ -2417,8 +2417,8 @@ function LiveCheckInScreen({ onNavigate, officeConfig, officeTiming, punchMode =
   }, [user?.uid, todayKey, officeTiming])
 
   const nowMins = new Date().getHours() * 60 + new Date().getMinutes()
-  const [endH, endM] = (officeTiming?.endTime || '17:30').split(':').map(Number)
-  const cutoffMins = (isNaN(endH) ? 17 : endH) * 60 + (isNaN(endM) ? 30 : endM)
+  const [endH, endM] = (officeTiming?.endTime || '18:00').split(':').map(Number)
+  const cutoffMins = (isNaN(endH) ? 18 : endH) * 60 + (isNaN(endM) ? 0 : endM)
   const isPastCutoff = nowMins >= cutoffMins
 
   const hasCheckedIn = Boolean(todayDoc?.checkInTime)
@@ -5350,7 +5350,7 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
               {/* Company Admin Support Info */}
               <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12, padding: '10px 12px', fontSize: '0.7rem', color: '#64748B' }}>
                 <div style={{ fontWeight: 800, color: '#0F172A', marginBottom: 2 }}>🏢 Softwind Labs Corporate Helpdesk</div>
-                <div>Office Hours: {officeTiming?.workDays || 'Mon–Sat'}, {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '17:30')} IST</div>
+                <div>Office Hours: {officeTiming?.workDays || 'Mon–Sat'}, {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '18:00')} IST</div>
                 <div>Urgent Helpline: +91 (011) 4567-8900</div>
               </div>
             </div>
@@ -5550,7 +5550,7 @@ function LiveProfileScreen({ onNavigate, onLogout, onViewSelfie, officeConfig, o
                 </h4>
                 <div style={{ fontSize: '0.74rem', color: '#475569', lineHeight: 1.6 }}>
                   <div>• <strong>Allowed Radius:</strong> {officeConfig?.radiusMeters || 100} meters around headquarters</div>
-                  <div>• <strong>Office Working Hours:</strong> {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '17:30')} IST ({officeTiming?.workDays || 'Mon–Sat'})</div>
+                  <div>• <strong>Office Working Hours:</strong> {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '18:00')} IST ({officeTiming?.workDays || 'Mon–Sat'})</div>
                   <div>• <strong>Grace Time:</strong> {officeTiming?.graceMinutes != null ? officeTiming.graceMinutes : 30} minutes grace period</div>
                   <div>• <strong>Verification Mode:</strong> Live Face Selfie + GPS Validation</div>
                 </div>
@@ -9066,7 +9066,7 @@ function LiveAdminProfileScreen({ onNavigate, onLogout, onOpenGeofence, onOpenTi
                     <div>
                       <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#0F172A' }}>Office Timings & Shift Hours</span>
                       <span style={{ display: 'block', fontSize: '0.64rem', color: '#D97706', fontWeight: 600 }}>
-                        {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '17:30')} ({officeTiming?.graceMinutes != null ? officeTiming.graceMinutes : 30}m grace)
+                        {formatTime24to12(officeTiming?.startTime || '09:00')} – {formatTime24to12(officeTiming?.endTime || '18:00')} ({officeTiming?.graceMinutes != null ? officeTiming.graceMinutes : 30}m grace)
                       </span>
                     </div>
                   </div>
@@ -9677,7 +9677,7 @@ function LiveGeofenceModal({ officeConfig, onClose, adminName }) {
    ========================================================================= */
 function LiveOfficeTimingModal({ officeTiming, onClose, adminName }) {
   const [startTime, setStartTime] = useState(officeTiming?.startTime || '09:00')
-  const [endTime, setEndTime] = useState(officeTiming?.endTime || '17:30')
+  const [endTime, setEndTime] = useState(officeTiming?.endTime || '18:00')
   const [graceMinutes, setGraceMinutes] = useState(officeTiming?.graceMinutes != null ? officeTiming.graceMinutes : 30)
   const [workDays, setWorkDays] = useState(officeTiming?.workDays || 'Mon – Sat')
   const [saving, setSaving] = useState(false)
