@@ -1874,6 +1874,13 @@ function LiveHomeScreen({ onNavigate, officeConfig, officeTiming, onViewSelfie }
     const unsubMonth = onSnapshot(monthQ, (snap) => {
       if (!active) return
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      list.sort((a, b) => {
+        const dDiff = (a.date || '').localeCompare(b.date || '')
+        if (dDiff !== 0) return dDiff
+        const aT = a.checkInTime?.seconds || (a.checkInTime ? new Date(a.checkInTime).getTime() : 0)
+        const bT = b.checkInTime?.seconds || (b.checkInTime ? new Date(b.checkInTime).getTime() : 0)
+        return aT - bT
+      })
       setMonthlyRecords(list)
       setLoading(false)
     })
@@ -3553,6 +3560,13 @@ function LiveAttendanceHistoryScreen({ onNavigate, onViewSelfie, officeTiming })
 
     const unsub = onSnapshot(q, (snap) => {
       const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      docs.sort((a, b) => {
+        const dDiff = (a.date || '').localeCompare(b.date || '')
+        if (dDiff !== 0) return dDiff
+        const aT = a.checkInTime?.seconds || (a.checkInTime ? new Date(a.checkInTime).getTime() : 0)
+        const bT = b.checkInTime?.seconds || (b.checkInTime ? new Date(b.checkInTime).getTime() : 0)
+        return aT - bT
+      })
       setAttendanceRecords(docs)
       const t = docs.find(d => d.date === todayKey)
       setTodayRecord(t || null)
@@ -5631,8 +5645,13 @@ function LiveAdminDashboardScreen({ onNavigate, onOpenGeofence, onOpenTiming, on
     const qAtt = query(collection(db, 'attendance'), where('date', '==', todayKey))
     const unsubAtt = onSnapshot(qAtt, (snap) => {
       const records = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      // Only include worker attendance records
+      // Only include worker attendance records, sorted by punch-in time ascending
       const workerRecords = records.filter(r => !isUserAdmin(r))
+      workerRecords.sort((a, b) => {
+        const aT = a.checkInTime?.seconds || (a.checkInTime ? new Date(a.checkInTime).getTime() : 0)
+        const bT = b.checkInTime?.seconds || (b.checkInTime ? new Date(b.checkInTime).getTime() : 0)
+        return aT - bT
+      })
       setTodayPunches(workerRecords)
       setPresentEmployees(workerRecords.length)
       autoResolveMissingPunchOuts(workerRecords, officeTiming)
@@ -6522,7 +6541,15 @@ function LiveEmployeeDetailsScreen({ employee, onNavigate, onViewSelfie, origin,
       where('month', '==', selectedMonth)
     )
     const unsub = onSnapshot(q, (snap) => {
-      setRecords(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      docs.sort((a, b) => {
+        const dDiff = (a.date || '').localeCompare(b.date || '')
+        if (dDiff !== 0) return dDiff
+        const aT = a.checkInTime?.seconds || (a.checkInTime ? new Date(a.checkInTime).getTime() : 0)
+        const bT = b.checkInTime?.seconds || (b.checkInTime ? new Date(b.checkInTime).getTime() : 0)
+        return aT - bT
+      })
+      setRecords(docs)
     })
     return () => unsub()
   }, [employee?.uid, selectedMonth])
@@ -7826,7 +7853,15 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
       q = query(collection(db, 'attendance'), where('month', '==', curMonth))
     }
     const unsub = onSnapshot(q, (snap) => {
-      setRecords(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      docs.sort((a, b) => {
+        const dDiff = (a.date || '').localeCompare(b.date || '')
+        if (dDiff !== 0) return dDiff
+        const aT = a.checkInTime?.seconds || (a.checkInTime ? new Date(a.checkInTime).getTime() : 0)
+        const bT = b.checkInTime?.seconds || (b.checkInTime ? new Date(b.checkInTime).getTime() : 0)
+        return aT - bT
+      })
+      setRecords(docs)
     })
     return () => unsub()
   }, [curMonth, timeframe, customStart, customEnd])
@@ -7898,15 +7933,22 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
     })
   }, [users, workerRecords, officeTiming])
 
-  // Filtered punch logs
+  // Filtered punch logs (sorted strictly ascending by date and time)
   const filteredLogs = useMemo(() => {
-    return records.filter(r => {
+    const list = records.filter(r => {
       if (!search.trim()) return true
       const s = search.toLowerCase()
       const n = (r.name || '').toLowerCase()
       const e = (r.email || '').toLowerCase()
       const d = (r.date || '').toLowerCase()
       return n.includes(s) || e.includes(s) || d.includes(s)
+    })
+    return list.sort((a, b) => {
+      const dDiff = (a.date || '').localeCompare(b.date || '')
+      if (dDiff !== 0) return dDiff
+      const aT = a.checkInTime?.seconds || (a.checkInTime ? new Date(a.checkInTime).getTime() : 0)
+      const bT = b.checkInTime?.seconds || (b.checkInTime ? new Date(b.checkInTime).getTime() : 0)
+      return aT - bT
     })
   }, [records, search])
 
@@ -7915,8 +7957,15 @@ function LiveReportsScreen({ onNavigate, onViewSelfie, onSelectEmployee, officeT
       alert('No attendance records available to export for this month.')
       return
     }
+    const sorted = [...records].sort((a, b) => {
+      const dDiff = (a.date || '').localeCompare(b.date || '')
+      if (dDiff !== 0) return dDiff
+      const aT = a.checkInTime?.seconds || (a.checkInTime ? new Date(a.checkInTime).getTime() : 0)
+      const bT = b.checkInTime?.seconds || (b.checkInTime ? new Date(b.checkInTime).getTime() : 0)
+      return aT - bT
+    })
     const headers = ['Date', 'Employee Name', 'Email', 'Check-In Time', 'Check-Out Time', 'Duration (Hours)', 'Status', 'Late', 'GPS Coordinates', 'Selfie Photo URL']
-    const rows = records.map(r => {
+    const rows = sorted.map(r => {
       const loc = r.checkInLocation || r.location
       const lat = loc?.latitude ?? loc?.lat ?? ''
       const lng = loc?.longitude ?? loc?.lng ?? ''

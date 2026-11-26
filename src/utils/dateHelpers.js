@@ -229,7 +229,7 @@ export function getMonthWorkingDays(targetMonthKey, options = {}) {
     }
   }
 
-  return days.reverse()
+  return days
 }
 
 /**
